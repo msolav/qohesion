@@ -1,0 +1,39 @@
+# Threat model (draft)
+
+Voting software for small organizations does not face nation-state adversaries. It faces a curious administrator, a disgruntled member, a stolen laptop, a phished email account and a misconfigured server. We design for those first and say plainly what we do not defend against.
+
+## Assets
+
+1. Integrity of results (nobody can add, remove or change ballots).
+2. Eligibility (only entitled members vote, once per ballot).
+3. Ballot secrecy, when the vote is configured as secret.
+4. Members' personal information.
+5. Availability during the voting window.
+
+## Adversaries
+
+| Adversary | Capabilities |
+|---|---|
+| Member | Own account, browser, can try to vote twice or as someone else |
+| Account thief | Controls a member's email inbox |
+| Org admin | Elevated role in the app, no server access |
+| Server operator | Root on the VPS (often the same volunteer as the admin) |
+| External attacker | Internet access, no credentials |
+
+## Guarantees we aim to provide
+
+- **One member, one vote**: enforced by a single-use voting credential issued at participation time.
+- **Secrecy from admins**: for secret ballots, no admin role can link a member to a ballot through the application or its exports.
+- **Verifiable tally**: each voter receives a receipt code, the published ballot list is checkable against the final count, and ballots are hash-chained so tampering is detectable.
+- **Tamper-evident audit log** of administrative actions, including role changes and ballot configuration.
+
+## Limits we state openly
+
+- **A malicious server operator with root access can defeat secrecy and integrity.** Self-hosting moves trust from a vendor to your own operator. Mitigations: hash-chained ballots, published receipts, and an optional end-to-end verifiable mode (tracked in issues). Organizations with high-stakes elections should use an independent scrutineer.
+- **Coercion and vote selling** are not preventable in remote voting. Qohesion is meant for consultative and ordinary governance votes, not for contexts with a strong coercion risk. If your by-laws require in-person secret ballots for certain decisions, use them.
+- **Email as identity** is only as strong as the member's mailbox. Optional second factor and in-person credential handover are planned.
+- **Metadata** such as IP addresses is not stored with ballots, and server logs rotate on a short schedule. A network observer can still see that a client connected.
+
+## Out of scope
+
+Compromised voter devices, nation-state adversaries, and legally binding public elections.
