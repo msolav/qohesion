@@ -41,3 +41,18 @@ python3 src/build_logo.py path/to/Outfit.ttf output-dir
 ## Clearance and use
 
 Keep a margin around the logo equal to the height of the "o". Do not recolor the check and ring differently from the supplied variants, do not add effects, and do not set the word in another font.
+
+## Gradient logo (current)
+
+The current logo is the gradient Q: a ring whose tail is a check mark, with the Outfit wordmark. It was traced from the supplied artwork and rebuilt as clean vector geometry, so it scales without loss and has no background.
+
+| File (in `gradient/`) | Use |
+|---|---|
+| `qohesion-logo-gradient.svg` | Lockup for light backgrounds (navy letters) |
+| `qohesion-logo-gradient-dark.svg` | Lockup for dark backgrounds (pale letters) |
+| `qohesion-logo-gradient-plate.svg` | Lockup on its own navy plate, readable on any page |
+| `qohesion-mark-gradient.svg` | Symbol only |
+| `qohesion-avatar-gradient.png` | 1024 px square avatar, safe for round crops |
+| `icon-512.png`, `apple-touch-icon.png`, `favicon-32.png` | Icons on navy |
+
+Navy `#0F224C`, pale letters `#EAF2FF`. The cyan end of the ring has low contrast on white, so prefer the dark lockup or the plate for small sizes on light pages. The flat set in the parent folder remains as a one-colour alternative. Build scripts are in `src/gradient/` (they expect the source artwork, which is not committed).
