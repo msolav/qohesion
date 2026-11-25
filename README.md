@@ -1,4 +1,9 @@
-# Qohesion
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/qohesion-logo-dark.svg">
+    <img src="brand/qohesion-logo.svg" alt="Qohesion" width="420">
+  </picture>
+</p>
 
 **Decide together. Décidez ensemble.**
 

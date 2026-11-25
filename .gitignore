@@ -10,3 +10,7 @@ build/
 coverage/
 *.sqlite
 backups/
+
+# Local design explorations and generated images
+brand/explorations/
+brand/logo/
