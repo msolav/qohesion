@@ -34,6 +34,15 @@ Voting software for small organizations does not face nation-state adversaries. 
 - **Email as identity** is only as strong as the member's mailbox. Optional second factor and in-person credential handover are planned.
 - **Metadata** such as IP addresses is not stored with ballots, and server logs rotate on a short schedule. A network observer can still see that a client connected.
 
+## Hosted edition
+
+If the project operates a hosted service, the project operator becomes the "server operator" adversary for every organization on it. The design answer is in [ADR 0002](adr/0002-editions-hosting-and-trust.md): make integrity independent of the host (encrypted ballots, trustee-held keys, public ledger, independent verifier, anchored checkpoints), and say plainly what remains:
+
+- **Secrecy depends on the voter's browser.** A hosted site serves the code that encrypts the ballot. A malicious host could serve a bad version. Signed, pinned bundles and challenge-audit reduce this but do not remove it.
+- **Availability depends on the host.** A host can refuse service. Export and self-hosting are the exit.
+- **Metadata** such as connection times is visible to the host and to its CDN.
+- Organizations with high-stakes or contested elections should self-host or add an independent scrutineer.
+
 ## Out of scope
 
 Compromised voter devices, nation-state adversaries, and legally binding public elections.
