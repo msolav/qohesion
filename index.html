@@ -5,15 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Qohesion</title>
 <meta name="description" content="Qohesion, un outil libre de vote et de décision pour les organisations dirigées par leurs membres. Free, self-hosted voting and decision tool for member-run organizations.">
-<meta name="theme-color" content="#10234F">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0F224C">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 @font-face{font-family:"Outfit";src:url(outfit-latin.woff2) format("woff2");font-weight:100 900;font-display:swap}
 *{box-sizing:border-box;margin:0}
-html{background:#10234F;-webkit-text-size-adjust:100%}
-body{min-height:100vh;min-height:100svh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;background:#10234F;color:#EAF2FF;font-family:Outfit,system-ui,sans-serif;line-height:1.45}
+html{background:#0F224C;-webkit-text-size-adjust:100%}
+body{min-height:100vh;min-height:100svh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;background:#0F224C;color:#EAF2FF;font-family:Outfit,system-ui,sans-serif;line-height:1.45}
 main{display:grid;grid-template-columns:minmax(0,1fr);place-content:center;justify-items:center;gap:clamp(20px,4vh,36px);padding:48px 24px 24px;text-align:center}
-.mark{width:clamp(150px,34vw,260px);height:auto;display:block}
+.mark{width:clamp(200px,44vw,340px);height:auto;display:block;margin:-6% 0;-webkit-mask-image:radial-gradient(closest-side,#000 92%,transparent 100%);mask-image:radial-gradient(closest-side,#000 92%,transparent 100%)}
 h1{font-size:clamp(2rem,6vw,3.2rem);font-weight:500;letter-spacing:-.01em;line-height:1}
 .line{display:grid;gap:6px;text-wrap:balance;font-size:clamp(1.05rem,2.6vw,1.3rem)}
 .line span:first-child{font-weight:500}
@@ -22,21 +23,13 @@ footer{padding:20px 24px 28px;display:flex;flex-wrap:wrap;justify-content:center
 a{color:#EAF2FF;text-underline-offset:.22em;text-decoration-thickness:1px}
 a:hover{text-decoration-thickness:2px}
 a:focus-visible{outline:3px solid #47EBA0;outline-offset:3px;border-radius:2px}
-::selection{background:#47EBA0;color:#10234F}
+::selection{background:#47EBA0;color:#0F224C}
 @media (prefers-reduced-motion:no-preference){.mark{animation:rise .7s cubic-bezier(.16,1,.3,1) both}@keyframes rise{from{opacity:0;transform:translateY(8px)}}}
 </style>
 </head>
 <body>
 <main>
-<svg class="mark" viewBox="150 150 860 720" role="img" aria-label="Logo Qohesion">
-<defs>
-<linearGradient id="ring" x1="800" y1="230" x2="260" y2="800" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#12F2FF"/><stop offset=".5" stop-color="#1E8BE8"/><stop offset="1" stop-color="#3A38D2"/></linearGradient>
-<linearGradient id="chk" x1="480" y1="820" x2="960" y2="450" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#35B3A2"/><stop offset="1" stop-color="#47EBA0"/></linearGradient>
-<mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024"><rect width="1024" height="1024" fill="#fff"/><path d="M487 567H585Q597 567 604 576L683 678L962 453L690 816Z" fill="#000" stroke="#000" stroke-width="46" stroke-linejoin="round"/></mask>
-</defs>
-<circle cx="512" cy="512" r="275" fill="none" stroke="url(#ring)" stroke-width="100" mask="url(#cut)"/>
-<path d="M487 567H585Q597 567 604 576L683 678L962 453L690 816Z" fill="url(#chk)"/>
-</svg>
+<picture><source srcset="logo-560.webp" type="image/webp"><img class="mark" src="logo-560.jpg" width="560" height="560" alt="Logo Qohesion"></picture>
 <h1>Qohesion</h1>
 <p class="line"><span>Bientôt disponible. Décidons ensemble.</span><span lang="en">Coming soon. Decide together.</span></p>
 </main>
