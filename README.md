@@ -7,9 +7,9 @@
 
 **Decide together. Décidez ensemble.**
 
-Qohesion is a free, self-hosted voting and decision tool for member-run organizations: housing co-ops, associations, unions, community groups. You install it on your own server, connect your own SMTP service, and your members' data stays with you.
+Qohesion is a free, self-hosted voting and decision tool for any organization whose members decide together: associations, cooperatives, unions, non-profits, clubs, boards and councils, community groups. You install it on your own server, connect your own SMTP service, and your members' data stays with you.
 
-Qohesion est un outil libre de vote et de prise de décision, à installer sur votre propre serveur, pour les organisations dirigées par leurs membres : coopératives d'habitation, associations, syndicats, groupes communautaires. Vous branchez votre propre service SMTP, et les données de vos membres restent chez vous.
+Qohesion est un outil libre de vote et de prise de décision, à installer sur votre propre serveur, pour toute organisation dont les membres décident ensemble : associations, coopératives, syndicats, organismes à but non lucratif, clubs, conseils et comités, groupes communautaires. Vous branchez votre propre service SMTP, et les données de vos membres restent chez vous.
 
 > **Status / Statut :** pre-alpha. Design phase, nothing to install yet. Follow the [roadmap](../../milestones) and the [issues](../../issues). / Phase de conception, rien à installer pour l'instant.
 
@@ -17,7 +17,7 @@ Qohesion est un outil libre de vote et de prise de décision, à installer sur v
 
 ## Why / Pourquoi
 
-A housing co-op's board of directors takes most decisions on its own, and sometimes asks the whole membership to weigh in. Existing tools are either closed SaaS platforms (your members' data lives on someone else's server), too heavy for a volunteer-run organization, or built for one country's election rules.
+Many organizations decide in two layers: a board or council takes most decisions on its own, and sometimes asks the whole membership to weigh in. Existing tools are either closed SaaS platforms (your members' data lives on someone else's server), too heavy for a volunteer-run organization, or built for one country's election rules.
 
 Qohesion aims to be:
 
@@ -39,7 +39,7 @@ Qohesion aims to be:
 
 ## Not legal advice / Avis juridique
 
-Qohesion helps an organization meet its obligations, it does not replace your by-laws, your general assembly rules or a lawyer. Whether an electronic vote is valid for a given decision depends on your constitution and applicable law (for Quebec co-ops, notably the *Loi sur les coopératives*). / Qohesion ne remplace ni vos règlements, ni vos règles d'assemblée générale, ni un avis juridique.
+Qohesion helps an organization meet its obligations, it does not replace your by-laws, your general assembly rules or a lawyer. Whether an electronic vote is valid for a given decision depends on your constitution and applicable law (cooperatives, non-profits and unions, for example, each answer to their own statute). / Qohesion ne remplace ni vos règlements, ni vos règles d'assemblée générale, ni un avis juridique.
 
 ## Contributing / Contribuer
 

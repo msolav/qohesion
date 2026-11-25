@@ -50,5 +50,5 @@ The exact guarantees and their limits are in the [threat model](threat-model.md)
 - *Act respecting the protection of personal information in the private sector* (CQLR c P-39.1), as amended by Law 25
 - Regulation (EU) 2016/679 (GDPR)
 - *Charter of the French language* (CQLR c C-11)
-- *Loi sur les coopératives* (CQLR c C-67.2) for co-op decision rules
+- The statute and by-laws governing each organization, for example the *Loi sur les coopératives* (CQLR c C-67.2), the *Loi sur les compagnies* Part III for non-profit corporations (CQLR c C-38), or the *Code du travail* for unions (CQLR c C-27) **[verify]**
 - Commission d'accès à l'information du Québec guidance on incidents and PIAs
