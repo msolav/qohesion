@@ -41,6 +41,22 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  roll:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/roll
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/roll/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
   repository:
     runs-on: ubuntu-latest
     steps:

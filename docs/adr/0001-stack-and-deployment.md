@@ -1,6 +1,6 @@
 # ADR 0001: Stack and deployment
 
-- Status: proposed
+- Status: accepted for the stack (SvelteKit, TypeScript, PostgreSQL, Docker Compose), confirmed 2026-11-25. Still open: the migration tool or ORM, the cryptography library, and whether to support SQLite.
 - Date: 2026-11-25
 
 ## Context

@@ -1,0 +1,19 @@
+{
+  "name": "@qohesion/roll",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Member roll logic: address checks, status machine, frozen roll code, amendments, assurance levels.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2"
+  }
+}
