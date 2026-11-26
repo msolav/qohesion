@@ -92,7 +92,7 @@ Accepted limits: a determined administrator can script the member step. The aim 
 
 ### 10. Content style
 
-All text on the website and in the interface follows [docs/content-style.md](../content-style.md): objective, neutral, functional, descriptive, procedural; no appeal to emotion or individuality; no assumed context; one language at a time with a language switcher.
+All text follows [docs/content-style.md](../content-style.md), which defines two registers: a functional register (interface, emails, terms, documentation) that is objective, neutral, descriptive and procedural with no assumed context, and a brand register (tagline, headlines, social profiles) that is engaging and human but truthful. One language is displayed at a time, with a language switcher.
 
 ## Consequences
 

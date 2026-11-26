@@ -2,6 +2,8 @@
   <img src="brand/gradient/qohesion-logo-gradient-plate.svg" alt="Qohesion" width="460">
 </p>
 
+**Decide together.** · **Décidons ensemble.**
+
 **Qohesion is open-source software for holding votes and polls in groups such as associations, unions and councils. It is under development.**
 
 **Qohesion est un logiciel libre pour tenir des votes et des sondages dans des groupes tels que des associations, des syndicats et des conseils. Il est en cours de développement.**

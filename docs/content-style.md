@@ -2,7 +2,18 @@
 
 This guide governs all text published by the project on the website and in the interface, in every language. It also applies to emails sent by the service.
 
-## Register
+## Two registers
+
+| Register | Where it applies | Voice |
+|---|---|---|
+| **Functional** | The interface (ballots, registration, status messages, errors), emails sent by the service, terms of use, privacy notices, documentation | Objective, neutral, descriptive, procedural. Rules below. |
+| **Brand** | The tagline, page headlines and lead lines, social profiles | Engaging and human. Short, direct, collective or personal address allowed. Must stay truthful. |
+
+Brand text may speak to people ("Decide together."). It must not claim anything the software does not yet do, must not use superlatives or promises about results, and must not replace the plain description of what the software is. Every page that carries a brand line also carries a functional line that states what the software is and its status.
+
+The tagline is **Decide together** (French: **Décidons ensemble**).
+
+## Functional register
 
 Text is **objective, neutral, functional, descriptive and procedural.**
 
