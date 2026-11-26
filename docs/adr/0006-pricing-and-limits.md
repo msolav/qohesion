@@ -12,13 +12,15 @@ Member-run organizations vote a few times a year, often at one annual meeting. A
 
 ### Evidence, checked on 2026-11-26
 
-Sending costs, from each provider's own pages. Brevo's pricing page could not be read directly; its figures come from its other public pages, which were between two months and a year old, so they are checked again before any decision.
+Sending costs, from each provider's own pages. Brevo's figures come from its pricing page and plan notes as captured on 2026-11-26 (the copy is kept outside the repository, because it belongs to Brevo). Prices change, so they are checked again before any decision.
 
 | Provider | Free | Paid |
 |---|---|---|
-| Brevo | 300 emails a day (9,000 a month), no daily limit on paid plans | Starter US$9 a month (CA$10) from 5,000 emails |
+| Brevo | 300 emails a day (about 9,000 a month) | Starter CA$20 a month from 5,000 emails (CA$14 on yearly billing with the 30% coupon shown); Standard CA$42 (CA$29.43) |
 | Resend | 3,000 a month, 100 a day | Pro US$20 a month for 50,000 emails |
 | Amazon SES | none | US$0.10 per 1,000 emails, no monthly minimum |
+
+Transactional email sent through Brevo's API or SMTP is included in every plan and counts toward the plan's volume. The free plan's 9,000 a month is more than the 5,000 that Starter starts at, so the first paid plan is needed for the daily cap and not for volume. Brevo's API page states that paid plans have no daily limit (to confirm before relying on it).
 
 A 300-member vote sends 300 to 600 emails: about US$0.03 to US$0.06 at the SES rate. Email is not the cost that matters. The costs that matter are a server, an email plan once the free plans are outgrown, accounting and insurance, payment-processor fees, and above all time for support. The server, insurance and processor figures have not been researched yet.
 
@@ -56,6 +58,7 @@ No comparator was found for 1,000 voters or more.
 
 - Section 8 of the terms of use can be completed once the prices and the definition of an event are confirmed.
 - A payment processor, the tax treatment (GST and QST) and the refund rule must be chosen, and the terms of sale reviewed by counsel before the first payment. Counsel also reviews consumer-law rules if an annual plan is added later.
+- With 50 of the 300 daily emails reserved for service emails (ADR 0003 section 9), a vote of more than about 250 members cannot send all its verification emails in one day on the free plan. The first event pass above that size needs a paid sending plan (Brevo Starter at CA$20 a month, or another provider). The 300-member pass price covers it.
 - The hosted service does not open before ballots can be encrypted and counted, so no price is published yet.
 
 ## Open questions

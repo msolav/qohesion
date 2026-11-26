@@ -11,6 +11,9 @@ coverage/
 *.sqlite
 backups/
 
+# Provider documents saved for reference (they belong to the providers, not to this project)
+providers/
+
 # Local design explorations and generated images
 brand/explorations/
 brand/logo/

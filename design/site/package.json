@@ -1,0 +1,16 @@
+{
+  "name": "@qohesion/docs-site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Builds the documents in docs/ into static pages for the development preview.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "node build.mjs dist",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "marked": "18.3.0"
+  }
+}

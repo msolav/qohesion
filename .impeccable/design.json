@@ -214,6 +214,10 @@
         "displayName": "Note",
         "purpose": "The one-sentence definition under each rule."
       },
+      "document": {
+        "displayName": "Document",
+        "purpose": "Long-form text on document pages, with a looser line height."
+      },
       "small": {
         "displayName": "Small",
         "purpose": "The footer and the development-preview line, the smallest text in the product."

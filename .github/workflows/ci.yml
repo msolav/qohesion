@@ -106,6 +106,23 @@ jobs:
         if: failure()
         run: docker logs qohesion-ci || true
 
+  docs-site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: design/site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: design/site/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - name: The documents build, and every link in them resolves
+        run: node build.mjs "$RUNNER_TEMP/docs-site"
+
   repository:
     runs-on: ubuntu-latest
     steps:

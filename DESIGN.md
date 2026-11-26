@@ -64,6 +64,12 @@ typography:
     fontWeight: 800
     lineHeight: 1.2
     letterSpacing: "0.12em"
+  document:
+    fontFamily: "Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.6
+    fontFeature: "'tnum'"
   body-ballot-paper:
     fontFamily: "'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif"
     fontSize: "1rem"
@@ -213,6 +219,7 @@ Forest green and ink on a faintly green paper white, with one signal red kept fo
 - **Body** (400, 1rem, 1.45): the lede and general text. Tabular figures throughout, so quorums and dates align. Measure stays under 34rem.
 - **Label** (700, 0.9rem): the names of the rules (Quorum, Passing rule, Ballot type), the language switch, the step numbers, the receipt label.
 - **Note** (400, 0.88rem, 1.35): the one-sentence explanation under each rule, in Moss Ink or Pencil Grey.
+- **Document** (400, 1rem, 1.6): long-form text on document pages. Section headings take the Headline's smallest size (1.6rem, 700), sub-headings the Title size (1.15rem, 700), and tables the Note size.
 - **Receipt Code** (800, 1.5rem, 1.2, 0.12em): the receipt code on the confirmation screen, and nowhere else.
 - **Small** (400, 0.85rem, 1.35): the footer and the development-preview line, in the secondary ink. Nothing else is smaller.
 
@@ -275,6 +282,10 @@ Seed Packet is soft and Ballot Paper is square. Seed Packet rows and the cast bu
 
 ### Footer and template links
 - **Style:** Small text (0.85rem) in the secondary ink. Version, build and the source-code link sit in every footer. The template links above it take 44px targets.
+
+### Document page
+- **Style:** a Slip White sheet with a 1px Ink rule and a 4px radius on a Ledger Grey page, 42rem wide (64rem for pages that hold wide tables), set in the Document size. A one-line notice under the bar says that the pages are working drafts. Links are Forest Ballot and underlined. Tables take a 1px Ink frame with a 4px radius, Note-size text, a Slip Hover header row and a first column that stays in view when the table scrolls sideways. Documents in two languages carry a pair of pill links to each language, and each language section is marked with its language. Code takes the system monospace stack at 0.88em on Slip Hover.
+- **Use:** Read mode. Nothing on these pages is a control except links, so no colour other than Forest Ballot marks interaction.
 
 ## Do's and Don'ts
 

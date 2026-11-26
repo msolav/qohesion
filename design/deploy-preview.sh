@@ -9,6 +9,11 @@ PREVIEW_REPO="msolav/qohesion-preview"
 WORK="${TMPDIR:-/tmp}/qohesion-preview-work"
 DOMAIN="dev.qohesion.app"
 
+# Build the documents first, so that a failure stops the publication before anything changes.
+DOCS_TMP="$(mktemp -d)"
+trap 'rm -rf "$DOCS_TMP"' EXIT
+(cd "$SRC/design/site" && npm ci --ignore-scripts --no-audit --no-fund --silent && node build.mjs "$DOCS_TMP/docs")
+
 rm -rf "$WORK"
 gh repo clone "$PREVIEW_REPO" "$WORK" -- --quiet
 cd "$WORK"
@@ -21,6 +26,7 @@ git config user.email "$(gh api user --jq '"\(.id)+\(.login)@users.noreply.githu
 find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 mkdir -p prototype
 rsync -a --exclude '.DS_Store' "$SRC/design/prototype/" prototype/
+rsync -a --exclude '.docs-site-build' "$DOCS_TMP/docs/" docs/
 mkdir -p assets
 cp "$SRC/brand/gradient/qohesion-logo-gradient-dark.svg" assets/logo-dark.svg
 cp "$SRC/design/prototype/fonts/figtree-latin.woff2" assets/
@@ -85,6 +91,13 @@ footer a{color:#EAF2FF}
 <ul>
 <li><a href="prototype/?theme=seed-packet" data-proto><b>Seed Packet</b><small><span lang="fr">Modèle à bloc de couleur et grands choix.</span><span lang="en">Template with a colour block and large choices.</span></small></a></li>
 <li><a href="prototype/?theme=ballot-paper" data-proto><b>Ballot Paper</b><small><span lang="fr">Modèle à bulletin réglé et talon de reçu.</span><span lang="en">Template with a ruled slip and a receipt stub.</span></small></a></li>
+</ul>
+</section>
+
+<section aria-labelledby="s2">
+<h2 id="s2">Documents</h2>
+<ul>
+<li><a href="docs/"><b><span lang="fr">Documents de travail</span><span lang="en">Working documents</span></b><small><span lang="fr">Prix, politique de marque, décisions et autres ébauches, en anglais ou en français selon le document.</span><span lang="en">Pricing, name and logo policy, decisions and other drafts, in English or French depending on the document.</span></small></a></li>
 </ul>
 </section>
 
