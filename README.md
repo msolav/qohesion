@@ -46,4 +46,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). Translations, accessibility testing, an
 
 ## License / Licence
 
-[GNU AGPL-3.0](LICENSE). If you run a modified version as a service, you must offer your members the modified source.
+Code: [GNU AGPL-3.0-or-later](LICENSE). If you run a modified version as a service, you must offer its users the modified source. Documentation: CC BY-SA 4.0. The name and logo are not covered by these licences. See [LICENSING.md](LICENSING.md) for the full picture, and the [terms of use](docs/terms-of-use.md) of the hosted service (draft).

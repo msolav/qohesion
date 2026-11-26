@@ -1,0 +1,35 @@
+Qohesion name and logo
+
+The name "Qohesion", the logo, the wordmark and the icons in this repository (the files under brand/ other than build scripts and font notices, and design/prototype/assets/) are not licensed under the open-source or Creative Commons licences used elsewhere in this project. All rights are reserved by the project owner.
+
+You may, without asking:
+- refer to the project by name, for example "built with Qohesion" or a link to the project;
+- show the logo, unmodified and at a legible size, to say that you use Qohesion or to link to it.
+
+You may not, without written permission:
+- present your own product, service, company or hosted offering as Qohesion, or under a confusingly similar name or logo;
+- modify the logo, or use it as the logo of something else;
+- suggest that the project endorses you.
+
+The name has no trademark registration at this time. A fuller brand policy may be published later.
+
+This text is a plain-language notice, not legal advice.
+
+---
+
+Nom et logo de Qohesion
+
+Le nom « Qohesion », le logo, le mot-symbole et les icônes de ce dépôt (les fichiers de brand/, sauf les scripts de fabrication et les avis de polices, et design/prototype/assets/) ne sont pas visés par les licences libres ou Creative Commons utilisées ailleurs dans ce projet. Tous les droits sont réservés au propriétaire du projet.
+
+Vous pouvez, sans demander la permission :
+- mentionner le projet par son nom, par exemple « conçu avec Qohesion » ou un lien vers le projet;
+- montrer le logo, non modifié et à une taille lisible, pour dire que vous utilisez Qohesion ou pour y renvoyer.
+
+Vous ne pouvez pas, sans autorisation écrite :
+- présenter votre propre produit, service, entreprise ou offre hébergée comme étant Qohesion, ni sous un nom ou un logo qui s’y confond;
+- modifier le logo ni l’utiliser comme logo d’autre chose;
+- laisser entendre que le projet vous appuie.
+
+Le nom ne fait l’objet d’aucun enregistrement de marque de commerce pour l’instant. Une politique de marque plus détaillée pourra être publiée plus tard.
+
+Ce texte est un avis en langage clair et ne constitue pas un avis juridique.

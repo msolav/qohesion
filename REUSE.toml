@@ -1,0 +1,51 @@
+version = 1
+SPDX-PackageName = "Qohesion"
+SPDX-PackageDownloadLocation = "https://github.com/msolav/qohesion"
+
+# Later annotations win over earlier ones. Default: everything is code under the AGPL.
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Qohesion contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# Documentation
+[[annotations]]
+path = ["docs/**", "README.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSING.md", "PRODUCT.md", "brand/README.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Qohesion contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+# Fill-in templates (privacy policy, impact assessment)
+[[annotations]]
+path = "docs/templates/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Qohesion contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Name and logo: not open
+[[annotations]]
+path = ["brand/**", "design/prototype/assets/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Qohesion project owner"
+SPDX-License-Identifier = "LicenseRef-Qohesion-Brand"
+
+# Build scripts and the brand README inside brand/ are not brand assets
+[[annotations]]
+path = "brand/src/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Qohesion contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = "brand/README.md"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Qohesion contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+# Bundled fonts and their notices
+[[annotations]]
+path = ["design/prototype/fonts/**", "brand/OFL-Outfit.txt"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "The Figtree, Public Sans and Outfit Project Authors"
+SPDX-License-Identifier = "OFL-1.1"

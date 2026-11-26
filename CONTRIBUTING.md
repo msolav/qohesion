@@ -8,6 +8,6 @@ Thank you for helping. Merci de votre aide.
 - **Code**: wait for the scaffold issue to close, then pick an issue labelled `good first issue`. Keep pull requests small, add tests, and never log personal information.
 - **Security**: do not open public issues for vulnerabilities, see [SECURITY.md](SECURITY.md).
 
-By contributing you agree your work is licensed under AGPL-3.0.
+You keep the copyright on your work and license it under the licences in [LICENSING.md](LICENSING.md). To certify that you have the right to do so, sign your commits with `git commit -s` (this adds a `Signed-off-by` line, the [Developer Certificate of Origin](https://developercertificate.org)).
 
 Be kind. Assume good faith. Governance is hard enough.

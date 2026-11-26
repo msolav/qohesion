@@ -43,8 +43,9 @@ Following the WordPress model, the project's author, or a business they control,
 Because integrity is verifiable independent of the host (above), an organization can trust the official service or a third-party host equally, and loses nothing by leaving either.
 
 To settle before the hosted service holds other organizations' data:
-- **Legal form of the operator.** A sole proprietor is personally liable, without limit, for what the service does with other people's data. Incorporating a company, and liability insurance, should be weighed first. **[verify]**
-- **Trademark policy** for the Qohesion name and logo: what third-party hosts may call their service and how they may use the mark. The operator holds the marks; the code remains AGPL.
+- **Legal form of the operator.** Either the author's company or the author as a self-employed individual (decision pending). The terms of use name the contracting party, so this must be settled before launch. An individual is personally liable, without limit, for what the service does with other people's data; a company limits liability to the company, except for personal fault or personal guarantees. Liability insurance should be weighed either way. **[verify]**
+- **Trademark.** Registration is expensive and early. For now the name and logo are "all rights reserved" with a short plain-language notice (see LICENSING.md), and registration is revisited if the project gains traction. Unregistered rights can arise through use. **[verify]**
+- **Terms of use.** A short, plain-language summary with the full text beneath, in French and English (`docs/terms-of-use.md`), reviewed by a lawyer before any real data is held. Quebec adhesion contracts have language rules (French first). **[verify]**
 - **A public line between the open-source project and the commercial service.** Decisions about the code are made in the open, in the repository. WordPress's history shows the cost of leaving that line unclear.
 
 ## Privacy and legal consequences of hosting
