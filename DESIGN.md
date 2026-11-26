@@ -53,6 +53,17 @@ typography:
     fontSize: "0.88rem"
     fontWeight: 400
     lineHeight: 1.35
+  body-ballot-paper:
+    fontFamily: "'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.45
+    fontFeature: "'tnum'"
+  code:
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    fontSize: "0.88em"
+    fontWeight: 400
+    lineHeight: 1.45
 rounded:
   seed-packet: "14px"
   packet-head: "22px"
@@ -171,7 +182,8 @@ Forest green and ink on a faintly green paper white, with one signal red kept fo
 ## Typography
 
 **Display Font:** Figtree (with system-ui, -apple-system, Segoe UI, sans-serif)
-**Body Font:** Figtree in Seed Packet; Public Sans in Ballot Paper (same fallbacks)
+**Body Font:** Figtree in Seed Packet; Public Sans in Ballot Paper (same fallbacks; token `body-ballot-paper`)
+**Code Font:** the system monospace stack (ui-monospace, SFMono-Regular, Menlo, Consolas), not bundled, for code spans in reading surfaces such as the changelog
 
 **Character:** Round, open and heavy where it labels, plain where it explains. Weight carries the hierarchy (800 for the question and the cast button, 700 for labels and choices, 400 for explanation) more than size does. Both families are bundled as Latin variable subsets under the SIL Open Font License.
 

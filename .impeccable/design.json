@@ -213,6 +213,14 @@
       "note": {
         "displayName": "Note",
         "purpose": "The one-sentence definition under each rule."
+      },
+      "body-ballot-paper": {
+        "displayName": "Body (Ballot Paper)",
+        "purpose": "General text in the Ballot Paper template, in Public Sans."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Inline code in the changelog, system monospace stack."
       }
     },
     "shadows": [
