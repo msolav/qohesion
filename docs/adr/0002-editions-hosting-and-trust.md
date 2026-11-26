@@ -5,7 +5,7 @@
 
 ## Context
 
-Qohesion is meant to be installed by any organization on its own server. Many organizations cannot run a server, so a project-operated hosted service is also wanted, in the spirit of Wikipedia: free software, a free or low-cost hosted instance that pays for its own infrastructure, and the option to leave and host it yourself.
+Qohesion is meant to be installed by any organization on its own server. Many organizations cannot run a server, so a project-operated hosted service is also wanted, in the spirit of WordPress: free software that anyone can run or host, plus an official hosted service that pays for the project, and the option to leave and host it yourself.
 
 A hosted service puts the project operator in the position the threat model warns about: someone with root access to the machine that holds the votes. The hard requirement is that the result of a vote cannot be silently altered, by anyone, including us.
 
@@ -36,24 +36,31 @@ Proposed mechanisms, each tracked as an issue:
 
 Keep ADR 0001's stack (Node and PostgreSQL in Docker). It runs on any VPS. Cloudflare in front for DNS, CDN, WAF and bot protection is fine. Moving the application onto Workers and D1 would fork the runtime and split the code; defer that unless limits force it. The migration path, export and import between hosted and self-hosted, is what makes starting small safe.
 
-### Organization and money
+### Who operates it, and money
 
-The hosted service should be run by a non-profit legal entity, not an individual, before it holds other organizations' member data. Transparent budget, no ads, no tracking, no sale of data. Income: fees, donations, grants, sponsorship. The entity holds the name and trademark; the code remains AGPL.
+Following the WordPress model, the project's author, or a business they control, operates the official hosted service as a commercial offering: a free tier within published limits, then paid plans that cover hosting and support and fund the project. There is no non-profit entity. The code stays AGPL-3.0, and anyone may run their own hosted service, as with WordPress hosts. The official service is one operator among possible others.
+
+Because integrity is verifiable independent of the host (above), an organization can trust the official service or a third-party host equally, and loses nothing by leaving either.
+
+To settle before the hosted service holds other organizations' data:
+- **Legal form of the operator.** A sole proprietor is personally liable, without limit, for what the service does with other people's data. Incorporating a company, and liability insurance, should be weighed first. **[verify]**
+- **Trademark policy** for the Qohesion name and logo: what third-party hosts may call their service and how they may use the mark. The operator holds the marks; the code remains AGPL.
+- **A public line between the open-source project and the commercial service.** Decisions about the code are made in the open, in the repository. WordPress's history shows the cost of leaving that line unclear.
 
 ## Privacy and legal consequences of hosting
 
-Running the hosted edition makes the project a **service provider** for each organization, which stays the controller.
-- A written agreement with each organization is needed (Law 25 rules on mandates to service providers; GDPR Art. 28 processor terms). **[verify]**
+Running the hosted edition makes the operator a **service provider** for each organization, which stays the controller.
+- A written agreement between the operator and each organization is needed (Law 25 rules on mandates to service providers; GDPR Art. 28 processor terms). **[verify]**
 - Data leaving Quebec requires an assessment before transfer (Law 25 s. 17), and the hosting region must be chosen and disclosed. Cloudflare and any host become sub-processors. **[verify]**
-- Incident handling, retention and erasure duties in `docs/privacy.md` apply to the project as processor.
+- Incident handling, retention and erasure duties in `docs/privacy.md` apply to the operator as processor.
 - Whether an electronic vote is valid for a given decision depends on the organization's by-laws and governing statute, not on where it is hosted.
 
 ## Consequences
 
 - Verifiable tallying is a core requirement, not a later hardening step. It shapes the data model, so it must be decided before the ballot engine is built.
 - It costs complexity: key ceremonies for trustees, proofs, a verifier. Simpler ballot types may ship first with an honest statement of what is and is not verifiable.
-- The hosted edition should not launch before the legal entity, processor agreement and integrity layer exist. A pilot with a few friendly organizations, with limits, comes first.
+- The hosted edition should not launch before the operator's legal form, the processor agreement and the integrity layer are settled. A pilot with a few friendly organizations, with limits, comes first.
 
 ## Open questions
 
-Which verifiable scheme fits secret ballots, ranked choice and multi-seat elections together. Whether trustees can be non-technical volunteers. The free-tier limits and the point at which an organization is asked to pay or migrate. The legal form of the entity.
+Which verifiable scheme fits secret ballots, ranked choice and multi-seat elections together. Whether trustees can be non-technical volunteers. The free-tier limits and the point at which an organization is asked to pay or migrate. The legal form of the operator, and the trademark policy for third-party hosts.
