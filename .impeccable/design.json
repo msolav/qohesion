@@ -183,6 +183,111 @@
           "#FFA798",
           "#FFD7CB"
         ]
+      },
+      "night-navy": {
+        "role": "neutral",
+        "displayName": "Night Navy",
+        "canonical": "oklch(26% 0.082 264)",
+        "tonalRamp": [
+          "#02081B",
+          "#15233F",
+          "#2F4267",
+          "#4B6292",
+          "#7186B0",
+          "#99ABCF",
+          "#C2D1EE",
+          "#E6F2FF"
+        ]
+      },
+      "night-raised": {
+        "role": "neutral",
+        "displayName": "Night Raised",
+        "canonical": "oklch(33% 0.106 264)",
+        "tonalRamp": [
+          "#010720",
+          "#112247",
+          "#294072",
+          "#4461A0",
+          "#6A85BD",
+          "#93ABDA",
+          "#BED1F7",
+          "#E3F2FF"
+        ]
+      },
+      "night-rule": {
+        "role": "neutral",
+        "displayName": "Night Rule",
+        "canonical": "oklch(45% 0.092 265)",
+        "tonalRamp": [
+          "#02071D",
+          "#142243",
+          "#2D416C",
+          "#496298",
+          "#6F86B6",
+          "#97ABD4",
+          "#C1D1F2",
+          "#E5F2FF"
+        ]
+      },
+      "mist": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "canonical": "oklch(96% 0.019 260)",
+        "tonalRamp": [
+          "#07090D",
+          "#20242B",
+          "#3D434B",
+          "#5D646F",
+          "#808790",
+          "#A6ABB3",
+          "#CDD1D8",
+          "#EFF2F7"
+        ]
+      },
+      "mist-soft": {
+        "role": "neutral",
+        "displayName": "Mist Soft",
+        "canonical": "oklch(88% 0.039 262)",
+        "tonalRamp": [
+          "#050912",
+          "#1D2431",
+          "#394354",
+          "#57647A",
+          "#7B879B",
+          "#A1ABBC",
+          "#C9D1DF",
+          "#ECF2FD"
+        ]
+      },
+      "mist-dim": {
+        "role": "neutral",
+        "displayName": "Mist Dim",
+        "canonical": "oklch(80% 0.061 263)",
+        "tonalRamp": [
+          "#040917",
+          "#192439",
+          "#34425E",
+          "#516387",
+          "#7686A6",
+          "#9DABC6",
+          "#C6D1E7",
+          "#E9F2FF"
+        ]
+      },
+      "mint": {
+        "role": "accent",
+        "displayName": "Mint",
+        "canonical": "oklch(80% 0.104 159)",
+        "tonalRamp": [
+          "#000F02",
+          "#002E17",
+          "#005031",
+          "#1D754D",
+          "#549673",
+          "#84B99A",
+          "#B3DDC4",
+          "#DBFBE8"
+        ]
       }
     },
     "typographyMeta": {
@@ -233,6 +338,26 @@
       "email": {
         "displayName": "Email",
         "purpose": "Body of emails sent by the service, in the system sans stack."
+      },
+      "site-display": {
+        "displayName": "Site Display",
+        "purpose": "The brand line on the home page, in Outfit."
+      },
+      "site-headline": {
+        "displayName": "Site Headline",
+        "purpose": "Home section headings and the title of every other page."
+      },
+      "site-lede": {
+        "displayName": "Site Lede",
+        "purpose": "The functional sentence under the brand line and the opening line of a page."
+      },
+      "site-name": {
+        "displayName": "Site Name",
+        "purpose": "The name of a mode in a ruled row, in Outfit."
+      },
+      "site-receipt": {
+        "displayName": "Site Receipt",
+        "purpose": "The example receipt code, in Outfit."
       }
     },
     "shadows": [
@@ -245,6 +370,11 @@
         "name": "slip-rest",
         "value": "0 18px 30px -22px rgba(20,21,26,.55)",
         "purpose": "The Ballot Paper slip resting on the page."
+      },
+      {
+        "name": "device-lift",
+        "value": "0 28px 48px -24px rgba(4,10,28,.7)",
+        "purpose": "The phone-sized frame that holds a live prototype on the night ground."
       }
     ],
     "motion": [
@@ -257,6 +387,16 @@
         "name": "press",
         "value": "translateY(1px) over 150ms ease-out",
         "purpose": "Active state of the cast button."
+      },
+      {
+        "name": "hero-rise",
+        "value": "700ms cubic-bezier(.16,1,.3,1)",
+        "purpose": "The hero enters once on load, a 10px rise staggered by 80ms. Not used under prefers-reduced-motion."
+      },
+      {
+        "name": "receipt-settle",
+        "value": "scroll-driven, entry range",
+        "purpose": "Each character of the example receipt code comes into focus as its section enters the screen. Static where unsupported or under reduced motion."
       }
     ],
     "breakpoints": [
@@ -264,6 +404,16 @@
         "name": "column",
         "value": "30rem",
         "purpose": "Maximum width of the single column. Narrower screens fill the width."
+      },
+      {
+        "name": "site-split",
+        "value": "62rem",
+        "purpose": "From this width the hero and the template section place text and device frame side by side."
+      },
+      {
+        "name": "site-gutter",
+        "value": "44rem",
+        "purpose": "From this width the page gutter grows from 16px to 24px and the ruled rows take two columns."
       }
     ]
   },

@@ -2,28 +2,40 @@
 // SPDX-FileCopyrightText: 2026 Qohesion contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Builds the website preview: the pages in French and English, and the documentation.
-//   node build.mjs <output directory>
-// The output directory must be new, empty, or the result of an earlier build.
+// Builds the website: the pages in French (at the root) and English (under /en/), the documentation,
+// and the ballot screen prototype that the home page runs in its frames.
+//   node build.mjs <output directory> [--indexable] [--origin https://example.org]
+// The output directory must be new, empty, or the result of an earlier build. A build is not indexable by
+// search engines unless --indexable is given.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { docOutPath, escapeHtml, pageUrl, renderDocument, resolveHref, splitLanguage, statusLine } from "./lib.mjs";
-import { DOC_DESCRIPTIONS, DOC_GROUPS, LANGS, PAGES, STRINGS, WIDE_DOCS } from "./site.mjs";
+import { HOME_PATH, renderHome } from "./home.mjs";
+import { docOutPath, escapeHtml, pageUrl, renderDocument, splitLanguage, statusLine } from "./lib.mjs";
+import { DOC_DESCRIPTIONS, DOC_GROUPS, LANGS, PAGES, SOCIAL, STRINGS, WIDE_DOCS } from "./site.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO = "https://github.com/msolav/qohesion";
 const BLOB = `${REPO}/blob/main`;
 const MARKER = ".site-build";
-/** Links in the home texts are written as if the text sat in docs/, so that "pricing.md" finds the pricing page. */
-const HOME_PATH = "docs/_home.md";
+const DEFAULT_ORIGIN = "https://dev.qohesion.app";
+
+/** The same tiny choice the placeholder makes: an English browser is sent to /en/, anything else stays in French. */
+const LANGUAGE_CHOICE = `(function(){try{var p=new URLSearchParams(location.search).get("lang");if(p==="fr")return;if(p==="en"){location.replace("en/");return}var l=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""];for(var i=0;i<l.length;i++){var c=String(l[i]).toLowerCase();if(c.indexOf("fr")===0)return;if(c.indexOf("en")===0){location.replace("en/");return}}}catch(e){}})();`;
 
 /** Where a page of the website is written, relative to the site root. */
 export function sitePageOut(page, lang) {
   const slug = page.slug[lang];
-  return slug === "" ? `${lang}/index.html` : `${lang}/${slug}/index.html`;
+  const prefix = lang === "fr" ? "" : "en/";
+  return slug === "" ? `${prefix}index.html` : `${prefix}${slug}/index.html`;
+}
+
+/** The address of a written page, from the site root. */
+export function urlOf(out) {
+  if (out === "index.html") return "/";
+  return out.endsWith("/index.html") ? `/${out.slice(0, -"index.html".length)}` : `/${out}`;
 }
 
 function listDocuments(repoRoot) {
@@ -49,67 +61,92 @@ function repoState(repoRoot) {
   }
 }
 
-function layout({ lang, title, head, body, out, alt = null, current = null, wide = false, home = false, source, build }) {
+function copyTree(from, to, skip = () => false) {
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    if (skip(entry.name)) continue;
+    const source = path.join(from, entry.name);
+    const target = path.join(to, entry.name);
+    if (entry.isDirectory()) copyTree(source, target, skip);
+    else fs.copyFileSync(source, target);
+  }
+}
+
+const plain = (html) => html.replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
+
+/** The frame around every page: head, masthead, main, footer. `main` is the markup inside <main>. */
+function layout({ lang, title, description, main, out, alt = null, current = null, source, build, options, absolute = false }) {
   const t = STRINGS[lang];
   const rel = path.posix.relative(path.posix.dirname(out), ".");
-  const base = rel === "" ? "" : `${rel}/`;
+  const base = absolute ? "/" : rel === "" ? "" : `${rel}/`;
+  const to = (target) => (absolute ? urlOf(target) : pageUrl(out, target));
   const find = (id) => PAGES.find((p) => p.id === id);
-  const link = (page) => pageUrl(out, sitePageOut(page, lang));
+  const home = find("home");
+  const origin = options.origin;
 
   const nav = [
-    { label: t.pricing, href: link(find("pricing")), here: current === "pricing" },
-    { label: t.docsNav, href: pageUrl(out, "docs/index.html"), here: current === "docs" },
+    { label: t.pricing, href: to(sitePageOut(find("pricing"), lang)), here: current === "pricing" },
+    { label: t.docsNav, href: to("docs/index.html"), here: current === "docs" },
   ];
   const switcher = alt
     ? `<nav class="lang" aria-label="${escapeHtml(t.langLabel)}">${LANGS.map((l) => {
         const label = l === "fr" ? "Français" : "English";
-        return l === lang
-          ? `<a href="${pageUrl(out, alt[l])}" lang="${l}" aria-label="${label}" aria-current="true">${l.toUpperCase()}</a>`
-          : `<a href="${pageUrl(out, alt[l])}" lang="${l}" aria-label="${label}">${l.toUpperCase()}</a>`;
+        // Choosing French from an English page must not be undone by the language choice on the French home page.
+        const query = l === "fr" && lang !== "fr" && alt.fr === "index.html" ? "?lang=fr" : "";
+        return `<a href="${to(alt[l])}${query}" lang="${l}" aria-label="${label}"${l === lang ? ' aria-current="true"' : ""}>${l.toUpperCase()}</a>`;
       }).join("")}</nav>`
     : "";
   const footerLinks = [
-    ...PAGES.filter((p) => p.footer).map((p) => ({ label: p.title[lang], href: link(p) })),
-    { label: t.docs, href: pageUrl(out, "docs/index.html") },
+    ...PAGES.filter((p) => p.footer).map((p) => ({ label: p.title[lang], href: to(sitePageOut(p, lang)) })),
+    { label: t.docs, href: to("docs/index.html") },
     { label: t.sourceCode, href: REPO },
+    ...SOCIAL.map((s) => ({ label: s.label, href: s.href })),
   ];
+  const alternates = alt
+    ? [...LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${origin}${urlOf(alt[l])}">`), `<link rel="alternate" hreflang="x-default" href="${origin}${urlOf(alt.fr)}">`].join("\n")
+    : "";
+  const fullTitle = out === "index.html" || out === "en/index.html" ? "Qohesion" : `${title} · Qohesion`;
 
   return `<!doctype html>
 <html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} · Qohesion</title>
-<meta name="robots" content="noindex, nofollow">
-<meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#EEF3E9">
+<title>${escapeHtml(fullTitle)}</title>
+<meta name="description" content="${escapeHtml(description)}">
+${options.indexable ? "" : '<meta name="robots" content="noindex, nofollow">\n'}<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0F224C">
+<link rel="canonical" href="${origin}${urlOf(out)}">
+${alternates}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Qohesion">
+<meta property="og:title" content="${escapeHtml(fullTitle)}">
+<meta property="og:description" content="${escapeHtml(description)}">
+<meta property="og:url" content="${origin}${urlOf(out)}">
+<meta property="og:locale" content="${lang === "fr" ? "fr_CA" : "en_CA"}">
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="${base}assets/mark.svg" type="image/svg+xml">
+<link rel="icon" href="${base}favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="${base}apple-touch-icon.png">
 <link rel="stylesheet" href="${base}site.css">
-</head>
-<body${home ? ' class="home"' : ""}>
+${out === "index.html" ? `<script>${LANGUAGE_CHOICE}</script>\n` : ""}</head>
+<body>
 <a class="skip" href="#main">${escapeHtml(t.skip)}</a>
 <header class="top">
-<a class="logo" href="${pageUrl(out, sitePageOut(find("home"), lang))}" aria-label="${escapeHtml(t.homeLabel)}"><img src="${base}assets/logo.svg" alt="Qohesion" width="155" height="28"></a>
+<a class="logo" href="${to(sitePageOut(home, lang))}" aria-label="${escapeHtml(t.homeLabel)}"><img src="${base}assets/logo.svg" alt="Qohesion" width="155" height="28"></a>
 <nav class="nav" aria-label="${escapeHtml(t.navLabel)}">
 ${nav.map((n) => `<a href="${n.href}"${n.here ? ' aria-current="page"' : ""}>${escapeHtml(n.label)}</a>`).join("\n")}
 </nav>
 ${switcher}
 </header>
-<p class="notice">${escapeHtml(t.notice)}</p>
-<div class="page${wide ? " wide" : ""}">
 <main id="main">
-<div class="head">
-${head}
-</div>
-<div class="slip">
-${body}
-</div>
+${main}
 </main>
-</div>
 <footer class="foot">
-<nav aria-label="${escapeHtml(t.navLabel)}">
+<nav aria-label="${escapeHtml(t.footLabel)}">
 ${footerLinks.map((l) => `<a href="${l.href}">${escapeHtml(l.label)}</a>`).join("\n")}
 </nav>
+<p>${escapeHtml(t.licence)}</p>
 <p>${escapeHtml(t.built)} ${escapeHtml(build.commit)}, ${escapeHtml(build.builtAt)}. <a href="${source.href}">${escapeHtml(source.label ?? t.pageSource)}</a></p>
 </footer>
 </body>
@@ -117,23 +154,21 @@ ${footerLinks.map((l) => `<a href="${l.href}">${escapeHtml(l.label)}</a>`).join(
 `;
 }
 
-/** The title heading of a page, and the paragraphs that follow it up to the first section (the home page's opening). */
-function takeOpening(html, { withParagraphs }) {
-  const h1 = /^<h1 id="[^"]*">([\s\S]*?)<\/h1>\n?/.exec(html);
-  if (!h1) return { opening: "", rest: html };
-  let rest = html.slice(h1[0].length);
-  let opening = `<h1>${h1[1]}</h1>`;
-  if (withParagraphs) {
-    const at = rest.indexOf("<h2");
-    const paragraphs = at === -1 ? rest : rest.slice(0, at);
-    opening += `\n${paragraphs.trim()}`;
-    rest = at === -1 ? "" : rest.slice(at);
-  }
-  return { opening, rest };
+/** A page other than the home page: a title, then its text on the night ground or on the paper sheet. */
+function innerMain({ title, body, surface, wide }) {
+  const w = wide ? " wide" : "";
+  const text = surface === "night" ? `<div class="prose">\n${body}\n</div>` : `<div class="sheet prose">\n${body}\n</div>`;
+  return `<div class="title${w}"><h1>${escapeHtml(title)}</h1></div>\n<div class="col${w}">\n${text}\n</div>`;
 }
 
-/** Builds every page. Returns the list of pages written. */
-export function build({ repoRoot, outDir, commit, builtAt }) {
+/** The title heading of a documentation page, which the frame sets apart from its text. */
+function takeTitle(html) {
+  const h1 = /^<h1 id="[^"]*">([\s\S]*?)<\/h1>\n?/.exec(html);
+  return h1 ? { heading: plain(h1[1]), rest: html.slice(h1[0].length) } : { heading: null, rest: html };
+}
+
+/** Builds every page. Returns the list of files written. */
+export function build({ repoRoot, outDir, commit, builtAt, origin = DEFAULT_ORIGIN, indexable = false }) {
   const root = path.resolve(repoRoot);
   const out = path.resolve(outDir);
   if (out === root || out === path.parse(out).root) throw new Error(`Refusing to write into ${out}`);
@@ -145,6 +180,7 @@ export function build({ repoRoot, outDir, commit, builtAt }) {
   fs.writeFileSync(path.join(out, MARKER), "");
 
   const info = { commit, builtAt };
+  const options = { origin, indexable };
   const documents = listDocuments(root);
   const siteSources = new Set(PAGES.filter((p) => p.source).map((p) => p.source));
   const docPages = documents.filter((d) => !siteSources.has(d));
@@ -162,7 +198,11 @@ export function build({ repoRoot, outDir, commit, builtAt }) {
       if (page) return sitePageOut(page, lang);
       return docPages.includes(repoPath) ? docOutPath(repoPath) : null;
     },
-    siteLink: (name) => (name === "prototype" ? `prototype/?theme=seed-packet&lang=${lang}` : null),
+    siteLink: (name) => {
+      if (name === "prototype") return `prototype/?theme=seed-packet&lang=${lang}`;
+      if (name === "prototype-paper") return `prototype/?theme=ballot-paper&lang=${lang}`;
+      return null;
+    },
     exists: (p) => fs.existsSync(path.join(root, p)) && fs.statSync(path.join(root, p)).isFile(),
     isDirectory: (p) => fs.existsSync(path.join(root, p)) && fs.statSync(path.join(root, p)).isDirectory(),
     blob: BLOB,
@@ -174,39 +214,20 @@ export function build({ repoRoot, outDir, commit, builtAt }) {
     for (const page of PAGES) {
       const pageOut = sitePageOut(page, lang);
       const alt = Object.fromEntries(LANGS.map((l) => [l, sitePageOut(page, l)]));
-      const home = page.id === "home";
-      const sourcePath = home ? `${page.content}.${lang}.md` : page.source;
-      const markdown = splitLanguage(fs.readFileSync(path.join(root, sourcePath), "utf8"), lang);
-      const { html } = renderDocument(markdown, home ? HOME_PATH : page.source, pageOut, ctx, { tableClasses: page.tableClasses });
-
-      let head;
-      let body;
-      if (home) {
-        const taken = takeOpening(html, { withParagraphs: true });
-        const actions = page.actions
-          .map((a) => `<a class="btn ${a.kind}" href="${escapeHtml(resolveHref(a.href, HOME_PATH, pageOut, ctx))}">${escapeHtml(a.label[lang])}</a>`)
-          .join("\n");
-        head = `${taken.opening}\n<div class="actions">\n${actions}\n</div>`;
-        body = taken.rest;
+      let main;
+      let sourceHref;
+      if (page.id === "home") {
+        main = renderHome({ lang, out: pageOut, ctx });
+        sourceHref = `${BLOB}/design/site/home.mjs`;
       } else {
-        head = `<h1>${escapeHtml(page.title[lang])}</h1>`;
-        body = html;
+        const markdown = splitLanguage(fs.readFileSync(path.join(root, page.source), "utf8"), lang);
+        const { html } = renderDocument(markdown, page.source, pageOut, ctx, { tableClasses: page.tableClasses });
+        main = innerMain({ title: page.title[lang], body: html, surface: page.surface, wide: page.wide === true });
+        sourceHref = `${BLOB}/${page.source}`;
       }
       write(
         pageOut,
-        layout({
-          lang,
-          title: home ? "Qohesion" : page.title[lang],
-          head,
-          body,
-          out: pageOut,
-          alt,
-          current: page.id,
-          wide: page.wide === true,
-          home,
-          source: { href: `${BLOB}/${sourcePath}` },
-          build: info,
-        }),
+        layout({ lang, title: page.title[lang], description: page.description[lang], main, out: pageOut, alt, current: page.id, source: { href: sourceHref }, build: info, options }),
       );
     }
   }
@@ -218,20 +239,22 @@ export function build({ repoRoot, outDir, commit, builtAt }) {
     const markdown = fs.readFileSync(path.join(root, repoPath), "utf8");
     const pageOut = docOutPath(repoPath);
     const { title, html } = renderDocument(markdown, repoPath, pageOut, ctxEn);
-    const taken = takeOpening(html, { withParagraphs: false });
-    const heading = title ?? path.posix.basename(repoPath, ".md");
+    const taken = takeTitle(html);
+    const heading = taken.heading ?? title ?? path.posix.basename(repoPath, ".md");
+    const firstParagraph = /<p>([\s\S]*?)<\/p>/.exec(taken.rest);
+    const description = (firstParagraph ? plain(firstParagraph[1]) : `Qohesion documentation: ${heading}.`).slice(0, 200);
     write(
       pageOut,
       layout({
         lang: "en",
         title: heading,
-        head: taken.opening || `<h1>${escapeHtml(heading)}</h1>`,
-        body: taken.rest,
+        description,
+        main: innerMain({ title: heading, body: taken.rest, surface: "paper", wide: WIDE_DOCS.has(repoPath) }),
         out: pageOut,
         current: "docs",
-        wide: WIDE_DOCS.has(repoPath),
         source: { href: `${BLOB}/${repoPath}` },
         build: info,
+        options,
       }),
     );
     rendered.push({ repoPath, title: heading, status: statusLine(markdown), out: pageOut });
@@ -255,7 +278,7 @@ export function build({ repoRoot, outDir, commit, builtAt }) {
       })
       .join("\n")}\n</ul>`;
   const published = PAGES.filter((p) => p.source).map((p) => `<li><a href="${pageUrl(indexOut, sitePageOut(p, "en"))}">${escapeHtml(p.title.en)}</a></li>`);
-  const indexBody = `<p>Documents of the project, in English. They are built from the <a href="${REPO}/tree/main/docs">docs folder</a> of the repository and published here to be read and reviewed.</p>
+  const indexBody = `<p>Documents of the project, in English. They are built from the <a href="${REPO}/tree/main/docs">docs folder</a> of the repository.</p>
 <h2>Pages of the website</h2>
 <ul class="docs">
 ${published.join("\n")}
@@ -266,36 +289,67 @@ ${groups.map((g) => `<h2>${escapeHtml(g.title)}</h2>\n${list(g.items)}`).join("\
     layout({
       lang: "en",
       title: "Documentation",
-      head: "<h1>Documentation</h1>",
-      body: indexBody,
+      description: "Documents of the Qohesion project: decisions, glossary, threat model, installation and templates.",
+      main: innerMain({ title: "Documentation", body: indexBody, surface: "paper" }),
       out: indexOut,
       current: "docs",
       source: { href: `${REPO}/tree/main/docs`, label: STRINGS.en.docsIndexSource },
       build: info,
+      options,
     }),
   );
 
+  // A page for an address that leads nowhere. It is served from any depth, so its links start at the root.
+  const fr = STRINGS.fr;
+  const en = STRINGS.en;
+  write(
+    "404.html",
+    layout({
+      lang: "fr",
+      title: fr.notFound,
+      description: fr.notFoundText,
+      main: `<div class="title"><h1>${escapeHtml(fr.notFound)}</h1><p>${escapeHtml(fr.notFoundText)}</p></div>
+<div class="col"><p><a class="btn primary" href="/">${escapeHtml(fr.notFoundBack)}</a></p>
+<div lang="en"><h2>${escapeHtml(en.notFound)}</h2><p>${escapeHtml(en.notFoundText)}</p><p><a href="/en/">${escapeHtml(en.notFoundBack)}</a></p></div></div>`,
+      out: "404.html",
+      source: { href: `${BLOB}/design/site/build.mjs` },
+      build: info,
+      options,
+      absolute: true,
+    }),
+  );
+
+  fs.writeFileSync(path.join(out, "robots.txt"), indexable ? "User-agent: *\nAllow: /\n" : "User-agent: *\nDisallow: /\n");
+
+  // Files the pages load, and the ballot screen prototype that the home page runs in its frames.
   fs.copyFileSync(path.join(here, "site.css"), path.join(out, "site.css"));
   fs.copyFileSync(path.join(root, "design/prototype/assets/mark.svg"), path.join(out, "assets/mark.svg"));
-  fs.copyFileSync(path.join(root, "brand/gradient/qohesion-logo-gradient.svg"), path.join(out, "assets/logo.svg"));
-  fs.copyFileSync(path.join(root, "design/prototype/fonts/figtree-latin.woff2"), path.join(out, "assets/figtree-latin.woff2"));
-  fs.copyFileSync(path.join(root, "design/prototype/fonts/OFL-Figtree.txt"), path.join(out, "assets/OFL-Figtree.txt"));
+  fs.copyFileSync(path.join(root, "brand/gradient/qohesion-logo-gradient-dark.svg"), path.join(out, "assets/logo.svg"));
+  fs.copyFileSync(path.join(root, "brand/gradient/favicon-32.png"), path.join(out, "favicon-32.png"));
+  fs.copyFileSync(path.join(root, "brand/gradient/apple-touch-icon.png"), path.join(out, "apple-touch-icon.png"));
+  for (const font of ["figtree-latin.woff2", "OFL-Figtree.txt"]) fs.copyFileSync(path.join(root, "design/prototype/fonts", font), path.join(out, "assets", font));
+  for (const font of ["outfit-latin.woff2", "OFL-Outfit.txt"]) fs.copyFileSync(path.join(here, "fonts", font), path.join(out, "assets", font));
+  copyTree(path.join(root, "design/prototype"), path.join(out, "prototype"), (name) => name === ".DS_Store");
 
   return written;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const outDir = process.argv[2];
+  const args = process.argv.slice(2);
+  const outDir = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1] !== "--origin");
   if (!outDir) {
-    console.error("Usage: node build.mjs <output directory>");
+    console.error("Usage: node build.mjs <output directory> [--indexable] [--origin https://example.org]");
     process.exit(2);
   }
+  const originAt = args.indexOf("--origin");
   const repoRoot = path.resolve(here, "../..");
   const pages = build({
     repoRoot,
     outDir,
     commit: repoState(repoRoot),
     builtAt: new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
+    origin: originAt === -1 ? DEFAULT_ORIGIN : args[originAt + 1],
+    indexable: args.includes("--indexable"),
   });
   console.log(`Built ${pages.length} pages into ${path.resolve(outDir)}`);
 }

@@ -25,3 +25,6 @@ brand/logo/
 .impeccable/hook.cache.json
 .impeccable/config.local.json
 .DS_Store
+
+# Cloudflare tooling state
+.wrangler/

@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Qohesion contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The password-gated development preview: one Worker that checks the password, then serves the built website
+# as static assets. design/deploy-preview.sh copies this file next to the build and fills in the assets folder.
+# The password is the secret GATE_PASSWORD (wrangler secret put GATE_PASSWORD --name qohesion-dev).
+
+name = "qohesion-dev"
+main = "_worker.js"
+compatibility_date = "2025-11-01"
+workers_dev = false
+preview_urls = false
+
+[assets]
+binding = "ASSETS"
+directory = "__ASSETS__"
+run_worker_first = true
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+
+[[routes]]
+pattern = "dev.qohesion.app"
+custom_domain = true

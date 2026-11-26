@@ -1,152 +1,27 @@
 #!/usr/bin/env bash
-# Publish the design prototype to the development preview (https://dev.qohesion.app).
-# The preview lives in its own repository because GitHub Pages serves one site per repository.
-# Usage: design/deploy-preview.sh        (needs: git, gh logged in, and push access to the preview repo)
+# Publish the website to the development preview (https://dev.qohesion.app), behind a password.
+#
+# The preview is the Cloudflare Worker "qohesion-dev": design/site/gate/_worker.js checks the password on every
+# request, then serves the built website as static assets. The password is the Worker's secret GATE_PASSWORD. It is
+# never in this repository, and without it nothing is served. To change it:
+#   wrangler secret put GATE_PASSWORD --name qohesion-dev
+#
+# Usage: design/deploy-preview.sh      (needs Node 22 or later, and wrangler logged in to the Cloudflare account)
 set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
-PREVIEW_REPO="msolav/qohesion-preview"
-WORK="${TMPDIR:-/tmp}/qohesion-preview-work"
-DOMAIN="dev.qohesion.app"
+WRANGLER="${WRANGLER:-wrangler}"
 
-# Build the website first, so that a failure stops the publication before anything changes.
-SITE_TMP="$(mktemp -d)"
-trap 'rm -rf "$SITE_TMP"' EXIT
-(cd "$SRC/design/site" && npm ci --ignore-scripts --no-audit --no-fund --silent && node build.mjs "$SITE_TMP/site")
+# Build first, so that a failure stops the publication before anything changes.
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+(cd "$SRC/design/site" && npm ci --ignore-scripts --no-audit --no-fund --silent && node build.mjs "$WORK/site")
+rm -f "$WORK/site/.site-build"
 
-rm -rf "$WORK"
-gh repo clone "$PREVIEW_REPO" "$WORK" -- --quiet
-cd "$WORK"
-
-# Commit identity: the GitHub no-reply address, never a personal one.
-git config user.name "$(gh api user --jq .login)"
-git config user.email "$(gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"')"
-
-# Replace the published content.
-find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-mkdir -p prototype
-rsync -a --exclude '.DS_Store' "$SRC/design/prototype/" prototype/
-rsync -a --exclude '.site-build' "$SITE_TMP/site/" ./
-mkdir -p assets
-cp "$SRC/brand/gradient/qohesion-logo-gradient-dark.svg" assets/logo-dark.svg
-cp "$SRC/design/prototype/fonts/figtree-latin.woff2" assets/
-cp "$SRC/design/prototype/fonts/OFL-Figtree.txt" assets/
-printf '%s\n' "$DOMAIN" > CNAME
-: > .nojekyll
-printf 'User-agent: *\nDisallow: /\n' > robots.txt
+# The gate and its configuration sit beside the site, not inside it.
+cp "$SRC/design/site/gate/_worker.js" "$WORK/_worker.js"
+sed "s#__ASSETS__#$WORK/site#" "$SRC/design/site/gate/wrangler.toml" > "$WORK/wrangler.toml"
 
 COMMIT="$(git -C "$SRC" rev-parse --short HEAD)"
-DATE="$(date -u '+%Y-%m-%d %H:%M UTC')"
-
-cat > index.html <<HTML
-<!doctype html>
-<html lang="fr" data-lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Qohesion · Aperçu de développement</title>
-<meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0F224C">
-<link rel="icon" href="prototype/assets/mark.svg" type="image/svg+xml">
-<style>
-@font-face{font-family:"Figtree";src:url(assets/figtree-latin.woff2) format("woff2");font-weight:300 900;font-display:swap}
-*{box-sizing:border-box;margin:0}
-body{min-height:100vh;min-height:100dvh;background:#0F224C;color:#EAF2FF;font-family:Figtree,system-ui,sans-serif;line-height:1.5;display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;padding:48px 20px}
-.wrap{width:100%;max-width:38rem;display:grid;gap:32px}
-.top{display:flex;justify-content:space-between;align-items:center;gap:16px}
-.logo{display:block;width:min(60vw,300px);height:auto}
-.lang{display:flex;border:1.5px solid #A9BEE6;border-radius:99px;overflow:hidden;font-size:.85rem;font-weight:700}
-.lang a{display:grid;place-items:center;min-width:2.9rem;min-height:2.75rem;color:#EAF2FF;text-decoration:none}
-.lang a[aria-current]{background:#EAF2FF;color:#0F224C}
-html[data-lang="fr"] [lang="en"]{display:none}
-html[data-lang="en"] [lang="fr"]{display:none}
-h1{font-size:1.5rem;font-weight:800;line-height:1.2}
-.note{color:#C9D8F2;font-size:.95rem}
-ul{list-style:none;padding:0;display:grid;gap:12px}
-li a{display:block;padding:16px 18px;border:1.5px solid #3A5287;border-radius:14px;color:#EAF2FF;text-decoration:none;transition:background .15s ease-out,border-color .15s ease-out}
-li a:hover{background:#17306A;border-color:#7FD1A4}
-li b{display:block;font-size:1.05rem}
-li small{display:block;color:#A9BEE6;margin-top:2px;font-size:.9rem}
-a:focus-visible{outline:3px solid #7FD1A4;outline-offset:3px}
-h2{font-size:1.05rem;font-weight:700;margin-bottom:12px}
-footer{color:#A9BEE6;font-size:.85rem;display:flex;flex-wrap:wrap;gap:4px 16px}
-footer a{color:#EAF2FF}
-::selection{background:#7FD1A4;color:#0F224C}
-</style>
-</head>
-<body>
-<div class="wrap">
-<div class="top">
-<img class="logo" src="assets/logo-dark.svg" alt="Qohesion" width="300" height="54">
-<nav class="lang" aria-label="Langue d’affichage">
-<a href="?lang=fr" data-lang-link="fr" aria-label="Français" aria-current="true">FR</a>
-<a href="?lang=en" data-lang-link="en" aria-label="English">EN</a>
-</nav>
-</div>
-<h1><span lang="fr">Aperçu de développement</span><span lang="en">Development preview</span></h1>
-<p class="note"><span lang="fr">Cette page donne accès aux versions de travail du logiciel. Le contenu est incomplet, l’organisation et les chiffres sont fictifs, et aucun vote n’est enregistré.</span><span lang="en">This page gives access to working versions of the software. The content is incomplete, the organization and figures are fictitious, and no vote is recorded.</span></p>
-
-<section aria-labelledby="s0">
-<h2 id="s0"><span lang="fr">Site web</span><span lang="en">Website</span></h2>
-<ul>
-<li><a href="fr/" data-site><b><span lang="fr">Aperçu du site</span><span lang="en">Website preview</span></b><small><span lang="fr">Accueil, tarifs, conditions d’utilisation, nom et logo. Version de travail.</span><span lang="en">Home, pricing, terms of use, name and logo. Working version.</span></small></a></li>
-</ul>
-</section>
-
-<section aria-labelledby="s1">
-<h2 id="s1"><span lang="fr">Écran de vote</span><span lang="en">Voter ballot screen</span></h2>
-<ul>
-<li><a href="prototype/?theme=seed-packet" data-proto><b>Seed Packet</b><small><span lang="fr">Modèle à bloc de couleur et grands choix.</span><span lang="en">Template with a colour block and large choices.</span></small></a></li>
-<li><a href="prototype/?theme=ballot-paper" data-proto><b>Ballot Paper</b><small><span lang="fr">Modèle à bulletin réglé et talon de reçu.</span><span lang="en">Template with a ruled slip and a receipt stub.</span></small></a></li>
-</ul>
-</section>
-
-<section aria-labelledby="s2">
-<h2 id="s2">Documentation</h2>
-<ul>
-<li><a href="docs/"><b>Documentation</b><small><span lang="fr">Décisions, glossaire, modèle de menace et autres documents, en anglais.</span><span lang="en">Decisions, glossary, threat model and other documents, in English.</span></small></a></li>
-</ul>
-</section>
-
-<footer>
-<span><span lang="fr">Version</span><span lang="en">Build</span> ${COMMIT}, ${DATE}</span>
-<a href="https://github.com/msolav/qohesion"><span lang="fr">Code source</span><span lang="en">Source code</span></a>
-<a href="https://qohesion.app">qohesion.app</a>
-</footer>
-</div>
-<script>
-(function(){
-  var q=new URLSearchParams(location.search).get("lang"), lang="fr";
-  if(q==="fr"||q==="en"){lang=q}else{
-    var l=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""];
-    for(var i=0;i<l.length;i++){var c=String(l[i]).toLowerCase();if(c.indexOf("fr")===0){lang="fr";break}if(c.indexOf("en")===0){lang="en";break}}
-  }
-  function set(next){
-    lang=next;document.documentElement.setAttribute("data-lang",lang);document.documentElement.setAttribute("lang",lang);
-    document.title=lang==="fr"?"Qohesion · Aperçu de développement":"Qohesion · Development preview";
-    document.querySelector(".lang").setAttribute("aria-label",lang==="fr"?"Langue d’affichage":"Display language");
-    [].forEach.call(document.querySelectorAll("[data-lang-link]"),function(a){if(a.getAttribute("data-lang-link")===lang)a.setAttribute("aria-current","true");else a.removeAttribute("aria-current")});
-    [].forEach.call(document.querySelectorAll("[data-site]"),function(a){a.setAttribute("href",lang+"/")});
-    [].forEach.call(document.querySelectorAll("[data-proto]"),function(a){var u=new URL(a.getAttribute("href"),location.href);u.searchParams.set("lang",lang);a.setAttribute("href",u.pathname.split("/").slice(-2).join("/")+u.search)});
-  }
-  [].forEach.call(document.querySelectorAll("[data-lang-link]"),function(a){a.addEventListener("click",function(e){e.preventDefault();set(a.getAttribute("data-lang-link"))})});
-  set(lang);
-})();
-</script>
-</body>
-</html>
-HTML
-
-cat > README.md <<MD
-# qohesion-preview
-
-Generated development preview served at https://${DOMAIN}. Do not edit by hand: it is rebuilt from the main repository by \`design/deploy-preview.sh\`. Not indexed by search engines.
-MD
-
-git add -A
-if git diff --cached --quiet; then echo "Nothing to publish."; exit 0; fi
-git commit -q -m "Preview build ${COMMIT}
-
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
-git push -q origin HEAD:main
-echo "Published preview build ${COMMIT} to ${DOMAIN}"
+"$WRANGLER" deploy --config "$WORK/wrangler.toml" --message "Preview build $COMMIT"
+echo "Published preview build ${COMMIT} to dev.qohesion.app"

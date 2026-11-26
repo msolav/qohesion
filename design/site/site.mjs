@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // What the website holds: its pages, the words of its frame, and the groups of the documentation index.
+// French is the default language and lives at the root; English lives under /en/.
 
 export const LANGS = ["fr", "en"];
 
@@ -9,21 +10,23 @@ export const LANGS = ["fr", "en"];
 export const PAGES = [
   {
     id: "home",
-    content: "design/site/content/home",
     slug: { fr: "", en: "" },
     title: { fr: "Accueil", en: "Home" },
-    tableClasses: ["facts"],
-    actions: [
-      { kind: "primary", label: { fr: "Voir l’aperçu de l’écran de vote", en: "See the ballot screen preview" }, href: "site:prototype" },
-      { kind: "secondary", label: { fr: "Consulter les tarifs", en: "Read the pricing" }, href: "pricing.md" },
-    ],
+    description: {
+      fr: "Qohesion est un logiciel libre pour tenir des votes et des sondages dans des groupes tels que des associations, des syndicats et des conseils. Le logiciel est en cours de développement.",
+      en: "Qohesion is open-source software for holding votes and polls in groups such as associations, unions and councils. The software is under development.",
+    },
   },
   {
     id: "pricing",
     source: "docs/pricing.md",
     slug: { fr: "tarifs", en: "pricing" },
     title: { fr: "Tarifs (ébauche)", en: "Pricing (draft)" },
-    nav: true,
+    description: {
+      fr: "Offres prévues du service hébergé de Qohesion: gratuit pour les petits sondages, forfait par scrutin au-delà. Ébauche.",
+      en: "Planned offers of the Qohesion hosted service: free for small polls, an event pass beyond that. Draft.",
+    },
+    surface: "night",
     wide: true,
     tableClasses: ["compare", "pricelist"],
   },
@@ -32,6 +35,11 @@ export const PAGES = [
     source: "docs/terms-of-use.md",
     slug: { fr: "conditions", en: "terms" },
     title: { fr: "Conditions d’utilisation", en: "Terms of use" },
+    description: {
+      fr: "Ébauche des conditions d’utilisation du service hébergé de Qohesion.",
+      en: "Draft terms of use of the Qohesion hosted service.",
+    },
+    surface: "paper",
     footer: true,
   },
   {
@@ -39,9 +47,17 @@ export const PAGES = [
     source: "docs/trademark-policy.md",
     slug: { fr: "marque", en: "brand" },
     title: { fr: "Nom et logo", en: "Name and logo" },
+    description: {
+      fr: "Ébauche de la politique relative au nom et au logo de Qohesion: usages permis et usages soumis à permission.",
+      en: "Draft policy for the Qohesion name and logo: permitted uses and uses that need permission.",
+    },
+    surface: "paper",
     footer: true,
   },
 ];
+
+/** Accounts of the project on other sites. Only accounts that exist are listed. */
+export const SOCIAL = [{ id: "instagram", label: "Instagram", href: "https://www.instagram.com/qohesion/" }];
 
 /** The words of the frame around the pages. */
 export const STRINGS = {
@@ -49,29 +65,37 @@ export const STRINGS = {
     skip: "Passer au contenu",
     homeLabel: "Qohesion, accueil",
     navLabel: "Navigation principale",
+    footLabel: "Liens de pied de page",
     langLabel: "Langue d’affichage",
-    notice: "Version de travail. Le contenu peut changer avant la publication.",
     pricing: "Tarifs",
     docs: "Documentation (en anglais)",
     docsNav: "Documentation",
     sourceCode: "Code source",
+    licence: "Qohesion est un logiciel libre sous licence AGPL-3.0 ou ultérieure.",
     built: "Construit à partir de",
     pageSource: "Source de cette page",
     docsIndexSource: "Documents dans le dépôt",
+    notFound: "Page introuvable",
+    notFoundText: "Cette adresse ne mène à aucune page de Qohesion.",
+    notFoundBack: "Retour à l’accueil",
   },
   en: {
     skip: "Skip to content",
     homeLabel: "Qohesion, home",
     navLabel: "Main navigation",
+    footLabel: "Footer links",
     langLabel: "Display language",
-    notice: "Working version. The content can change before release.",
     pricing: "Pricing",
     docs: "Documentation",
     docsNav: "Documentation",
     sourceCode: "Source code",
+    licence: "Qohesion is open-source software under the AGPL-3.0-or-later licence.",
     built: "Built from",
     pageSource: "Source of this page",
     docsIndexSource: "Documents in the repository",
+    notFound: "Page not found",
+    notFoundText: "This address does not lead to a Qohesion page.",
+    notFoundBack: "Back to the home page",
   },
 };
 

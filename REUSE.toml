@@ -11,7 +11,7 @@ SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 # Documentation
 [[annotations]]
-path = ["docs/**", "design/site/content/**", "README.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSING.md", "PRODUCT.md", "DESIGN.md", "CHANGELOG.md", "brand/README.md", "packages/**/README.md", "apps/**/README.md"]
+path = ["docs/**", "README.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSING.md", "PRODUCT.md", "DESIGN.md", "CHANGELOG.md", "brand/README.md", "packages/**/README.md", "apps/**/README.md"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Qohesion contributors"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
@@ -45,7 +45,7 @@ SPDX-License-Identifier = "CC-BY-SA-4.0"
 
 # Bundled fonts and their notices
 [[annotations]]
-path = ["design/prototype/fonts/**", "apps/web/src/lib/assets/fonts/**", "brand/OFL-Outfit.txt"]
+path = ["design/prototype/fonts/**", "design/site/fonts/**", "apps/web/src/lib/assets/fonts/**", "brand/OFL-Outfit.txt"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "The Figtree, Public Sans and Outfit Project Authors"
 SPDX-License-Identifier = "OFL-1.1"
