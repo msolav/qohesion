@@ -17,7 +17,7 @@ No version has been published yet. `0.1.0` is the first planned tag.
 - Ballot-screen prototype with two templates (Seed Packet, Ballot Paper), an organization colour scheme checked for contrast, and French and English display.
 - Placeholder website at qohesion.app and a development preview at dev.qohesion.app.
 - Licensing framework (AGPL-3.0-or-later for code, CC BY-SA 4.0 for documentation, CC BY 4.0 for templates, name and logo not open), checked with the REUSE tool.
-- Decision records 0001 to 0005 (accepted for the alpha on 2026-11-26, open to revision), glossary, content style guide, draft terms of use for the hosted service.
+- Decision records 0001 to 0005 (accepted for the alpha on 2026-11-26, open to revision) and 0006 (pricing, proposed), a draft name and logo policy, a brief for legal review, glossary, content style guide, draft terms of use for the hosted service.
 
 ### Upgrade notes
 None. Nothing has been released.

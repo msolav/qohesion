@@ -8,7 +8,7 @@ Each kind of thing in this project has the licence that fits it. Short version:
 | **Documentation**: `docs/`, README, guides | [CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt) | Copy and adapt with credit. Share your adaptation under the same terms. |
 | **Fill-in templates**: privacy policy, impact assessment | [CC BY 4.0](LICENSES/CC-BY-4.0.txt) | Copy and adapt with credit. Your adapted copy is yours, with no sharing obligation. |
 | **Bundled fonts** | [SIL OFL 1.1](LICENSES/OFL-1.1.txt) | Use and redistribute. Each font keeps its own notice. |
-| **Name and logo** | [Not open](LICENSES/LicenseRef-Qohesion-Brand.txt) | You may refer to the project and show the logo unmodified to say you use Qohesion. Do not present your own product or service as Qohesion. |
+| **Name and logo** | [Not open](LICENSES/LicenseRef-Qohesion-Brand.txt) | You may refer to the project and show the logo unmodified to say you use Qohesion. Do not present your own product or service as Qohesion. A [draft policy](docs/trademark-policy.md) gives the detail. |
 | **Your organization's data** on any installation | Yours | We never claim it. For the hosted service, see the [terms of use](docs/terms-of-use.md). |
 
 ## Why not Creative Commons for the code?
@@ -45,7 +45,7 @@ This repository follows the [REUSE](https://reuse.software) specification: [`REU
 | **Documentation** | CC BY-SA 4.0 | Copiez et adaptez en citant la source. Partagez votre adaptation aux mêmes conditions. |
 | **Modèles à remplir** (politique de confidentialité, évaluation des facteurs relatifs à la vie privée) | CC BY 4.0 | Copiez et adaptez en citant la source. Votre version vous appartient, sans obligation de la partager. |
 | **Polices** | SIL OFL 1.1 | Utilisation et redistribution libres. |
-| **Nom et logo** | Non libres | Vous pouvez mentionner le projet et montrer le logo tel quel pour dire que vous utilisez Qohesion. Ne présentez pas votre propre produit ou service comme étant Qohesion. |
+| **Nom et logo** | Non libres | Vous pouvez mentionner le projet et montrer le logo tel quel pour dire que vous utilisez Qohesion. Ne présentez pas votre propre produit ou service comme étant Qohesion. Une [ébauche de politique](docs/trademark-policy.md) donne le détail. |
 | **Les données de votre organisation** | Les vôtres | Nous ne les revendiquons jamais. Pour le service hébergé, voir les [conditions d’utilisation](docs/terms-of-use.md). |
 
 Les licences Creative Commons ne conviennent pas au code : elles ne disent rien du code source, des brevets ni du partage des modifications. Le code est donc sous AGPL, et Creative Commons couvre les documents.
