@@ -1,0 +1,43 @@
+# Content style
+
+This guide governs all text published by the project on the website and in the interface, in every language. It also applies to emails sent by the service.
+
+## Register
+
+Text is **objective, neutral, functional, descriptive and procedural.**
+
+1. **Describe what the system does.** State actions, conditions and results. Do not state how good, easy or safe the system is.
+2. **No emotional appeal.** No reassurance, enthusiasm, urgency, exclamation marks, superlatives or promises.
+3. **No appeal to individuality.** Do not address the reader as an individual ("your voice", "you decide"). Use the third person and impersonal forms ("the administrator enters the list", "the ballot is recorded"). Controls are named by their action ("Submit ballot").
+4. **No assumed context.** Define each term the first time it appears on a page (ballot, roll, quorum, administrator, receipt). State the organization, the decision, the dates with time zone, and what happens next.
+5. **Claims must be checkable.** A statement about security, privacy or verification names the mechanism and its limit. A feature that does not exist yet is not described as existing.
+6. **Procedures use numbered steps.** One action per step, in the order performed.
+
+## Message pattern
+
+Every status or error message has three parts, in this order:
+
+1. what happened;
+2. what it means for the vote or the data;
+3. the next action, or the fact that none is needed.
+
+## Languages
+
+- One language is displayed at a time. A language switcher is always available. The initial language follows the browser setting; French is used when the browser language is neither French nor English.
+- All languages carry the same content and the same structure. French follows the usage recommended by the Office québécois de la langue française.
+- Text is written in the target language and is not translated word by word.
+
+## Examples
+
+| Avoid | Use |
+|---|---|
+| Your vote is recorded! | The vote is recorded. A receipt code is displayed below. |
+| Keep this receipt safe. | The receipt code allows checking later that the ballot is included in the count. It does not reveal the choice made. |
+| Your choice is not linked to your name. | Secret ballot: the ballot is recorded without the voter's name. |
+| Cast my vote | Submit ballot |
+| You will get a receipt after you vote. | A receipt code is displayed after the ballot is submitted. |
+| Simple and secure voting for your group | Software for holding votes and polls in groups. |
+
+## Licence
+
+This guide is published under CC BY-SA 4.0 (see [LICENSING.md](../LICENSING.md)).
