@@ -8,7 +8,7 @@ Amounts are in Canadian dollars, before tax.
 
 | | Free | Event pass | Self-hosted |
 |---|---|---|---|
-| Price | $0 | One payment per voting event, by size (see below) | $0 for the software |
+| Price | $0 | From $19 per voting event, by size | $0 for the software |
 | Used for | Small polls | A vote or poll on the hosted service, up to 5,000 addresses on the roll | Running the software on the organization's own server |
 | Roll size | Up to 50 participants a poll | Up to the size paid for | No limit set by the software |
 | Events | As many as the monthly allowance of verification emails permits | One event per pass | No limit set by the software |
@@ -48,7 +48,7 @@ Les montants sont en dollars canadiens, avant taxes.
 
 | | Gratuit | Forfait par scrutin | Auto-hébergé |
 |---|---|---|---|
-| Prix | 0 $ | Un paiement par scrutin, selon la taille (voir plus bas) | 0 $ pour le logiciel |
+| Prix | 0 $ | À partir de 19 $ par scrutin, selon la taille | 0 $ pour le logiciel |
 | Utilisation | Les petits sondages | Un vote ou un sondage sur le service hébergé, jusqu’à 5 000 adresses sur la liste | Faire fonctionner le logiciel sur le serveur de l’organisation |
 | Taille de la liste | Jusqu’à 50 participants par scrutin | Jusqu’à la taille payée | Aucune limite fixée par le logiciel |
 | Scrutins | Autant que l’allocation mensuelle de courriels de vérification le permet | Un scrutin par forfait | Aucune limite fixée par le logiciel |
