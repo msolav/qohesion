@@ -11,7 +11,7 @@ SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 # Documentation
 [[annotations]]
-path = ["docs/**", "README.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSING.md", "PRODUCT.md", "brand/README.md"]
+path = ["docs/**", "README.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSING.md", "PRODUCT.md", "CHANGELOG.md", "brand/README.md", "packages/**/README.md"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Qohesion contributors"
 SPDX-License-Identifier = "CC-BY-SA-4.0"

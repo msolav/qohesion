@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/engine/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  repository:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version is declared once and used consistently
+        run: node scripts/check-version.mjs
+      - name: Licences are declared for every file (REUSE)
+        uses: fsfe/reuse-action@v5

@@ -84,11 +84,12 @@ Accepted limits: a determined administrator can script the member step. The aim 
 
 ### 9. Sending infrastructure
 
-- **Provider (initial):** Resend, free tier while volume is low. Prices and limits are checked before each decision.
-- **Domains:** `qohesion.app` for the website, the application and service emails only. A separate domain for the free voting lane, so that abuse affects only that lane. Paid organizations send from their own verified domain.
-- **Provider accounts:** separate per lane, so a suspension on one does not stop the others.
-- **TLD choice:** a country-code or low-cost TLD with a high abuse rate can reduce inbox placement. `.cc` appears in the higher-risk group of recent spam-reputation reports. A reputable TLD (such as `.ca` or `.org`) is preferred for the sending domain. Deliverability is tested with Gmail and Outlook before use.
-- **Capacity triggers:** the free tier of the initial provider allows 100 emails per day and 3,000 per month. A single poll of 100 participants can use the whole daily limit. At about 70% of either limit, the paid plan is purchased so that new registrations are served immediately. Until then, the free lane accepts smaller polls (target: up to 50 participants).
+- **Transport interface.** The application sends through an `EmailTransport` interface with interchangeable adapters (Cloudflare Email Sending, SMTP, Resend, Amazon SES). Self-hosted installations use the SMTP adapter. The provider choice is therefore not a lock-in.
+- **Initial provider (decided 2026-11-25):** Cloudflare Email Sending, on the Workers Paid plan (about $5 a month, 3,000 emails a month included, then $0.35 per 1,000, per Cloudflare's documentation). It is in beta. New accounts start with a conservative daily quota that scales up; the figure is not published and is measured after subscribing. Prices and limits are checked before each decision.
+- **Account risk.** The Cloudflare account also holds domain registration and DNS. An abuse event in the free voting lane must not put those at risk. The free lane therefore uses a separate provider account (a second Cloudflare account under a different login if Cloudflare allows it, otherwise another provider such as Resend or SES). Cloudflare is used directly for service emails and for the paid lane, where senders are identified and billed.
+- **Lanes.** Service emails (login, administrator notices) go from a subdomain of `qohesion.app`. The free voting lane uses a separate domain on a reputable TLD, in its own provider account. Paid organizations send from their own verified domain.
+- **TLD choice.** A country-code or low-cost TLD with a high abuse rate can reduce inbox placement. `.cc` appears in the higher-risk group of recent spam-reputation reports. A reputable TLD (such as `.ca` or `.org`) is preferred. Deliverability is tested with Gmail and Outlook before use.
+- **Capacity.** Until the real daily quota is known, the free lane accepts small polls (target: up to 50 participants). When 70% of a provider limit is reached, capacity is raised (quota increase request, or paid plan) so that new registrations are served immediately.
 
 ### 10. Content style
 
