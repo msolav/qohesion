@@ -25,7 +25,9 @@
     "vitest": "^5.1.2"
   },
   "dependencies": {
-    "@qohesion/engine": "file:../../packages/engine"
+    "@qohesion/engine": "file:../../packages/engine",
+    "@qohesion/ledger": "file:../../packages/ledger",
+    "@qohesion/roll": "file:../../packages/roll"
   },
   "imports": {
     "#lib": "./src/lib/index.ts",

@@ -28,3 +28,6 @@ brand/logo/
 
 # Cloudflare tooling state
 .wrangler/
+
+# Database and secret of a locally run test edition
+apps/web/data/

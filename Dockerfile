@@ -6,6 +6,8 @@ FROM node:22-alpine AS build
 WORKDIR /repo
 COPY VERSION CHANGELOG.md ./
 COPY packages/engine ./packages/engine
+COPY packages/ledger ./packages/ledger
+COPY packages/roll ./packages/roll
 WORKDIR /repo/apps/web
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
@@ -19,9 +21,11 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=3000
 WORKDIR /app
-# The build bundles the application and the engine; nothing else is needed at run time.
+# The build bundles the application and the packages it uses; nothing else is needed at run time.
 COPY --from=build /repo/apps/web/build ./build
 RUN printf '{"type":"module"}\n' > package.json
+# Writable folder for the test edition's database (QOHESION_DATA_DIR). Unused unless that edition is enabled.
+RUN mkdir /data && chown node:node /data
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

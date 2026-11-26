@@ -35,7 +35,7 @@ describe("handle", () => {
   it("sets the language of the document and the template from the request", async () => {
     const r = await run("http://localhost/", { acceptLanguage: "en-CA,en;q=0.9" });
     expect(r.html).toBe('<html lang="en" data-theme="seed-packet">');
-    expect(r.locals).toEqual({ locale: "en", theme: "seed-packet" });
+    expect(r.locals).toEqual({ locale: "en", theme: "seed-packet", session: null });
   });
 
   it("uses French without a browser setting", async () => {

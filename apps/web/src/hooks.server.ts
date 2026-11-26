@@ -1,6 +1,7 @@
 import type { Handle } from "@sveltejs/kit/hooks";
 import { isLocale, negotiateLocale } from "#lib/i18n/negotiate.js";
-import { themeFrom } from "#lib/theme.js";
+import { themeFrom, isTheme } from "#lib/theme.js";
+import { isTestEdition, service } from "#lib/server/runtime.js";
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -16,6 +17,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   event.locals.locale = locale;
   event.locals.theme = themeFrom(event.url.searchParams.get("theme"));
+  event.locals.session = null;
+
+  if (isTestEdition()) {
+    const sessionToken = event.cookies.get("qs");
+    if (sessionToken) event.locals.session = service().session(sessionToken);
+    // A poll's screens use the template its administrators chose, unless the address names one.
+    const named = event.url.searchParams.get("theme");
+    const voter = /^\/v\/([^/]+)/.exec(event.url.pathname);
+    const results = /^\/r\/([^/]+)/.exec(event.url.pathname);
+    if (!isTheme(named)) {
+      const poll = voter?.[1] ? service().byToken(voter[1])?.poll : results?.[1] ? service().getPoll(results[1]) : undefined;
+      if (poll) event.locals.theme = poll.theme;
+    }
+  }
 
   event.setHeaders({
     vary: "Accept-Language, Cookie",

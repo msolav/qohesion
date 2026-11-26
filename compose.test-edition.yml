@@ -1,0 +1,16 @@
+# The test edition (ADR 0007): spaces, polls, voting and results, with ballots stored WITHOUT encryption.
+# For trying the product, not for decisions that need a secret ballot.
+#
+#   ORIGIN=https://vote.example.org docker compose -f compose.yml -f compose.test-edition.yml up -d
+#
+# The database and the server secret live in the named volume. Deleting the volume erases everything.
+services:
+  web:
+    environment:
+      QOHESION_EDITION: test
+      QOHESION_DATA_DIR: /data
+    volumes:
+      - test-edition-data:/data
+
+volumes:
+  test-edition-data:

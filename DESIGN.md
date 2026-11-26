@@ -363,6 +363,7 @@ The masthead, the footer and the home sections share one 72rem container with a 
 - **Receipt moment:** an example receipt code in Site Receipt, in groups joined by Mint dashes. Where the browser supports scroll-driven animation, each character comes into focus as the section enters the screen. Elsewhere, and under reduced motion, it rests in its final state.
 - **Terminal panel:** Night Raised, 1.5px Night Rule, 14px radius, system monospace at 0.88rem, a Mint prompt, horizontally scrollable.
 - **Paper sheet:** Mist with Night Navy text and a 14px radius, 52rem wide, for terms, name and logo, and documentation. Links are Forest Ballot and underlined. Rules and code take Mist Soft.
+- **Offer comparison table:** no vertical rules and no frame, only a hairline between rows under a 2px Mist Dim rule below the head. The offer names are Site Headline weight at 1.25rem, row labels small and Mist Dim, the price row at 1.2rem, and the paid offer's column is tinted Night Raised with a 3px Mint edge on its head. It scrolls sideways under 50rem.
 - **Tables:** a 1px frame with a 4px radius and the Note size, scrolling inside their own region with the first column kept in view. On the night ground the head is Night Raised and the rules Night Rule; on the paper sheet the head is Mist Soft and the frame Night Navy. A list of prices right-aligns the amount.
 - **Footer:** the legal links, the project's accounts and the licence, in Small size on the night ground, under a Night Rule hairline that lines up with the rules above it. No build or version stamp is visible.
 - **Template carousel:** the phone-sized frames sit in a row that scrolls and snaps by touch, trackpad, keyboard or scrollbar, one frame at a time on a phone, with the next frame peeking at the edge. Each slide carries its template's name and one sentence above its frame. Previous and next buttons (44px, Mist Dim outline, an authored chevron) appear only when something overflows, and disable at the ends. Adding a template adds a slide.
@@ -374,6 +375,21 @@ The masthead, the footer and the home sections share one 72rem container with a 
 ### Website motion
 The hero enters once on load (700ms, ease-out, a 10px rise, staggered 80ms). Buttons step on hover (150ms) and press 1px. Links draw a thicker underline on hover. The receipt settles under scroll-driven animation, the one dealt moment of the home page. Nothing else moves because the page scrolled. Under reduced motion everything rests and nothing stays hidden.
 
+
+## The Console
+**Mode: Operate.** The owner and administrator screens are the tool a person uses to run a vote. They keep the navy ground and the Mint of the website, and they follow the rules of a task surface: what the person must decide is on screen, in plain words, with the consequence stated next to the choice. The ballot templates stay for the voter.
+
+- **Frame:** a thin notice bar ("Test edition", Warn Amber dot) above a top bar with the organization name, the two sections (Polls, Organization), the person's key label, sign out and the language switch. Content is 68rem wide; sign-in and creation pages are 40rem.
+- **Cards:** Night Raised, 1px Night Rule, 16px radius. Lists of polls are whole-row links that lift 2px on hover.
+- **Status chips:** outlined with a dot. Open is Mint, Draft is Warn Amber, Closed is Mist Dim. Colour is never the only signal: the word is always there.
+- **Forms:** labels above fields, Deep Navy fields with a 1.5px Night Rule border, help under the field, errors under the field in Danger with the problem and what to do. Choices that need explaining are **choice cards**: a title, one sentence, and a Mint ring or square when selected. The results settings use them, followed by a live sentence that states what members will read on their ballot.
+- **Results bars:** each option a row with its mark (check, cross, dash), its name, its count and share, and a bar in the option's colour: Mint for In favour, Danger for Against, Mist Soft for Abstention. Bars settle in 600ms and rest under reduced motion. A pulsing dot marks live results. Bar widths are classes (`w0` to `w100`) because the Content Security Policy forbids inline styles.
+- **Tables:** Deep Navy head in small capitals, hairlines between rows. The roll becomes a list of cards under 40rem.
+- **Keys:** shown once in a large monospace block with a dashed Mint border, with Copy and Download.
+- **Results inside a template:** the voter and public result pages reuse the same components inside the ballot template (`cx-embed`), taking their colours from the template, with the mark colours of the ballot (Forest, Danger, Ink Soft).
+- **Danger zone:** destructive actions are outlined in Danger, ask for confirmation, and deleting the organization asks for its name.
+
+Contrast follows the website's figures. Warn Amber (#F2C879) on Night Navy is 9.8:1, Danger (#FF9C93) 7.7:1 (6.3:1 on Night Raised), and the field placeholder 5.5:1.
 
 ## Do's and Don'ts
 

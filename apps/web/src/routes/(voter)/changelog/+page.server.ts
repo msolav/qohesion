@@ -1,5 +1,5 @@
 import type { PageServerLoad } from "./$types";
-import changelogText from "../../../../../CHANGELOG.md?raw";
+import changelogText from "../../../../../../CHANGELOG.md?raw";
 import { parseChangelog } from "#lib/changelog.js";
 
 export const prerender = false;

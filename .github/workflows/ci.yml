@@ -89,6 +89,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Walk the test edition end to end
+        run: |
+          QOHESION_EDITION=test QOHESION_DATA_DIR="$RUNNER_TEMP/qohesion-data" PORT=3000 HOST=127.0.0.1 ORIGIN=http://127.0.0.1:3000 node build &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/version >/dev/null && break; sleep 1; done
+          node ../../scripts/smoke-test-edition.mjs http://127.0.0.1:3000
 
   image:
     runs-on: ubuntu-latest
