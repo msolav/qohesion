@@ -14,3 +14,11 @@ backups/
 # Local design explorations and generated images
 brand/explorations/
 brand/logo/
+
+# Impeccable runtime and machine-local files
+.impeccable/mocks/
+.impeccable/questions/
+.impeccable/review/
+.impeccable/hook.cache.json
+.impeccable/config.local.json
+.DS_Store
