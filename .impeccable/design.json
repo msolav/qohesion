@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-26T05:57:12Z",
+  "title": "Design System: Qohesion",
+  "extensions": {
+    "colorMeta": {
+      "forest-ballot": {
+        "role": "primary",
+        "displayName": "Forest Ballot",
+        "canonical": "oklch(43% 0.073 166)",
+        "tonalRamp": [
+          "#001007",
+          "#022D1F",
+          "#144D39",
+          "#336E57",
+          "#559078",
+          "#7BB39B",
+          "#A9D5C1",
+          "#D8F7E9"
+        ]
+      },
+      "white-label": {
+        "role": "neutral",
+        "displayName": "White Label",
+        "canonical": "oklch(100% 0.000 90)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "signal-red": {
+        "role": "secondary",
+        "displayName": "Signal Red",
+        "canonical": "oklch(55% 0.181 32)",
+        "tonalRamp": [
+          "#270000",
+          "#540000",
+          "#850000",
+          "#B12307",
+          "#D94C34",
+          "#FD765D",
+          "#FFA892",
+          "#FFD8C7"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(20% 0.010 276)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#242529",
+          "#404247",
+          "#5F6167",
+          "#808289",
+          "#A3A5AB",
+          "#C8C9CE",
+          "#EDEEF2"
+        ]
+      },
+      "seed-paper": {
+        "role": "neutral",
+        "displayName": "Seed Paper",
+        "canonical": "oklch(96% 0.014 129)",
+        "tonalRamp": [
+          "#0A0C09",
+          "#232621",
+          "#40433C",
+          "#5F635A",
+          "#80847B",
+          "#A2A79E",
+          "#C7CAC3",
+          "#EDEFEA"
+        ]
+      },
+      "sprout-hover": {
+        "role": "neutral",
+        "displayName": "Sprout Hover",
+        "canonical": "oklch(98% 0.011 129)",
+        "tonalRamp": [
+          "#0A0C09",
+          "#242622",
+          "#40433D",
+          "#5F635C",
+          "#80847D",
+          "#A3A69F",
+          "#C7CAC5",
+          "#EDEFEB"
+        ]
+      },
+      "moss-ink": {
+        "role": "neutral",
+        "displayName": "Moss Ink",
+        "canonical": "oklch(41% 0.026 158)",
+        "tonalRamp": [
+          "#070D09",
+          "#1D2821",
+          "#37463D",
+          "#55665B",
+          "#76877C",
+          "#99AA9F",
+          "#C0CDC4",
+          "#E7F1EB"
+        ]
+      },
+      "ledger-grey": {
+        "role": "neutral",
+        "displayName": "Ledger Grey",
+        "canonical": "oklch(93% 0.008 107)",
+        "tonalRamp": [
+          "#0B0B09",
+          "#252522",
+          "#42423E",
+          "#62625C",
+          "#83837D",
+          "#A5A5A0",
+          "#C9C9C5",
+          "#EFEFEB"
+        ]
+      },
+      "slip-white": {
+        "role": "neutral",
+        "displayName": "Slip White",
+        "canonical": "oklch(99% 0.004 106)",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#252524",
+          "#424240",
+          "#61615F",
+          "#828280",
+          "#A5A5A2",
+          "#C9C9C7",
+          "#EEEEED"
+        ]
+      },
+      "slip-hover": {
+        "role": "neutral",
+        "displayName": "Slip Hover",
+        "canonical": "oklch(96% 0.007 107)",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#252523",
+          "#42423E",
+          "#61615D",
+          "#83837E",
+          "#A5A5A1",
+          "#C9C9C6",
+          "#EFEFEC"
+        ]
+      },
+      "pencil-grey": {
+        "role": "neutral",
+        "displayName": "Pencil Grey",
+        "canonical": "oklch(41% 0.008 107)",
+        "tonalRamp": [
+          "#0B0B09",
+          "#252522",
+          "#42423E",
+          "#62625C",
+          "#83837D",
+          "#A5A5A0",
+          "#C9C9C5",
+          "#EFEFEB"
+        ]
+      },
+      "error-red": {
+        "role": "neutral",
+        "displayName": "Error Red",
+        "canonical": "oklch(50% 0.178 29)",
+        "tonalRamp": [
+          "#270000",
+          "#540000",
+          "#850000",
+          "#B0221B",
+          "#D84C3F",
+          "#FC7666",
+          "#FFA798",
+          "#FFD7CB"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The brand line on the home page only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The question, in the label block."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Choice rows and the confirmation heading."
+      },
+      "cast": {
+        "displayName": "Cast",
+        "purpose": "The submit button."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The lede and general text, with tabular figures."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Rule names, the language switch, the receipt label."
+      },
+      "note": {
+        "displayName": "Note",
+        "purpose": "The one-sentence definition under each rule."
+      }
+    },
+    "shadows": [
+      {
+        "name": "cast-bar-lift",
+        "value": "0 -10px 16px -12px rgba(20,21,26,.28)",
+        "purpose": "The cast bar over content that scrolls beneath it."
+      },
+      {
+        "name": "slip-rest",
+        "value": "0 18px 30px -22px rgba(20,21,26,.55)",
+        "purpose": "The Ballot Paper slip resting on the page."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-change",
+        "value": "150ms ease-out",
+        "purpose": "Background, border, colour, filter and mark changes. Disabled under prefers-reduced-motion."
+      },
+      {
+        "name": "press",
+        "value": "translateY(1px) over 150ms ease-out",
+        "purpose": "Active state of the cast button."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "column",
+        "value": "30rem",
+        "purpose": "Maximum width of the single column. Narrower screens fill the width."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Cast button (Seed Packet)",
+      "kind": "button",
+      "refersTo": "button-cast",
+      "description": "The one saturated element on the screen. Submits the ballot.",
+      "html": "<button class=\"ds-cast\" type=\"button\">Submit ballot</button>",
+      "css": ".ds-cast{width:100%;min-height:3.6rem;padding:8px 16px;border:0;border-radius:14px;background:#C63A22;color:#FFFFFF;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;font-size:1.1rem;font-weight:800;line-height:1.2;text-align:center;cursor:pointer;transition:filter .15s ease-out,transform .15s ease-out}.ds-cast:hover{filter:brightness(.93)}.ds-cast:active{transform:translateY(1px)}.ds-cast:focus-visible{outline:3px solid #1F5C46;outline-offset:3px}.ds-cast:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Cast button (Ballot Paper)",
+      "kind": "button",
+      "refersTo": "button-cast-ballot-paper",
+      "description": "The same control on the slip: Ink instead of Signal Red, square corners.",
+      "html": "<button class=\"ds-cast-paper\" type=\"button\">Submit ballot</button>",
+      "css": ".ds-cast-paper{width:100%;min-height:3.6rem;padding:8px 16px;border:0;border-radius:4px;background:#14151A;color:#FFFFFF;font-family:'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;font-size:1.1rem;font-weight:800;line-height:1.2;text-align:center;cursor:pointer;transition:filter .15s ease-out,transform .15s ease-out}.ds-cast-paper:hover{filter:brightness(.93)}.ds-cast-paper:active{transform:translateY(1px)}.ds-cast-paper:focus-visible{outline:3px solid #1F5C46;outline-offset:3px}"
+    },
+    {
+      "name": "Choice row",
+      "kind": "custom",
+      "refersTo": "choice-row",
+      "description": "A bordered row with a circle mark. The whole row is the target.",
+      "html": "<div class=\"ds-choice\"><span class=\"ds-mark\"></span><span>In favour</span></div>",
+      "css": ".ds-choice{display:flex;align-items:center;gap:16px;min-height:3.75rem;padding:12px 16px;background:#FFFFFF;border:1.5px solid #14151A;border-radius:14px;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;font-size:1.15rem;font-weight:700;line-height:1.2;color:#14151A;cursor:pointer;transition:background .15s ease-out,border-color .15s ease-out,color .15s ease-out}.ds-choice:hover{background:#F6FAF2}.ds-mark{flex:none;width:1.7rem;height:1.7rem;border-radius:50%;border:2px solid currentColor}"
+    },
+    {
+      "name": "Choice row, selected",
+      "kind": "custom",
+      "refersTo": "choice-row-selected",
+      "description": "The selected row fills with the organization colour; the mark turns white and shows a check.",
+      "html": "<div class=\"ds-choice-on\"><span class=\"ds-mark-on\"><svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" aria-hidden=\"true\"><path d=\"M3.5 8.5l3 3 6-7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></span><span>In favour</span></div>",
+      "css": ".ds-choice-on{display:flex;align-items:center;gap:16px;min-height:3.75rem;padding:12px 16px;background:#1F5C46;border:1.5px solid #1F5C46;border-radius:14px;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;font-size:1.15rem;font-weight:700;line-height:1.2;color:#FFFFFF}.ds-mark-on{flex:none;display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;border:2px solid #FFFFFF;background:#FFFFFF;color:#1F5C46}"
+    },
+    {
+      "name": "Question block (Seed Packet)",
+      "kind": "card",
+      "refersTo": "question-head",
+      "description": "The variety label: organization colour block with a tab, the question, the lede and the deadline.",
+      "html": "<div class=\"ds-head\"><h3>Adoption of the 2027 budget</h3><p>Board proposal: budget of $12,400 for the year 2027.</p><div class=\"ds-when\"><ol><li class=\"on\">1</li><li>2</li><li>3</li></ol><span>Closes: Dec 12, 8 pm (Eastern Time)</span></div></div>",
+      "css": ".ds-head{position:relative;margin-top:12px;padding:24px 24px 16px;background:#1F5C46;color:#FFFFFF;border-radius:22px 22px 6px 6px;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif}.ds-head::before{content:'';position:absolute;left:24px;top:-9px;width:72px;height:12px;background:#1F5C46;border-radius:8px 8px 0 0}.ds-head h3{margin:0;font-size:2.05rem;line-height:1.1;font-weight:800;letter-spacing:-.01em}.ds-head p{margin:16px 0 0;font-size:1rem}.ds-when{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-top:24px;padding-top:16px;border-top:1.5px dashed currentColor;font-weight:600}.ds-when ol{display:flex;gap:8px;margin:0;padding:0;list-style:none}.ds-when li{width:1.9rem;height:1.9rem;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:700;border:1.5px solid currentColor}.ds-when li.on{background:#FFFFFF;color:#1F5C46;border-color:#FFFFFF}"
+    },
+    {
+      "name": "Rules table",
+      "kind": "custom",
+      "refersTo": "facts-row",
+      "description": "Quorum, passing rule and ballot type, each with a one-sentence definition.",
+      "html": "<dl class=\"ds-facts\"><div><dt>Quorum</dt><dd>50% + 1</dd><dd class=\"note\">Minimum number of registered members who must vote for the result to be valid.</dd></div><div><dt>Ballot type</dt><dd>Secret</dd><dd class=\"note\">The ballot is recorded without the voter’s name.</dd></div></dl>",
+      "css": ".ds-facts{margin:0;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;color:#14151A;background:#FFFFFF;border:1.5px solid #1F5C46;border-top:0;border-radius:0 0 14px 14px}.ds-facts>div{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;row-gap:4px;align-items:baseline;padding:12px 16px}.ds-facts>div+div{border-top:1px solid rgba(20,21,26,.1)}.ds-facts dt{font-size:.9rem;font-weight:700}.ds-facts dd{margin:0;font-weight:700;font-size:1rem;line-height:1.25;text-align:right}.ds-facts dd.note{grid-column:1 / -1;text-align:left;font-weight:400;font-size:.88rem;line-height:1.35;color:#3F4F45}"
+    },
+    {
+      "name": "Language switch",
+      "kind": "nav",
+      "refersTo": "language-switch",
+      "description": "Two links in a pill. Works without JavaScript.",
+      "html": "<nav class=\"ds-lang\" aria-label=\"Display language\"><a href=\"#\" aria-current=\"true\">FR</a><a href=\"#\">EN</a></nav>",
+      "css": ".ds-lang{display:inline-flex;border:1.5px solid #14151A;border-radius:99px;overflow:hidden;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;font-size:.8rem;font-weight:700}.ds-lang a{display:grid;place-items:center;min-width:2.75rem;min-height:2.75rem;padding:0 8px;color:#14151A;text-decoration:none}.ds-lang a[aria-current=true]{background:#14151A;color:#EEF3E9}.ds-lang a:hover:not([aria-current=true]){background:rgba(20,21,26,.1)}.ds-lang a:focus-visible{outline:3px solid #1F5C46;outline-offset:3px}"
+    },
+    {
+      "name": "Receipt code",
+      "kind": "custom",
+      "refersTo": "receipt-code",
+      "description": "The tear-line box that shows the code after a ballot is recorded.",
+      "html": "<p class=\"ds-code\">K7QM-4X2R-9PTD</p>",
+      "css": ".ds-code{margin:0;padding:16px;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:.12em;text-align:center;color:#14151A;border:2px dashed #14151A;border-radius:14px}"
+    },
+    {
+      "name": "Error line",
+      "kind": "custom",
+      "description": "A bold alert in three parts: what happened, what it means, what to do.",
+      "html": "<p class=\"ds-error\" role=\"alert\">The ballot was not submitted. No option selected. Select an option to continue.</p>",
+      "css": ".ds-error{margin:12px 0 0;font-family:Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;font-weight:700;color:#B3261E}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Labelled Slip",
+    "overview": "Every screen is one small paper object with a clear label: the front of a seed packet, a ballot slip with its stub. A member should be able to point at the page and say what is being decided, when it closes, what counts as a pass and whether the ballot is secret, without reading anything else. The label says what the thing is before the interface asks anything of the reader.\n\nTwo templates paint the same structure. **Seed Packet** is the default: a colour block with a tab, a three-cell table of rules, large bordered rows, flat spot colour on a faintly green white. **Ballot Paper** is the second: a ruled white slip, a double rule under the question, circle marks that take an X, and a perforated stub that becomes the receipt. Tokens and component treatments differ between them. Layout, wording and behaviour do not. An organization picks a template and a brand colour, and the colour is checked for contrast before it is accepted.\n\nThe surface is calm and sparse on purpose. One question, one decision, nothing else on screen, administrators included. It is an operating surface for people who vote a few times a year, so familiar controls (radio rows, one submit button, a language switch) are kept and the brand shows in small precise details: the tab on the packet, the perforation on the slip, the dashed \"tear here\" rules. The system rejects the dashboard-with-a-form arrangement, dense tables, and houses or any other single-sector motif, because the product serves every kind of member-run group.",
+    "keyCharacteristics": [
+      "One decision per screen, with the rules of the decision stated at the point of use.",
+      "Flat paper surfaces: spot colour, 1.5px ink borders, dashed rules. No gradients, no blur.",
+      "One saturated accent per screen, reserved for the act of casting.",
+      "Touch targets of at least 44px, choice rows of 60px, a cast bar that stays reachable.",
+      "Works without JavaScript and without any external request: fonts and icons are bundled.",
+      "One language shown at a time, with a switcher; layouts hold the longer of French and English."
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Signal Red appears on one element per screen, the cast button. If a second thing wants to be red, it is not the vote.",
+        "section": "colors"
+      },
+      {
+        "name": "The Organization Colour Rule",
+        "body": "An organization changes the brand colour and the button colour, never the neutrals. The text colour on each is chosen by the system from white or ink, and a colour that cannot reach 4.5:1 is adjusted, with a message that says so. The prototype enforces this; the application will enforce it through the engine's colour question.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fixed Ramp Rule",
+        "body": "Neutrals come from the short ramp above. A new grey is not invented for one component.",
+        "section": "colors"
+      },
+      {
+        "name": "The Longer String Rule",
+        "body": "Every layout is tested with the French text, which runs longer. Nothing is sized to the English.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Before Size Rule",
+        "body": "Emphasis comes from weight and position. A new size is not added to separate two things that weight can separate.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper Rule",
+        "body": "A surface is paper: flat, bordered or coloured. It does not glow, blur or float. A third shadow needs a structural reason, not a decorative one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep one question and one decision per screen, with its rules in the label block.",
+      "**Do** reserve Signal Red for the cast button, once per screen.",
+      "**Do** make the whole choice row the target and keep rows at 60px or taller.",
+      "**Do** check every organization colour for 4.5:1 and say when it was adjusted.",
+      "**Do** write messages in three parts: what happened, what it means, what to do.",
+      "**Do** design with French first, the longer string, and show one language at a time.",
+      "**Do** keep every control working without JavaScript and without a request to another site.",
+      "**Do** keep bundled fonts and icons local, subsetted to Latin."
+    ],
+    "donts": [
+      "**Don't** arrange a vote as a dashboard with a form in it, or put charts, tables or navigation around a ballot.",
+      "**Don't** use a house, a building or any single-sector motif in the interface or the brand.",
+      "**Don't** add gradients, blur, glow or a third shadow. The gradient belongs to the logo only.",
+      "**Don't** celebrate: no confetti, no emotive copy, no exclamation marks on a recorded vote. The interface follows the functional register of `docs/content-style.md`.",
+      "**Don't** use colour alone to carry meaning. A selected row also changes its mark, an error also has text.",
+      "**Don't** invent a new grey, size or radius for one component. Use the ramp, the scale and the template's radius.",
+      "**Don't** show both languages at once in the interface, other than through the switcher."
+    ]
+  }
+}
