@@ -26,3 +26,16 @@
 
 .root{display:contents}
 .voter .sample{padding:var(--space-4) 0 0;text-align:left}
+
+/* Changelog: a reading surface */
+.log{padding:var(--space-6) 0 var(--space-5)}
+.log h1{font-size:clamp(1.6rem,6.2vw,2.05rem);line-height:1.1;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.log__note{margin-top:var(--space-4);color:var(--ink-2);max-width:34rem}
+.log__release{margin-top:var(--space-6);padding-top:var(--space-4);border-top:1.5px solid var(--ink)}
+.log__release h2{font-size:1.15rem;line-height:1.2;font-weight:700;display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-4)}
+.log__date{font-size:.9rem;font-weight:400;color:var(--ink-2)}
+.log__release h3{margin:var(--space-5) 0 var(--space-2);font-size:.9rem;font-weight:700}
+.log__release p{margin-top:var(--space-3);max-width:34rem}
+.log__release ul{margin:0;padding:0 0 0 1.1rem;display:grid;gap:var(--space-2);max-width:34rem}
+.log__release li{padding-left:var(--space-1)}
+.log code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;padding:.05em .3em;background:var(--line-soft);border-radius:4px;overflow-wrap:anywhere}

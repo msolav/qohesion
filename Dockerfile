@@ -4,7 +4,7 @@
 
 FROM node:22-alpine AS build
 WORKDIR /repo
-COPY VERSION ./VERSION
+COPY VERSION CHANGELOG.md ./
 COPY packages/engine ./packages/engine
 WORKDIR /repo/apps/web
 COPY apps/web/package.json apps/web/package-lock.json ./

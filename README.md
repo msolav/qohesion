@@ -12,7 +12,7 @@ Qohesion is a free, self-hosted voting and decision tool for any organization wh
 
 Qohesion est un outil libre de vote et de prise de décision, à installer sur votre propre serveur, pour toute organisation dont les membres décident ensemble : associations, coopératives, syndicats, organismes à but non lucratif, clubs, conseils et comités, groupes communautaires. Vous branchez votre propre service SMTP, et les données de vos membres restent chez vous.
 
-> **Status / Statut :** pre-alpha. Design phase, nothing to install yet. Follow the [roadmap](../../milestones) and the [issues](../../issues). / Phase de conception, rien à installer pour l'instant.
+> **Status / Statut :** pre-alpha, version 0.1.0 (not released). The application skeleton builds and runs (ballot screen preview, version endpoint; see [docs/install.md](docs/install.md)). It cannot hold a vote yet. Follow the [roadmap](../../milestones) and the [issues](../../issues). / Pré-alpha, version 0.1.0 (non publiée). Le squelette de l'application se compile et s'exécute (aperçu du bulletin de vote, point d'accès de version; voir [docs/install.md](docs/install.md)). Il ne permet pas encore de tenir un vote.
 
 ---
 

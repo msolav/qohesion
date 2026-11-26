@@ -18,6 +18,7 @@
     <p class="state">{t.home.state}</p>
     <ul class="links">
       <li><a href="/preview/ballot">{t.home.previewLink}<small>{t.home.previewNote}</small></a></li>
+      <li><a href="/changelog">{t.changelog.link}<small>{t.changelog.linkNote}</small></a></li>
       <li><a href="/version">{t.home.versionLink}<small>{t.home.versionNote}</small></a></li>
     </ul>
   </section>

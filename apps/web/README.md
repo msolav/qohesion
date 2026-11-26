@@ -23,7 +23,7 @@ npm start           # run the build (PORT, ORIGIN and HOST are read from the env
 | `src/lib/i18n/` | Language negotiation and the interface texts (French and English, same keys, enforced by type and test). |
 | `src/lib/ballot.ts` | The preview ballot as an engine form definition. |
 | `src/lib/styles/` | Structure (`base.css`), the two templates (`theme-*.css`) and the application shell (`app.css`). Colours come only from custom properties. |
-| `src/routes/` | `/` home, `/preview/ballot` the ballot screen with its form action, `/version` the version as JSON. |
+| `src/routes/` | `/` home, `/preview/ballot` the ballot screen with its form action, `/version` the version as JSON, `/changelog` the repository's `CHANGELOG.md` (read with a small parser that produces text, code and link segments only, so no HTML is injected). |
 
 The design rules are in [DESIGN.md](../../DESIGN.md). Interface text follows [docs/content-style.md](../../docs/content-style.md).
 

@@ -26,6 +26,14 @@ export interface Messages {
     readonly versionLink: string;
     readonly versionNote: string;
   };
+  readonly changelog: {
+    readonly title: string;
+    readonly note: string;
+    readonly unreleased: string;
+    readonly released: string;
+    readonly link: string;
+    readonly linkNote: string;
+  };
   readonly preview: {
     readonly title: string;
     readonly organization: string;
@@ -81,6 +89,14 @@ const en: Messages = {
     previewNote: "One question with three choices, in two templates. No ballot is recorded.",
     versionLink: "Version information",
     versionNote: "Version, release channel, commit and build date, as JSON.",
+  },
+  changelog: {
+    title: "Changelog",
+    note: "Changes by version, newest first. Entries are written in English. While the version number starts with 0, any version may change behaviour or data formats; the upgrade notes of each version say what an administrator must do.",
+    unreleased: "Unreleased",
+    released: "Released",
+    link: "Changelog",
+    linkNote: "Changes by version, with upgrade notes.",
   },
   preview: {
     title: "Ballot screen preview",
@@ -150,6 +166,14 @@ const fr: Messages = {
     previewNote: "Une question à trois choix, dans deux modèles. Aucun bulletin n’est enregistré.",
     versionLink: "Informations de version",
     versionNote: "Version, canal de publication, commit et date de compilation, en JSON.",
+  },
+  changelog: {
+    title: "Journal des modifications",
+    note: "Modifications par version, de la plus récente à la plus ancienne. Les entrées sont rédigées en anglais. Tant que le numéro de version commence par 0, toute version peut modifier le comportement ou les formats de données; les notes de mise à jour de chaque version indiquent ce que l’administrateur doit faire.",
+    unreleased: "Non publiée",
+    released: "Publiée",
+    link: "Journal des modifications",
+    linkNote: "Modifications par version, avec notes de mise à jour.",
   },
   preview: {
     title: "Aperçu du bulletin de vote",
