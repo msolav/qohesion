@@ -86,9 +86,11 @@ Accepted limits: a determined administrator can script the member step. The aim 
 
 - **Transport interface.** The application sends through an `EmailTransport` interface with interchangeable adapters (Cloudflare Email Sending, SMTP, Resend, Amazon SES). Self-hosted installations use the SMTP adapter. The provider choice is therefore not a lock-in.
 - **Initial provider (revised 2026-11-25): no fixed monthly fee.** Cloudflare Email Sending was considered first. Reaching arbitrary recipients requires the Workers Paid plan, a base fee of $5 a month plus usage, which is not wanted before there is real traffic. Providers without a base fee are used instead:
-  - **Service emails** (login, administrator notices; low volume): Resend, free plan (3,000 a month, 100 a day).
-  - **Free voting lane:** Brevo, free plan (300 a day), in a separate account.
-  - **When volume exceeds the free plans:** Amazon SES, pay-as-you-go (about $0.10 to $0.16 per 1,000 emails, no monthly fee; leaving the sandbox requires a request to AWS).
+  - **Brevo, free plan, first** (300 emails a day, marketing and transactional combined; SMTP relay, API and webhooks included). It serves both service emails and the free voting lane at the start.
+  - **Resend, free plan, as the standby** (3,000 a month, 100 a day), configured so that service emails can fail over to it. The voting lane fails over only by decision, so that an abuse event does not spread to a second account.
+  - **When volume exceeds the free plans:** a paid plan funded by revenue, or Amazon SES pay-as-you-go (about $0.10 to $0.16 per 1,000 emails, no monthly fee; leaving the sandbox requires a request to AWS).
+  - **Budget guard in the application.** The Brevo daily limit is shared by every message. The application reserves part of it for service emails (for example 50 of 300), so that a large poll cannot block sign-in emails.
+  - **Known Brevo constraints to verify with a test send:** the free plan adds a "Sent with Brevo" sticker (whether it appears on SMTP and API transactional messages is unconfirmed; removal needs a paid plan); new accounts may be reviewed before sending; the sending domain must be authenticated (a verification code record, DKIM, DMARC) or Brevo replaces it with its own; inbox placement is tested with Gmail and Outlook.
   - Cloudflare Email Sending is revisited if the application runs on Workers and the base fee is justified by other use. Its free plan remains usable to test a sending domain against verified addresses.
   Prices and limits are checked against each provider's page before each decision.
 - **Account risk.** The Cloudflare account holds domain registration and DNS. Sending is kept in separate provider accounts, so an abuse event in the free voting lane cannot put the domain or DNS at risk.
