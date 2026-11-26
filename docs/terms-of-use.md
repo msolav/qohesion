@@ -1,10 +1,8 @@
 # Conditions d’utilisation du service hébergé Qohesion / Qohesion hosted service terms of use
 
-> **Brouillon, non en vigueur / Draft, not in force.** Ces conditions s’appliqueront au service hébergé officiel, pas au logiciel (voir [LICENSING.md](../LICENSING.md)). Elles doivent être révisées par un juriste avant que le service héberge de vraies données. Les passages entre crochets sont à compléter ou à confirmer. / These terms will apply to the official hosted service, not to the software (see [LICENSING.md](../LICENSING.md)). A lawyer must review them before the service holds real data. Items in brackets are to be completed or confirmed.
-
----
-
 ## Français
+
+> **Brouillon, non en vigueur.** Ces conditions s’appliqueront au service hébergé officiel, pas au logiciel (voir [LICENSING.md](../LICENSING.md)). Elles doivent être révisées par un juriste avant que le service héberge de vraies données. Les passages entre crochets sont à compléter ou à confirmer.
 
 ### En bref
 
@@ -52,6 +50,8 @@
 ---
 
 ## English
+
+> **Draft, not in force.** These terms will apply to the official hosted service, not to the software (see [LICENSING.md](../LICENSING.md)). A lawyer must review them before the service holds real data. Items in brackets are to be completed or confirmed.
 
 ### In short
 

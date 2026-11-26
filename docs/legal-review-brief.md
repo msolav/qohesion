@@ -2,8 +2,6 @@
 
 Status: draft, to be sent to counsel in Quebec once the questions below are agreed. This brief is not legal advice and does not state what the law requires. Every point is a question, and each answer is expected from counsel.
 
-Résumé : liste des questions à soumettre à un conseiller juridique du Québec avant l’ouverture du service hébergé. Les sections sont classées par ordre de priorité. Ce document ne contient aucun avis juridique.
-
 ## What Qohesion is
 
 Qohesion is open-source software (AGPL-3.0-or-later) for holding votes and polls in groups such as associations, cooperatives and unions, in French and English. It runs in three modes on one code base (Light, Full web, Self-hosted, see [ADR 0003](adr/0003-three-modes-one-engine.md)). The project also plans an official hosted service, run by an operator who has not yet been named, free within limits and paid beyond them ([ADR 0006](adr/0006-pricing-and-limits.md), proposed). Nothing is hosted for the public yet, no vote can be recorded, and no personal data is held.

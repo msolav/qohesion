@@ -106,7 +106,7 @@ jobs:
         if: failure()
         run: docker logs qohesion-ci || true
 
-  docs-site:
+  website:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -120,8 +120,8 @@ jobs:
           cache-dependency-path: design/site/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm test
-      - name: The documents build, and every link in them resolves
-        run: node build.mjs "$RUNNER_TEMP/docs-site"
+      - name: The website builds in both languages, and every link in it resolves
+        run: node build.mjs "$RUNNER_TEMP/site"
 
   repository:
     runs-on: ubuntu-latest

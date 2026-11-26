@@ -1,4 +1,4 @@
-# Security policy / Politique de sécurité
+# Security policy
 
 Qohesion handles votes and personal information. Please report vulnerabilities privately through GitHub's **Report a vulnerability** button in the Security tab of this repository. Do not open a public issue.
 

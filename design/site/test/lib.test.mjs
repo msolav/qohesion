@@ -4,24 +4,31 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  languageSections,
-  outPath,
-  relativeUrl,
+  docOutPath,
+  hasLanguageSections,
+  pageUrl,
   renderDocument,
   resolveHref,
   slugify,
+  splitLanguage,
   statusLine,
-  wrapLanguages,
 } from "../lib.mjs";
 
 const BLOB = "https://github.com/example/repo/blob/main";
-const files = new Set(["LICENSING.md", "LICENSES/brand.txt", "docs/a.md", "docs/adr/0001.md", "docs/templates/README.md"]);
+const files = new Set(["LICENSING.md", "LICENSES/brand.txt", "docs/a.md", "docs/adr/0001.md", "docs/templates/README.md", "docs/pricing.md"]);
 const ctx = {
-  pages: new Set(["docs/a.md", "docs/adr/0001.md", "docs/templates/README.md"]),
+  // docs/pricing.md is a page of the site: it has one page per language.
+  outFor: (p) => {
+    if (p === "docs/pricing.md") return "en/pricing/index.html";
+    return ["docs/a.md", "docs/adr/0001.md", "docs/templates/README.md"].includes(p) ? docOutPath(p) : null;
+  },
+  siteLink: (name) => (name === "prototype" ? "prototype/?theme=seed-packet&lang=en" : null),
   exists: (p) => files.has(p),
   isDirectory: (p) => p === "docs/templates" || p === "docs/templates/",
   blob: BLOB,
 };
+const link = (href, from = "docs/a.md", out = docOutPath(from)) => resolveHref(href, from, out, ctx);
+const render = (md, options) => renderDocument(md, "docs/a.md", "docs/a.html", ctx, options);
 
 test("slugify removes accents and punctuation", () => {
   assert.equal(slugify("Français"), "francais");
@@ -29,47 +36,59 @@ test("slugify removes accents and punctuation", () => {
   assert.equal(slugify("  --  "), "");
 });
 
-test("outPath maps a document to its page and refuses anything else", () => {
-  assert.equal(outPath("docs/pricing.md"), "pricing.html");
-  assert.equal(outPath("docs/adr/0006-x.md"), "adr/0006-x.html");
-  assert.throws(() => outPath("README.md"));
-  assert.throws(() => outPath("docs/image.png"));
+test("docOutPath keeps the path of a document and refuses anything else", () => {
+  assert.equal(docOutPath("docs/glossary.md"), "docs/glossary.html");
+  assert.equal(docOutPath("docs/adr/0006-x.md"), "docs/adr/0006-x.html");
+  assert.throws(() => docOutPath("README.md"));
+  assert.throws(() => docOutPath("docs/image.png"));
 });
 
-test("relativeUrl is written from the page that links", () => {
-  assert.equal(relativeUrl("adr/0006.html", "pricing.html"), "../pricing.html");
-  assert.equal(relativeUrl("index.html", "adr/0006.html"), "adr/0006.html");
-  assert.equal(relativeUrl("adr/0006.html", "adr/0003.html"), "0003.html");
+test("pageUrl is written from the page that links, and names a folder for an index page", () => {
+  assert.equal(pageUrl("docs/adr/0006.html", "docs/glossary.html"), "../glossary.html");
+  assert.equal(pageUrl("docs/adr/0006.html", "docs/adr/0003.html"), "0003.html");
+  assert.equal(pageUrl("fr/index.html", "fr/tarifs/index.html"), "tarifs/");
+  assert.equal(pageUrl("fr/tarifs/index.html", "fr/index.html"), "../");
+  assert.equal(pageUrl("fr/index.html", "fr/index.html"), "./");
+  assert.equal(pageUrl("docs/adr/0006.html", "en/pricing/index.html"), "../../en/pricing/");
 });
 
 test("https and mailto links are kept, other schemes are refused", () => {
-  assert.equal(resolveHref("https://example.org/x?y=1", "docs/a.md", ctx), "https://example.org/x?y=1");
-  assert.equal(resolveHref("mailto:info@example.org", "docs/a.md", ctx), "mailto:info@example.org");
-  assert.throws(() => resolveHref("http://example.org", "docs/a.md", ctx), /unsupported link/);
-  assert.throws(() => resolveHref("javascript:alert(1)", "docs/a.md", ctx), /unsupported link/);
-  assert.throws(() => resolveHref("//evil.example/x", "docs/a.md", ctx), /unsupported link/);
-  assert.throws(() => resolveHref("data:text/html,x", "docs/a.md", ctx), /unsupported link/);
+  assert.equal(link("https://example.org/x?y=1"), "https://example.org/x?y=1");
+  assert.equal(link("mailto:info@example.org"), "mailto:info@example.org");
+  assert.throws(() => link("http://example.org"), /unsupported link/);
+  assert.throws(() => link("javascript:alert(1)"), /unsupported link/);
+  assert.throws(() => link("//evil.example/x"), /unsupported link/);
+  assert.throws(() => link("data:text/html,x"), /unsupported link/);
 });
 
 test("a link to a document becomes a link to its page, with its anchor", () => {
-  assert.equal(resolveHref("adr/0001.md", "docs/a.md", ctx), "adr/0001.html");
-  assert.equal(resolveHref("../a.md#part", "docs/adr/0001.md", ctx), "../a.html#part");
-  assert.equal(resolveHref("#here", "docs/a.md", ctx), "#here");
+  assert.equal(link("adr/0001.md"), "adr/0001.html");
+  assert.equal(link("../a.md#part", "docs/adr/0001.md"), "../a.html#part");
+  assert.equal(link("#here"), "#here");
+});
+
+test("a link to a page of the site goes to the page in the language of the page that links", () => {
+  assert.equal(link("pricing.md", "docs/a.md", "docs/a.html"), "../en/pricing/");
+});
+
+test("a link to the ballot screen preview is written from the page that links", () => {
+  assert.equal(link("site:prototype", "docs/_home.md", "en/index.html"), "../prototype/?theme=seed-packet&lang=en");
+  assert.throws(() => link("site:nowhere"), /unknown site link/);
 });
 
 test("a link to a directory goes to its README page", () => {
-  assert.equal(resolveHref("templates/", "docs/a.md", ctx), "templates/README.html");
-  assert.equal(resolveHref("templates/README.md", "docs/a.md", ctx), "templates/README.html");
+  assert.equal(link("templates/"), "templates/README.html");
+  assert.equal(link("templates/README.md"), "templates/README.html");
 });
 
 test("a link to another file of the repository points to that file on GitHub", () => {
-  assert.equal(resolveHref("../LICENSING.md", "docs/a.md", ctx), `${BLOB}/LICENSING.md`);
-  assert.equal(resolveHref("../../LICENSES/brand.txt", "docs/adr/0001.md", ctx), `${BLOB}/LICENSES/brand.txt`);
+  assert.equal(link("../LICENSING.md"), `${BLOB}/LICENSING.md`);
+  assert.equal(link("../../LICENSES/brand.txt", "docs/adr/0001.md"), `${BLOB}/LICENSES/brand.txt`);
 });
 
 test("a link to a missing file, or outside the repository, stops the build", () => {
-  assert.throws(() => resolveHref("missing.md", "docs/a.md", ctx), /does not exist/);
-  assert.throws(() => resolveHref("../../../etc/passwd", "docs/a.md", ctx), /leaves the repository/);
+  assert.throws(() => link("missing.md"), /does not exist/);
+  assert.throws(() => link("../../../etc/passwd"), /leaves the repository/);
 });
 
 test("statusLine keeps the first sentence and drops links", () => {
@@ -79,45 +98,58 @@ test("statusLine keeps the first sentence and drops links", () => {
   assert.equal(statusLine("# No status here\n"), null);
 });
 
+const BILINGUAL = "# Title / Titre\n\n## English\n\nEnglish intro.\n\n### Part\n\nText.\n\n#### Detail\n\nMore.\n\n---\n\n## Français\n\nIntro française.\n\n### Partie\n\nTexte.\n\n---\n";
+
+test("a section is kept alone, and its headings move up one level", () => {
+  assert.ok(hasLanguageSections(BILINGUAL));
+  const en = splitLanguage(BILINGUAL, "en");
+  assert.ok(en.startsWith("English intro."), en);
+  assert.ok(en.includes("\n## Part\n") && en.includes("\n### Detail\n"), en);
+  assert.ok(!en.includes("Français") && !en.includes("Partie"), en);
+  assert.ok(!/---\s*$/.test(en), "the closing rule is dropped");
+  const fr = splitLanguage(BILINGUAL, "fr");
+  assert.ok(fr.startsWith("Intro française."), fr);
+  assert.ok(fr.includes("\n## Partie\n") && !fr.includes("English"), fr);
+});
+
+test("a document with no language sections is kept whole, and a missing language is an error", () => {
+  const plain = "# Title\n\n### Part\n\nText.\n";
+  assert.equal(hasLanguageSections(plain), false);
+  assert.equal(splitLanguage(plain, "en"), plain);
+  assert.throws(() => splitLanguage("## English\n\nOnly English.\n", "fr"), /no "fr" section/);
+});
+
+test("a heading inside a code block is not mistaken for a language heading", () => {
+  const md = "## English\n\n```\n## Français\n```\n\nText.\n";
+  const en = splitLanguage(md, "en");
+  assert.ok(en.includes("## Français"), en);
+});
+
 test("raw HTML in a document is shown as text and never becomes markup", () => {
-  const { html } = renderDocument("# T\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n", "docs/a.md", ctx);
+  const { html } = render("# T\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n");
   assert.ok(!html.includes("<script"), html);
   assert.ok(!html.includes("<img"), html);
   assert.ok(html.includes("&lt;script&gt;"), html);
 });
 
 test("a broken link or an image stops the build", () => {
-  assert.throws(() => renderDocument("[x](nowhere.md)", "docs/a.md", ctx), /does not exist/);
-  assert.throws(() => renderDocument("![logo](logo.png)", "docs/a.md", ctx), /images are not supported/);
+  assert.throws(() => render("[x](nowhere.md)"), /does not exist/);
+  assert.throws(() => render("![logo](logo.png)"), /images are not supported/);
 });
 
 test("the title is the first level-1 heading and repeated headings get distinct ids", () => {
-  const { title, html } = renderDocument("# Pricing (draft)\n\n## Open\n\n## Open\n", "docs/a.md", ctx);
+  const { title, html } = render("# Pricing (draft)\n\n## Open\n\n## Open\n");
   assert.equal(title, "Pricing (draft)");
   assert.ok(html.includes('id="open"') && html.includes('id="open-2"'), html);
+  assert.equal(render("No heading at all.\n").title, null);
 });
 
-test("tables are wrapped to scroll, and the first cell of a row names the row", () => {
-  const { html } = renderDocument("| | A | B |\n|---|---|---|\n| Price | 1 | 2 |\n", "docs/a.md", ctx);
-  assert.ok(html.includes('class="table-wrap"'), html);
+test("tables scroll in their own region, take the class given to them, and name their rows", () => {
+  const md = "| | A | B |\n|---|---|---|\n| Price | 1 | 2 |\n\n| X | Y |\n|---|---|\n| 1 | 2 |\n";
+  const { html } = render(md, { tableClasses: ["compare", "pricelist"] });
+  assert.equal((html.match(/class="table-wrap"/g) ?? []).length, 2);
+  assert.ok(html.includes('<table class="compare">') && html.includes('<table class="pricelist">'), html);
   assert.ok(html.includes('<th scope="row">Price</th>'), html);
   assert.ok(html.includes('<span class="sr-only">Item</span>'), html);
-});
-
-test("each language section carries its language", () => {
-  const { html } = renderDocument("# T\n\n## English\n\nText.\n\n## Français\n\nTexte.\n", "docs/a.md", ctx);
-  assert.deepEqual(
-    languageSections(html).map((s) => [s.lang, s.id]),
-    [["en", "english"], ["fr", "francais"]],
-  );
-  const wrapped = wrapLanguages(html);
-  assert.ok(wrapped.includes('<section lang="en"><h2 id="english">'), wrapped);
-  assert.ok(wrapped.includes('<section lang="fr"><h2 id="francais">'), wrapped);
-  assert.equal((wrapped.match(/<section /g) ?? []).length, 2);
-});
-
-test("a rule before a language heading is dropped, other rules stay", () => {
-  const { html } = renderDocument("# T\n\nIntro.\n\n---\n\n## English\n\nText.\n\n---\n\n## Français\n\nTexte.\n\n---\n\nEnd.\n", "docs/a.md", ctx);
-  assert.equal((html.match(/<hr>/g) ?? []).length, 1, html);
-  assert.ok(html.trimEnd().includes("<hr>\n<p>End.</p>"), html);
+  assert.ok(render(md).html.includes("<table>"), "a table with no class stays plain");
 });

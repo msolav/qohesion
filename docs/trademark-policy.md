@@ -1,12 +1,8 @@
 # Name and logo policy / Politique relative au nom et au logo
 
-Status: draft, not yet reviewed by counsel. It extends the [brand notice](../LICENSES/LicenseRef-Qohesion-Brand.txt) and is not legal advice. The name has no trademark registration at this time. Owner of the marks: [Owner, to be named].
-
-Statut : ébauche, pas encore examinée par un conseiller juridique. Elle précise l’[avis sur la marque](../LICENSES/LicenseRef-Qohesion-Brand.txt) et ne constitue pas un avis juridique. Le nom ne fait l’objet d’aucun enregistrement de marque de commerce pour l’instant. Propriétaire des marques : [propriétaire, à nommer].
-
----
-
 ## English
+
+Draft, not yet reviewed by counsel. It extends the [brand notice](../LICENSES/LicenseRef-Qohesion-Brand.txt) and is not legal advice. The name has no trademark registration at this time. Owner of the marks: [Owner, to be named].
 
 ### What this covers
 
@@ -48,6 +44,8 @@ Changes are listed in the [changelog](../CHANGELOG.md). A use that followed the 
 ---
 
 ## Français
+
+Ébauche, pas encore examinée par un conseiller juridique. Elle précise l’[avis sur la marque](../LICENSES/LicenseRef-Qohesion-Brand.txt) et ne constitue pas un avis juridique. Le nom ne fait l’objet d’aucun enregistrement de marque de commerce pour l’instant. Propriétaire des marques: [propriétaire, à nommer].
 
 ### Ce que couvre cette politique
 

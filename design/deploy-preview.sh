@@ -9,10 +9,10 @@ PREVIEW_REPO="msolav/qohesion-preview"
 WORK="${TMPDIR:-/tmp}/qohesion-preview-work"
 DOMAIN="dev.qohesion.app"
 
-# Build the documents first, so that a failure stops the publication before anything changes.
-DOCS_TMP="$(mktemp -d)"
-trap 'rm -rf "$DOCS_TMP"' EXIT
-(cd "$SRC/design/site" && npm ci --ignore-scripts --no-audit --no-fund --silent && node build.mjs "$DOCS_TMP/docs")
+# Build the website first, so that a failure stops the publication before anything changes.
+SITE_TMP="$(mktemp -d)"
+trap 'rm -rf "$SITE_TMP"' EXIT
+(cd "$SRC/design/site" && npm ci --ignore-scripts --no-audit --no-fund --silent && node build.mjs "$SITE_TMP/site")
 
 rm -rf "$WORK"
 gh repo clone "$PREVIEW_REPO" "$WORK" -- --quiet
@@ -26,7 +26,7 @@ git config user.email "$(gh api user --jq '"\(.id)+\(.login)@users.noreply.githu
 find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 mkdir -p prototype
 rsync -a --exclude '.DS_Store' "$SRC/design/prototype/" prototype/
-rsync -a --exclude '.docs-site-build' "$DOCS_TMP/docs/" docs/
+rsync -a --exclude '.site-build' "$SITE_TMP/site/" ./
 mkdir -p assets
 cp "$SRC/brand/gradient/qohesion-logo-gradient-dark.svg" assets/logo-dark.svg
 cp "$SRC/design/prototype/fonts/figtree-latin.woff2" assets/
@@ -86,6 +86,13 @@ footer a{color:#EAF2FF}
 <h1><span lang="fr">Aperçu de développement</span><span lang="en">Development preview</span></h1>
 <p class="note"><span lang="fr">Cette page donne accès aux versions de travail du logiciel. Le contenu est incomplet, l’organisation et les chiffres sont fictifs, et aucun vote n’est enregistré.</span><span lang="en">This page gives access to working versions of the software. The content is incomplete, the organization and figures are fictitious, and no vote is recorded.</span></p>
 
+<section aria-labelledby="s0">
+<h2 id="s0"><span lang="fr">Site web</span><span lang="en">Website</span></h2>
+<ul>
+<li><a href="fr/" data-site><b><span lang="fr">Aperçu du site</span><span lang="en">Website preview</span></b><small><span lang="fr">Accueil, tarifs, conditions d’utilisation, nom et logo. Version de travail.</span><span lang="en">Home, pricing, terms of use, name and logo. Working version.</span></small></a></li>
+</ul>
+</section>
+
 <section aria-labelledby="s1">
 <h2 id="s1"><span lang="fr">Écran de vote</span><span lang="en">Voter ballot screen</span></h2>
 <ul>
@@ -95,9 +102,9 @@ footer a{color:#EAF2FF}
 </section>
 
 <section aria-labelledby="s2">
-<h2 id="s2">Documents</h2>
+<h2 id="s2">Documentation</h2>
 <ul>
-<li><a href="docs/"><b><span lang="fr">Documents de travail</span><span lang="en">Working documents</span></b><small><span lang="fr">Prix, politique de marque, décisions et autres ébauches, en anglais ou en français selon le document.</span><span lang="en">Pricing, name and logo policy, decisions and other drafts, in English or French depending on the document.</span></small></a></li>
+<li><a href="docs/"><b>Documentation</b><small><span lang="fr">Décisions, glossaire, modèle de menace et autres documents, en anglais.</span><span lang="en">Decisions, glossary, threat model and other documents, in English.</span></small></a></li>
 </ul>
 </section>
 
@@ -119,6 +126,7 @@ footer a{color:#EAF2FF}
     document.title=lang==="fr"?"Qohesion · Aperçu de développement":"Qohesion · Development preview";
     document.querySelector(".lang").setAttribute("aria-label",lang==="fr"?"Langue d’affichage":"Display language");
     [].forEach.call(document.querySelectorAll("[data-lang-link]"),function(a){if(a.getAttribute("data-lang-link")===lang)a.setAttribute("aria-current","true");else a.removeAttribute("aria-current")});
+    [].forEach.call(document.querySelectorAll("[data-site]"),function(a){a.setAttribute("href",lang+"/")});
     [].forEach.call(document.querySelectorAll("[data-proto]"),function(a){var u=new URL(a.getAttribute("href"),location.href);u.searchParams.set("lang",lang);a.setAttribute("href",u.pathname.split("/").slice(-2).join("/")+u.search)});
   }
   [].forEach.call(document.querySelectorAll("[data-lang-link]"),function(a){a.addEventListener("click",function(e){e.preventDefault();set(a.getAttribute("data-lang-link"))})});

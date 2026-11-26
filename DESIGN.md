@@ -283,9 +283,9 @@ Seed Packet is soft and Ballot Paper is square. Seed Packet rows and the cast bu
 ### Footer and template links
 - **Style:** Small text (0.85rem) in the secondary ink. Version, build and the source-code link sit in every footer. The template links above it take 44px targets.
 
-### Document page
-- **Style:** a Slip White sheet with a 1px Ink rule and a 4px radius on a Ledger Grey page, 42rem wide (64rem for pages that hold wide tables), set in the Document size. A one-line notice under the bar says that the pages are working drafts. Links are Forest Ballot and underlined. Tables take a 1px Ink frame with a 4px radius, Note-size text, a Slip Hover header row and a first column that stays in view when the table scrolls sideways. Documents in two languages carry a pair of pill links to each language, and each language section is marked with its language. Code takes the system monospace stack at 0.88em on Slip Hover.
-- **Use:** Read mode. Nothing on these pages is a control except links, so no colour other than Forest Ballot marks interaction.
+### Website pages
+- **Style:** a page opens with a Forest Ballot block that carries the title, with the radius and the tab of the Seed Packet question block, and the text sits on a Slip White slip under it, ruled in Forest Ballot, on a Seed Paper ground. The masthead holds the logo, the navigation and the language switch. A one-line notice under it says that the pages are working versions. The footer holds the legal links, the source link and the build. Text takes the Document size, with section headings at 1.6rem and sub-headings at the Title size. Tables take a 1px Ink frame with a 4px radius and the Note size, and scroll inside their own region with the first column kept in view. A comparison of offers takes a Forest Ballot header row. A list of prices right-aligns the amount. Rules that read as sentences, such as the three modes, are set as the ruled rows of a ballot, one above the other. Buttons in the block are white on Forest Ballot (primary) or outlined in white (secondary). Links are Forest Ballot and underlined.
+- **Use:** Read mode for the pricing, legal and documentation pages. The home page adds the brand line at Display size and two actions. French and English are separate pages (/fr/ and /en/), and the language switch leads to the same page in the other language. The documentation is in English only and has no switch.
 
 ## Do's and Don'ts
 
