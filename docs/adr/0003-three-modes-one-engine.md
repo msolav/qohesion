@@ -1,6 +1,6 @@
 # ADR 0003: Three modes, one engine
 
-- Status: proposed
+- Status: accepted on 2026-11-26. Accepted to build on, to be revised as the build teaches us.
 - Date: 2026-11-25
 - Extends: [ADR 0001](0001-stack-and-deployment.md) (stack), [ADR 0002](0002-editions-hosting-and-trust.md) (editions and trust)
 
@@ -8,7 +8,7 @@
 
 The project offers voting and polling to groups of different sizes and needs. A single code base must serve a quick vote with no account, a managed web space, and an installation on the group's own server. Sending email is the main operational risk of any hosted mode, because abuse harms deliverability for every user.
 
-## Decision (proposed)
+## Decision
 
 ### 1. Three modes on one engine
 
@@ -96,6 +96,7 @@ Accepted limits: a determined administrator can script the member step. The aim 
 - **Account risk.** The Cloudflare account holds domain registration and DNS. Sending is kept in separate provider accounts, so an abuse event in the free voting lane cannot put the domain or DNS at risk.
 - **Verified 2026-11-26.** A test message from `noreply@qohesion.app` through Brevo's API reached a Gmail inbox. DKIM passed with `qohesion.app` as signing domain, DMARC passed, SPF passed for the provider's bounce domain (not aligned, which DMARC allows), and no provider footer appeared. The provider also injected an open-tracking image and would wrap links in redirects. Open and click tracking must therefore be switched off at the provider, and every provider change is checked by sending a message with a link and reading it with `scripts/inspect-eml.py`, which fails on a tracking image or a wrapped link.
 - **Lanes.** Service emails (login, administrator notices) go from `noreply@qohesion.app`: Brevo authenticates the main domain (ownership code record, two DKIM CNAME records, DMARC with aggregate reports sent to Brevo). The name `mail.qohesion.app` (with `r.mail` and `img.mail`) belongs to Brevo's branded-link feature and is not used for our own sending. Tracking of opens and clicks stays off. The free voting lane uses a separate domain on a reputable TLD, in its own provider account. Paid organizations send from their own verified domain.
+- **Alpha decision (2026-11-26).** Until the free voting lane opens to the public, it uses the main domain `qohesion.app` with its own sender address, and no separate domain is bought. Nothing is sent to the public during alpha, so no reputation is shared yet. A separate domain on a reputable TLD is registered before the lane opens, and this line is then replaced.
 - **TLD choice.** A country-code or low-cost TLD with a high abuse rate can reduce inbox placement. `.cc` appears in the higher-risk group of recent spam-reputation reports. A reputable TLD (such as `.ca` or `.org`) is preferred. Deliverability is tested with Gmail and Outlook before use.
 - **Capacity.** Until the real daily quota is known, the free lane accepts small polls (target: up to 50 participants). When 70% of a provider limit is reached, capacity is raised (quota increase request, or paid plan) so that new registrations are served immediately.
 
@@ -112,4 +113,4 @@ All text follows [docs/content-style.md](../content-style.md), which defines two
 
 ## Open questions
 
-Exact quotas and the participants-versus-polls balance values. Thresholds for the bounce budget and the overlap flag. Whether Light mode needs more than one administrator at the informal level (currently allowed, with a visible warning). The sending domain name.
+Exact quotas and the participants-versus-polls balance values. Thresholds for the bounce budget and the overlap flag. Whether Light mode needs more than one administrator at the informal level (currently allowed, with a visible warning). The name of the separate voting-lane domain, to be chosen before that lane opens (alpha uses `qohesion.app`).

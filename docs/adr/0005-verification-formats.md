@@ -1,6 +1,6 @@
 # ADR 0005: Verification formats, version 1
 
-- Status: proposed
+- Status: accepted on 2026-11-26 for the alpha. The formats are named "version 1". Because nothing is stored yet, they can still change before the first release without a migration; after it, a change makes a version 2 (see ADR 0004).
 - Date: 2026-11-26
 - Extends: [ADR 0003](0003-three-modes-one-engine.md) (roll and registration), [ADR 0004](0004-versioning-and-updates.md) (data formats are versioned separately)
 
@@ -8,7 +8,7 @@
 
 Several short codes and hashes are shown to people and compared later: the code of the frozen roll, the receipt of a ballot, the checkpoint of the ledger. An independent verifier must be able to recompute them years later, so their exact construction is part of the data format and must not change silently. This record fixes version 1 of those constructions as implemented in `packages/roll` and `packages/ledger`.
 
-## Decision (proposed)
+## Decision
 
 ### 1. Address fingerprint
 

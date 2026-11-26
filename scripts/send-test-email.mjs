@@ -5,11 +5,11 @@
 //   export TEST_TO="an address you control"
 //   node scripts/send-test-email.mjs
 //
-// Optional: FROM_EMAIL (default noreply@mail.qohesion.app), FROM_NAME (default Qohesion).
+// Optional: FROM_EMAIL (default noreply@qohesion.app), FROM_NAME (default Qohesion).
 
 const key = process.env.BREVO_API_KEY;
 const to = process.env.TEST_TO;
-const fromEmail = process.env.FROM_EMAIL ?? "noreply@mail.qohesion.app";
+const fromEmail = process.env.FROM_EMAIL ?? "noreply@qohesion.app";
 const fromName = process.env.FROM_NAME ?? "Qohesion";
 
 if (!key || !to) {

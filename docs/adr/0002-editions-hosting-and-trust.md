@@ -1,6 +1,6 @@
 # ADR 0002: Editions, hosting and the trust model
 
-- Status: proposed
+- Status: accepted on 2026-11-26. Accepted to build on, to be revised as the build teaches us.
 - Date: 2026-11-25
 
 ## Context
@@ -9,7 +9,7 @@ Qohesion is meant to be installed by any organization on its own server. Many or
 
 A hosted service puts the project operator in the position the threat model warns about: someone with root access to the machine that holds the votes. The hard requirement is that the result of a vote cannot be silently altered, by anyone, including us.
 
-## Decision (proposed)
+## Decision
 
 ### One codebase, two ways to run it
 

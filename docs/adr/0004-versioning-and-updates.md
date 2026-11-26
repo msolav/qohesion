@@ -1,6 +1,6 @@
 # ADR 0004: Versioning and updates
 
-- Status: proposed
+- Status: accepted on 2026-11-26. Accepted to build on, to be revised as the build teaches us.
 - Date: 2026-11-25
 - Extends: [ADR 0003](0003-three-modes-one-engine.md)
 
@@ -8,7 +8,7 @@
 
 The software is in alpha. Hosted installations, preview builds and self-hosted installations all need to state which version they run, and self-hosted administrators need to move to a chosen version without losing data. Votes and their verification data must stay checkable across versions.
 
-## Decision (proposed)
+## Decision
 
 ### 1. Scheme
 

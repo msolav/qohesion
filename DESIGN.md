@@ -23,7 +23,7 @@ typography:
     letterSpacing: "-0.015em"
   headline:
     fontFamily: "Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif"
-    fontSize: "2.05rem"
+    fontSize: "clamp(1.6rem, 6.2vw, 2.05rem)"
     fontWeight: 800
     lineHeight: 1.1
     letterSpacing: "-0.01em"
@@ -53,6 +53,17 @@ typography:
     fontSize: "0.88rem"
     fontWeight: 400
     lineHeight: 1.35
+  small:
+    fontFamily: "Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    fontSize: "0.85rem"
+    fontWeight: 400
+    lineHeight: 1.35
+  receipt-code:
+    fontFamily: "Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    fontSize: "1.5rem"
+    fontWeight: 800
+    lineHeight: 1.2
+    letterSpacing: "0.12em"
   body-ballot-paper:
     fontFamily: "'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif"
     fontSize: "1rem"
@@ -73,6 +84,7 @@ rounded:
   seed-packet: "14px"
   packet-head: "22px"
   packet-tab: "8px"
+  packet-foot: "6px"
   ballot-paper: "4px"
   pill: "99px"
 spacing:
@@ -199,8 +211,10 @@ Forest green and ink on a faintly green paper white, with one signal red kept fo
 - **Title** (700, 1.15rem, 1.2): choice rows, the confirmation heading.
 - **Cast** (800, 1.1rem, 1.2): the submit button.
 - **Body** (400, 1rem, 1.45): the lede and general text. Tabular figures throughout, so quorums and dates align. Measure stays under 34rem.
-- **Label** (700, 0.9rem): the names of the rules (Quorum, Passing rule, Ballot type), the language switch, the receipt label.
+- **Label** (700, 0.9rem): the names of the rules (Quorum, Passing rule, Ballot type), the language switch, the step numbers, the receipt label.
 - **Note** (400, 0.88rem, 1.35): the one-sentence explanation under each rule, in Moss Ink or Pencil Grey.
+- **Receipt Code** (800, 1.5rem, 1.2, 0.12em): the receipt code on the confirmation screen, and nowhere else.
+- **Small** (400, 0.85rem, 1.35): the footer and the development-preview line, in the secondary ink. Nothing else is smaller.
 
 ### Named Rules
 **The Longer String Rule.** Every layout is tested with the French text, which runs longer. Nothing is sized to the English.
@@ -228,7 +242,7 @@ Flat. Depth is conveyed by borders (1.5px Ink), colour blocks and the paper meta
 
 ## Shapes
 
-Seed Packet is soft and Ballot Paper is square. Seed Packet rows and the cast button take a 14px radius; its question block takes 22px on the top corners and 6px on the bottom, with a 72 by 12px tab rising from the top edge. Ballot Paper takes 4px everywhere and uses straight rules, a 3px double rule under the question, and two 20px notches where the perforated stub meets the edges. Marks for choices are circles (1.7rem in Seed Packet, 2rem in Ballot Paper) with a 2px outline. The language switch is a pill (99px). Dashed rules (1.5px to 2px) mean a tear line: the dashed line above the receipt note and around the receipt code.
+Seed Packet is soft and Ballot Paper is square. Seed Packet rows and the cast button take a 14px radius; its question block takes 22px on the top corners and 6px on the bottom (Packet Foot), with a 72 by 12px tab rising from the top edge. Ballot Paper takes 4px everywhere and uses straight rules, a 3px double rule under the question, and two 20px notches where the perforated stub meets the edges. Marks for choices are circles (1.7rem in Seed Packet, 2rem in Ballot Paper) with a 2px outline. The language switch is a pill (99px). Dashed rules (1.5px to 2px) mean a tear line: the dashed line above the receipt note and around the receipt code.
 
 ## Components
 
@@ -254,13 +268,13 @@ Seed Packet is soft and Ballot Paper is square. Seed Packet rows and the cast bu
 - **Style:** a two-segment pill with a 1.5px Ink border. The current language is filled Ink with text in the page background colour; the other is transparent. Each segment is 44px at least, and is a plain link that works without JavaScript and reloads the page.
 
 ### Confirmation and receipt
-- **Style:** a centred section with a 56px circle-and-check icon in Forest Ballot, a Title-sized heading, a short explanation, a label, and the receipt code in a 2px dashed box at 1.5rem, 800 weight, widely spaced. Focus moves to the heading when the section appears.
+- **Style:** a centred section with a 56px circle-and-check icon in Forest Ballot, a heading at 1.6rem (the Headline's smallest size), a short explanation, a label, and the receipt code in a 2px dashed box in the Receipt Code size (1.5rem, 800, 0.12em tracking). Focus moves to the heading when the section appears.
 
 ### Errors
 - **Style:** one bold Error Red line above the receipt note, announced as an alert, with three parts in order: what happened, what it means, what to do.
 
 ### Footer and template links
-- **Style:** small text (0.85rem) in the secondary ink. Version, build and the source-code link sit in every footer. The template links above it take 44px targets.
+- **Style:** Small text (0.85rem) in the secondary ink. Version, build and the source-code link sit in every footer. The template links above it take 44px targets.
 
 ## Do's and Don'ts
 

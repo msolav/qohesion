@@ -7,7 +7,7 @@
 
 Target installers are volunteers at small organizations, not system administrators. They need one command to install, simple backups and safe upgrades on a low-cost VPS.
 
-## Decision (proposed)
+## Decision
 
 - **TypeScript** end to end, to keep the contributor barrier low.
 - **SvelteKit** (Node adapter) for the web app: small bundles, good accessibility primitives, server-rendered by default so the interface works on old phones and weak connections.

@@ -1,6 +1,6 @@
 # Glossary
 
-Terms used in the interface, the emails and the documentation, with the French form the interface uses. Each term is defined where it first appears on a page (see [content-style.md](content-style.md)). French follows the Office québécois de la langue française where it has a recommendation. This list is a proposal to review with a French-language reader.
+Terms used in the interface, the emails and the documentation, with the French form the interface uses. Each term is defined where it first appears on a page (see [content-style.md](content-style.md)). French follows the Office québécois de la langue française where it has a recommendation. The list was confirmed on 2026-11-26 and is open to revision; a review by a French-language reader is still planned.
 
 | English | French | Meaning |
 |---|---|---|

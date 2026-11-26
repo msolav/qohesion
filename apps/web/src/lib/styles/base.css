@@ -36,10 +36,10 @@ img,svg{display:block}
 
 /* App bar */
 .bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-4)}
-.org{display:flex;align-items:center;gap:var(--space-2);font-weight:700;font-size:.95rem;line-height:1.2;text-decoration:none;min-width:0}
+.org{display:flex;align-items:center;gap:var(--space-2);font-weight:700;font-size:1rem;line-height:1.2;text-decoration:none;min-width:0}
 .org img{flex:none;height:1.5rem;width:auto}
-.org span{overflow-wrap:anywhere}
-.lang{display:flex;flex:none;border:1.5px solid var(--ink);border-radius:99px;overflow:hidden;font-size:.8rem;font-weight:700}
+.org span{overflow-wrap:anywhere;text-wrap:balance}
+.lang{display:flex;flex:none;border:1.5px solid var(--ink);border-radius:99px;overflow:hidden;font-size:.9rem;font-weight:700}
 .lang a{display:grid;place-items:center;min-width:2.75rem;min-height:2.75rem;padding:0 var(--space-2);text-decoration:none;color:var(--ink)}
 .lang a[aria-current="true"]{background:var(--ink);color:var(--bg)}
 .lang a:hover:not([aria-current="true"]){background:var(--line-soft)}
@@ -49,7 +49,7 @@ img,svg{display:block}
 .lede{margin-top:var(--space-4);font-size:1rem}
 .when{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3) var(--space-4);margin-top:var(--space-4);font-weight:600}
 .steps{display:flex;gap:var(--space-2)}
-.steps li{width:1.9rem;height:1.9rem;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:700;border:1.5px solid currentColor;padding:2px}
+.steps li{width:1.9rem;height:1.9rem;border-radius:50%;display:grid;place-items:center;font-size:.9rem;font-weight:700;border:1.5px solid currentColor;padding:2px}
 
 .facts{display:grid;grid-template-columns:minmax(0,1fr)}
 .facts>div{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-4);row-gap:var(--space-1);align-items:baseline}
@@ -79,7 +79,7 @@ img,svg{display:block}
 
 .privacy{display:flex;gap:var(--space-2);align-items:flex-start;margin-top:var(--space-4);font-size:.9rem;color:var(--ink-2)}
 .privacy svg{flex:none;margin-top:.1rem}
-.sample{padding:var(--space-5) var(--space-4) 0;font-size:.8rem;color:var(--ink-2);text-align:center}
+.sample{padding:var(--space-5) var(--space-4) 0;font-size:.85rem;color:var(--ink-2);text-align:center}
 
 /* Confirmation state, shown after the server accepts the ballot */
 .done{padding:var(--space-6) var(--space-2);text-align:center}

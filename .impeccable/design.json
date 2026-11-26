@@ -208,11 +208,15 @@
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Rule names, the language switch, the receipt label."
+        "purpose": "Rule names, the language switch, the step numbers, the receipt label."
       },
       "note": {
         "displayName": "Note",
         "purpose": "The one-sentence definition under each rule."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "The footer and the development-preview line, the smallest text in the product."
       },
       "body-ballot-paper": {
         "displayName": "Body (Ballot Paper)",
