@@ -2,7 +2,9 @@
   <img src="brand/gradient/qohesion-logo-gradient-plate.svg" alt="Qohesion" width="460">
 </p>
 
-**Decide together. Décidez ensemble.**
+**Free, open-source voting software for groups that decide together, designed to protect members' privacy.**
+
+**Un logiciel libre de vote pour les groupes qui décident ensemble, conçu pour protéger la vie privée de leurs membres.**
 
 Qohesion is a free, self-hosted voting and decision tool for any organization whose members decide together: associations, cooperatives, unions, non-profits, clubs, boards and councils, community groups. You install it on your own server, connect your own SMTP service, and your members' data stays with you.
 
