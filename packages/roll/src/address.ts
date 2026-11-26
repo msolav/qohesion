@@ -17,7 +17,11 @@ export function parseAddress(input: string): ParsedAddress | null {
   const at = value.lastIndexOf("@");
   if (at <= 0 || at !== value.indexOf("@")) return null; // exactly one "@", not first
   const local = value.slice(0, at);
-  const domain = value.slice(at + 1).toLowerCase();
+  const rawDomain = value.slice(at + 1);
+  // ASCII only, checked before lower-casing: some non-ASCII letters (the Kelvin sign) lower-case to ASCII ones.
+  // Internationalized domains are written in their xn-- form.
+  if (!/^[\x21-\x7e]+$/.test(rawDomain)) return null;
+  const domain = rawDomain.toLowerCase();
   if (local.length > 64 || !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)) return null;
   if (local.startsWith(".") || local.endsWith(".") || local.includes("..")) return null;
   const labels = domain.split(".");

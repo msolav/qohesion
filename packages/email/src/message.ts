@@ -49,5 +49,7 @@ export function buildHeaders(m: EmailMessage): Record<string, string> {
 }
 
 export function formatAddress(a: Address): string {
-  return a.name ? `${a.name.replace(/"/g, "")} <${a.email}>` : a.email;
+  // Brackets, quotes and backslashes would let a name pose as part of the address ("Org <ceo@bank.example>").
+  const name = (a.name ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/[<>"\\]/g, "").replace(/\s+/g, " ").trim();
+  return name ? `${name} <${a.email}>` : a.email;
 }

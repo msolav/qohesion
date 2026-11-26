@@ -21,7 +21,7 @@ const HEADER = "qohesion-checkpoint-v1";
 
 export function formatCheckpoint(c: Checkpoint): string {
   if (!/^[A-Za-z0-9._:-]{1,128}$/.test(c.origin)) throw new Error("Invalid origin");
-  if (!Number.isInteger(c.size) || c.size < 0) throw new Error("Invalid size");
+  if (!Number.isSafeInteger(c.size) || c.size < 0) throw new Error("Invalid size");
   if (!/^[0-9a-f]{64}$/.test(c.root)) throw new Error("Invalid root");
   return `${HEADER}\n${c.origin}\n${c.size}\n${c.root}\n`;
 }

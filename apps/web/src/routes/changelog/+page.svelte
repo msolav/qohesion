@@ -24,7 +24,7 @@
       <section class="log__release" aria-labelledby="r-{release.name}">
         <h2 id="r-{release.name}">
           {release.name === "Unreleased" ? t.changelog.unreleased : `v${release.name}`}
-          {#if release.date}<span class="log__date"><time datetime={release.date}>{release.date}</time></span>{/if}
+          {#if release.date}<span class="log__date"><time datetime={release.date}>{release.date}</time>{#if release.tag} · {release.tag}{/if}</span>{/if}
         </h2>
         {#each release.intro as line, i (i)}
           <p>{@render segments(line)}</p>

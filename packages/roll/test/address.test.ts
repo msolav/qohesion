@@ -29,6 +29,12 @@ describe("parseAddress", () => {
     expect(isValidAddress("a@xn--caf-dma.fr")).toBe(true);
     expect(isValidAddress("a@café.fr")).toBe(false);
   });
+
+  it("rejects non-ASCII letters that lower-case to ASCII ones, which would pass for another domain", () => {
+    expect(isValidAddress("user@outloo\u212A.com")).toBe(false); // Kelvin sign
+    expect(normalizeAddress("user@outloo\u212A.com")).toBeNull();
+    expect(isValidAddress("user@outlook.com")).toBe(true);
+  });
 });
 
 describe("normalizeAddress", () => {

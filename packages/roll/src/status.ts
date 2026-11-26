@@ -59,12 +59,12 @@ export function applyEvent(status: MemberStatus, event: MemberEvent, phase: Roll
       return yes(status, status);
 
     case "block": // "no more unprompted mail"; a registered member keeps the right to vote
-      if (status === "listed" || status === "requested" || status === "withdrawn" || status === "bounced") return yes(status, "blocked");
-      return yes(status, status);
+      if (status === "listed" || status === "requested" || status === "withdrawn") return yes(status, "blocked");
+      return yes(status, status); // a bounced address stays bounced: it must be corrected first
 
     case "correct_address": // the administrator replaced a bounced address
       if (status !== "bounced") return no("transition");
-      return phase === "registration" ? yes(status, "listed") : no("phase");
+      return registrationOpen ? yes(status, "listed") : no("phase");
   }
 }
 

@@ -46,6 +46,19 @@ describe("preview ballot action", () => {
     expect(o.status).toBe(400);
   });
 
+  it("refuses a body that is not a valid form with status 400 instead of failing", async () => {
+    const run = actions.default as unknown as (event: { request: Request }) => Promise<Outcome>;
+    for (const init of [
+      { body: "x", headers: { "content-type": "multipart/form-data; boundary=zzz" } },
+      { body: "{}", headers: { "content-type": "application/json" } },
+      { body: "not a form", headers: { "content-type": "text/plain" } },
+    ]) {
+      const o = await run({ request: new Request("http://localhost/preview/ballot", { method: "POST", ...init }) });
+      expect(o.status).toBe(400);
+      expect(code(o)).toBe("invalid_type");
+    }
+  });
+
   it("ignores fields it does not know", async () => {
     expect(await submit([["choice", "abstain"], ["other", "x"]])).toMatchObject({ ok: true });
   });

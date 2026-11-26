@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MerkleLog, fromHex, hashLeaf, toHex, verifyConsistency, verifyInclusion } from "../src/index.js";
+import { MerkleLog, fromHex, hashLeaf, isPowerOfTwo, toHex, verifyConsistency, verifyInclusion } from "../src/index.js";
 
 /** Leaves of the Certificate Transparency reference tests (hexadecimal). */
 const CT_LEAVES = ["", "00", "10", "2021", "3031", "40414243", "5051525354555657", "606162636465666768696a6b6c6d6e6f"];
@@ -223,10 +223,12 @@ describe("consistency proofs", () => {
   it("reject impossible or malformed arguments without throwing", () => {
     const log = logOf(6);
     const head = { size: 6, root: log.root() };
-    expect(verifyConsistency({ size: 0, root: log.root(0) }, head, [])).toBe(false);
+    expect(verifyConsistency({ size: 0, root: log.root(0) }, head, [])).toBe(true); // the empty tree is a prefix of every tree
+    expect(verifyConsistency({ size: 0, root: log.root(3) }, head, [])).toBe(false); // but a size 0 head needs the empty root
+    expect(verifyConsistency({ size: 0, root: log.root(0) }, head, [log.root(3)])).toBe(false);
     expect(verifyConsistency({ size: 7, root: head.root }, head, [])).toBe(false);
     expect(verifyConsistency({ size: 3, root: log.root(3) }, head, ["nothex"])).toBe(false);
-    expect(() => log.consistencyProof(0, 6)).toThrow(RangeError);
+    expect(() => log.consistencyProof(-1, 6)).toThrow(RangeError);
     expect(() => log.consistencyProof(7, 6)).toThrow(RangeError);
     expect(() => log.consistencyProof(3, 7)).toThrow(RangeError);
   });
@@ -253,5 +255,46 @@ describe("log", () => {
   it("refuses a root for a size beyond its entries", () => {
     expect(() => logOf(3).root(4)).toThrow(RangeError);
     expect(() => logOf(3).root(-1)).toThrow(RangeError);
+  });
+});
+
+describe("hash length", () => {
+  const log = logOf(2);
+  const [a, b] = [log.leafHash(0), log.leafHash(1)];
+  const root = log.root();
+
+  it("is checked by the inclusion verifier: a hash of another length is never accepted", () => {
+    // Splitting a hash across the leaf and the path would otherwise give the same bytes to the hash function.
+    expect(verifyInclusion({ leafHash: a + b.slice(0, 10), index: 0, size: 2, path: [b.slice(10)], root })).toBe(false);
+    expect(verifyInclusion({ leafHash: "", index: 0, size: 2, path: [a + b], root })).toBe(false);
+    expect(verifyInclusion({ leafHash: "", index: 0, size: 1, path: [], root: "" })).toBe(false);
+    expect(verifyInclusion({ leafHash: a, index: 0, size: 2, path: [b], root })).toBe(true);
+    expect(verifyInclusion({ leafHash: a, index: 0, size: 2, path: [`${b}00`], root })).toBe(false);
+    expect(verifyInclusion({ leafHash: a, index: 0, size: 2, path: [b], root: `${root}00` })).toBe(false);
+  });
+
+  it("is checked by the consistency verifier", () => {
+    const big = logOf(8);
+    const first = { size: 4, root: big.root(4) };
+    const second = { size: 8, root: big.root() };
+    const proof = big.consistencyProof(4, 8);
+    expect(verifyConsistency(first, second, proof)).toBe(true);
+    expect(verifyConsistency({ ...first, root: first.root.slice(2) }, second, proof)).toBe(false);
+    expect(verifyConsistency(first, { ...second, root: `${second.root}ab` }, proof)).toBe(false);
+    expect(verifyConsistency(first, second, proof.map((h) => h.slice(0, 62)))).toBe(false);
+  });
+});
+
+describe("very large trees", () => {
+  it("recognise powers of two by their real value, not their lowest 32 bits", () => {
+    for (const n of [1, 2, 4, 2 ** 31, 2 ** 32, 2 ** 33, 2 ** 52]) expect(isPowerOfTwo(n), String(n)).toBe(true);
+    // (2^32 + 4) & (2^32 + 3) is 0 when both are cut to 32 bits, which would wrongly pass for a power of two.
+    for (const n of [0, -2, 3, 2 ** 32 + 1, 2 ** 32 + 4, 2 ** 33 + 1, 3 * 2 ** 32, 2 ** 53, 1.5, Number.NaN]) expect(isPowerOfTwo(n), String(n)).toBe(false);
+  });
+
+  it("refuse sizes that are not safe integers", () => {
+    const zero = "00".repeat(32);
+    expect(verifyInclusion({ leafHash: zero, index: 0, size: 2 ** 53, path: [], root: zero })).toBe(false);
+    expect(verifyConsistency({ size: 1, root: zero }, { size: 2 ** 53, root: zero }, [])).toBe(false);
   });
 });

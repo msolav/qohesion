@@ -58,7 +58,7 @@ export interface Amendment {
   readonly id: string;
   readonly kind: AmendmentKind;
   readonly fingerprint: string;
-  /** ISO 8601 time. */
+  /** ISO 8601 time with an offset or Z, for example 2027-03-01T15:00:00Z. */
   readonly at: string;
   readonly author: string;
   readonly approvedBy: readonly string[];
@@ -71,8 +71,13 @@ export function approvalsRequired(level: AssuranceLevel): number {
   return level === "informal" ? 0 : level === "formal" ? 1 : 2;
 }
 
+const identity = (who: string): string => who.trim().toLowerCase();
+
+/** Distinct approvers other than the author. Names are compared without regard to case or surrounding spaces. */
 export function approvalCount(a: Amendment): number {
-  return new Set(a.approvedBy.filter((who) => who !== a.author)).size;
+  const author = identity(a.author);
+  const approvers = a.approvedBy.map(identity).filter((who) => who !== "" && who !== author);
+  return new Set(approvers).size;
 }
 
 export function isApproved(a: Amendment, level: AssuranceLevel): boolean {
@@ -80,21 +85,36 @@ export function isApproved(a: Amendment, level: AssuranceLevel): boolean {
 }
 
 export interface AmendedRoll extends FrozenRoll {
-  /** Approved amendments made once voting had started: the group sees them as "added late". */
+  /** Approved amendments made after the freeze (while frozen or during voting): the group sees them as "added late". */
   readonly late: readonly Amendment[];
   /** Amendments still waiting for approval. They have no effect yet. */
   readonly pending: readonly Amendment[];
 }
 
-/** Applies approved amendments, oldest first, to the frozen roll. The count and code are those of the result. */
+const OFFSET = /(Z|[+-]\d{2}:?\d{2})$/i;
+
+/** The instant of an amendment. A time without an offset would depend on the server's zone, so it is refused. */
+function instant(a: Amendment): number {
+  const t = OFFSET.test(a.at) ? Date.parse(a.at) : Number.NaN;
+  if (Number.isNaN(t)) throw new Error(`Invalid amendment time: ${a.at}`);
+  return t;
+}
+
+/**
+ * Applies approved amendments to the frozen roll, oldest first by instant (not by the text of the time), with ties
+ * broken by comparing identifiers code unit by code unit. The count and code are those of the result.
+ */
 export function applyAmendments(base: Iterable<string>, amendments: readonly Amendment[], level: AssuranceLevel): AmendedRoll {
   const set = new Set(base);
   const late: Amendment[] = [];
   const pending: Amendment[] = [];
-  for (const a of [...amendments].sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : x.id.localeCompare(y.id)))) {
+  const ordered = amendments
+    .map((a) => ({ a, t: instant(a) }))
+    .sort((x, y) => x.t - y.t || (x.a.id < y.a.id ? -1 : x.a.id > y.a.id ? 1 : 0));
+  for (const { a } of ordered) {
     if (!isApproved(a, level)) { pending.push(a); continue; }
     if (a.kind === "added") set.add(a.fingerprint); else set.delete(a.fingerprint);
-    if (a.phase === "voting") late.push(a);
+    if (a.phase !== "registration") late.push(a);
   }
   const frozen = freezeRoll(set);
   return { ...frozen, late, pending };

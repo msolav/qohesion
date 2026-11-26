@@ -10,6 +10,12 @@ describe("addresses", () => {
     for (const a of ["", "a", "a@b", "a b@c.de", "a@b.c d", "<a@b.co>", "a@b.co,c@d.ef"]) expect(isEmailAddress(a)).toBe(false);
   });
   it("formats a display name without quotes", () => expect(formatAddress({ email: "a@b.co", name: 'Q"o' })).toBe("Qo <a@b.co>"));
+  it("keeps a display name from posing as part of the address", () => {
+    expect(formatAddress({ email: "noreply@qohesion.app", name: "Org <ceo@bank.example>" })).toBe("Org ceo@bank.example <noreply@qohesion.app>");
+    expect(formatAddress({ email: "a@b.co", name: "A\\ B\r\nBcc: x@y.zz" })).toBe("A B Bcc: x@y.zz <a@b.co>");
+    expect(formatAddress({ email: "a@b.co", name: "<>" })).toBe("a@b.co");
+    expect(formatAddress({ email: "a@b.co" })).toBe("a@b.co");
+  });
 });
 
 describe("validateMessage", () => {

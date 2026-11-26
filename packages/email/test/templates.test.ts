@@ -31,9 +31,17 @@ describe("formatMoment", () => {
     expect(formatMoment("2027-03-02T05:00:00Z", "America/Toronto")).toBe("2027-03-02 00:00 EST (America/Toronto)");
   });
 
+  it("rejects a time without Z or an offset, which would be read in the server's zone", () => {
+    expect(() => formatMoment("2027-03-01T18:30:00", "America/Toronto")).toThrow(/Z or an offset/);
+    expect(() => formatMoment("2027-03-01", "UTC")).toThrow(/Z or an offset/);
+    expect(formatMoment("2027-03-01T18:30:00-05:00", "America/Toronto")).toBe("2027-03-01 18:30 EST (America/Toronto)");
+    expect(formatMoment("2027-03-01T23:30:00+0000", "America/Toronto")).toBe("2027-03-01 18:30 EST (America/Toronto)");
+  });
+
   it("accepts a Date, and rejects an invalid date or zone", () => {
     expect(formatMoment(new Date("2027-03-01T05:05:00Z"), "UTC")).toMatch(/^2027-03-01 05:05 UTC \(UTC\)$/);
-    expect(() => formatMoment("not a date", "UTC")).toThrow(/Invalid date/);
+    expect(() => formatMoment("not a date", "UTC")).toThrow(/Z or an offset/);
+    expect(() => formatMoment("2027-13-45T10:00:00Z", "UTC")).toThrow(/Invalid date/);
     expect(() => formatMoment("2027-03-01T05:05:00Z", "Mars/Olympus")).toThrow();
   });
 });
@@ -44,6 +52,19 @@ describe("helpers", () => {
     expect(cleanLabel("a".repeat(200), 20)).toBe(`${"a".repeat(19)}…`);
   });
 
+  it("does not cut a pair of surrogates when shortening", () => {
+    const text = `${"a".repeat(78)}\u{1F600}\u{1F600}\u{1F600}`;
+    const out = cleanLabel(text, 80);
+    expect(out).toBe(`${"a".repeat(78)}\u{1F600}…`);
+    expect(out).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/); // no lone surrogate
+  });
+
+  it("removes characters that reorder or hide text: direction marks, isolates, zero-width characters, U+0085", () => {
+    expect(cleanLabel("Coop\u202Eerutan\u202C du\u2066 Parc\u2069")).toBe("Cooperutan du Parc");
+    expect(cleanLabel("a\u200Bb\u200Dc\uFEFFd\u00ADe")).toBe("abcde");
+    expect(cleanLabel("a\u0085b")).toBe("a b");
+  });
+
   it("escapes HTML", () => {
     expect(escapeHtml(`<a href="x" onclick='y'>&</a>`)).toBe("&lt;a href=&quot;x&quot; onclick=&#39;y&#39;&gt;&amp;&lt;/a&gt;");
   });
@@ -51,7 +72,11 @@ describe("helpers", () => {
   it("accepts https links and a local address for development, and nothing else", () => {
     expect(assertLink("l", "https://qohesion.app/v/abc?x=1")).toBe("https://qohesion.app/v/abc?x=1");
     expect(assertLink("l", "http://localhost:5173/v/abc")).toBe("http://localhost:5173/v/abc");
-    for (const bad of ["http://qohesion.app/v/abc", "javascript:alert(1)", "https://a.b/x y", 'https://a.b/"><script>', "//a.b/x", "https://"]) {
+    for (const bad of [
+      "http://qohesion.app/v/abc", "javascript:alert(1)", "https://a.b/x y", 'https://a.b/"><script>', "//a.b/x", "https://",
+      "https://qohesion.app@evil.example/", "https://user:pw@qohesion.app/x", "https://qohesion.app/\u202Egpj.exe", "https://qohesion.app/\u0000",
+      "https://qohesion.app/caf\u00e9",
+    ]) {
       expect(() => assertLink("l", bad)).toThrow(/must be an https address/);
     }
   });

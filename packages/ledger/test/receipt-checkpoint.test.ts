@@ -91,6 +91,8 @@ describe("checkpoint", () => {
     expect(() => formatCheckpoint({ ...checkpoint, origin: "" })).toThrow(/origin/);
     expect(() => formatCheckpoint({ ...checkpoint, size: -1 })).toThrow(/size/);
     expect(() => formatCheckpoint({ ...checkpoint, size: 1.5 })).toThrow(/size/);
+    expect(() => formatCheckpoint({ ...checkpoint, size: 1e21 })).toThrow(/size/);
+    expect(() => formatCheckpoint({ ...checkpoint, size: 2 ** 53 })).toThrow(/size/);
     expect(() => formatCheckpoint({ ...checkpoint, root: "abc" })).toThrow(/root/);
   });
 
@@ -101,6 +103,12 @@ describe("checkpoint", () => {
       checkpointDigest({ ...checkpoint, root: root.replace("5", "6") }),
     ]);
     expect(digests.size).toBe(4);
+  });
+
+  it("rejects a size above the safe integers when reading, and accepts the largest safe one", () => {
+    const good = formatCheckpoint(checkpoint);
+    expect(parseCheckpoint(good.replace("\n8\n", "\n9007199254740994\n"))).toBeNull();
+    expect(parseCheckpoint(formatCheckpoint({ ...checkpoint, size: Number.MAX_SAFE_INTEGER }))).toEqual({ ...checkpoint, size: Number.MAX_SAFE_INTEGER });
   });
 
   it("describes a real ledger", () => {

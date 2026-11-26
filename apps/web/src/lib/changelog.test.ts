@@ -16,7 +16,10 @@ describe("inline", () => {
   it("keeps links to this site and anchors, and turns every other address into plain text", () => {
     expect(inline("[a](/version)")).toEqual([{ type: "link", text: "a", href: "/version" }]);
     expect(inline("[a](#unreleased)")).toEqual([{ type: "link", text: "a", href: "#unreleased" }]);
-    for (const bad of ["javascript:alert", "http://example.org", "//evil.example/x", "data:text/html,x", "ftp://x.org/y"]) {
+    for (const bad of [
+      "javascript:alert", "http://example.org", "//evil.example/x", "data:text/html,x", "ftp://x.org/y",
+      "/\\evil.example", "/\\/evil.example", "/a\\b", "https://example.org/a\\b", "#a\\b",
+    ]) {
       expect(inline(`[click](${bad})`), bad).toEqual([{ type: "text", text: "click" }]);
     }
   });
@@ -81,6 +84,18 @@ describe("parseChangelog", () => {
 
   it("keeps a plain line inside a section as one entry", () => {
     expect(releases[0]?.sections[1]?.items).toEqual([[{ type: "text", text: "None." }]]);
+  });
+
+  it("reads a tag after the date, such as YANKED, without merging the release into the previous one", () => {
+    const r = parseChangelog("## [0.2.0] - 2027-03-01 [YANKED]\n\n### Fixed\n- A.\n\n## [0.1.0] - 2027-02-01\n\n### Fixed\n- B.\n");
+    expect(r.map((x) => x.name)).toEqual(["0.2.0", "0.1.0"]);
+    expect(r[0]).toMatchObject({ date: "2027-03-01", tag: "YANKED" });
+    expect(r[1]?.tag).toBeUndefined();
+  });
+
+  it("does not turn link reference definitions at the foot of the file into entries", () => {
+    const r = parseChangelog("## [0.1.0] - 2027-02-01\n\n### Fixed\n- B.\n\n[0.1.0]: https://example.org/releases/0.1.0\n[Unreleased]: https://example.org/compare/0.1.0...HEAD\n");
+    expect(r[0]?.sections[0]?.items).toHaveLength(1);
   });
 
   it("returns nothing for text without a release heading", () => {

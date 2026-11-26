@@ -25,7 +25,20 @@ function split(n: number): number {
   return k;
 }
 
-const isPowerOfTwo = (n: number): boolean => n > 0 && (n & (n - 1)) === 0;
+/** True for 1, 2, 4, 8 and so on, for any safe integer (bit operators would cut the number to 32 bits). */
+export function isPowerOfTwo(n: number): boolean {
+  if (!Number.isSafeInteger(n) || n < 1) return false;
+  let p = 1;
+  while (p < n) p *= 2;
+  return p === n;
+}
+
+/** Decodes a hash and checks its length. A verifier must not accept a hash of another length. */
+function digest(hex: string, length: number): Uint8Array {
+  const bytes = fromHex(hex);
+  if (bytes.length !== length) throw new Error("A hash has the wrong length");
+  return bytes;
+}
 
 /** Root of the tree over leaf hashes[start, start + size). */
 function rangeRoot(leaves: readonly Uint8Array[], start: number, size: number, hash: Hasher, cache: Map<string, Uint8Array>): Uint8Array {
@@ -106,11 +119,11 @@ export class MerkleLog {
     return inclusionPath(this.#leaves, index, 0, size, this.#hash, this.#cache).map(toHex);
   }
 
-  /** Proof that the tree of the first `first` entries is a prefix of the tree of the first `second` entries. */
+  /** Proof that the tree of the first `first` entries (possibly none) is a prefix of the tree of the first `second` entries. */
   consistencyProof(first: number, second: number = this.size): string[] {
     this.#checkSize(second);
-    if (!Number.isInteger(first) || first < 1 || first > second) throw new RangeError("The first size must be between 1 and the second size");
-    if (first === second) return [];
+    if (!Number.isInteger(first) || first < 0 || first > second) throw new RangeError("The first size must be between 0 and the second size");
+    if (first === 0 || first === second) return [];
     return consistencyPath(this.#leaves, first, 0, second, true, this.#hash, this.#cache).map(toHex);
   }
 
@@ -132,13 +145,14 @@ export interface InclusionClaim {
 export function verifyInclusion(claim: InclusionClaim, hash: Hasher = sha256): boolean {
   try {
     const { index, size } = claim;
-    if (!Number.isInteger(index) || !Number.isInteger(size) || index < 0 || index >= size) return false;
+    if (!Number.isSafeInteger(index) || !Number.isSafeInteger(size) || index < 0 || index >= size) return false;
+    const length = emptyRoot(hash).length;
     let fn = index;
     let sn = size - 1;
-    let r = fromHex(claim.leafHash);
+    let r = digest(claim.leafHash, length);
     for (const hex of claim.path) {
       if (sn === 0) return false;
-      const p = fromHex(hex);
+      const p = digest(hex, length);
       if ((fn & 1) === 1 || fn === sn) {
         r = hashNode(p, r, hash);
         if ((fn & 1) === 0) {
@@ -150,7 +164,7 @@ export function verifyInclusion(claim: InclusionClaim, hash: Hasher = sha256): b
       fn = Math.floor(fn / 2);
       sn = Math.floor(sn / 2);
     }
-    return sn === 0 && equalBytes(r, fromHex(claim.root));
+    return sn === 0 && equalBytes(r, digest(claim.root, length));
   } catch {
     return false;
   }
@@ -165,10 +179,15 @@ export interface TreeHead {
 /** Checks that the later tree contains the earlier one unchanged, followed by new entries. */
 export function verifyConsistency(first: TreeHead, second: TreeHead, proof: readonly string[], hash: Hasher = sha256): boolean {
   try {
-    if (!Number.isInteger(first.size) || !Number.isInteger(second.size) || first.size < 1 || first.size > second.size) return false;
-    if (first.size === second.size) return proof.length === 0 && equalBytes(fromHex(first.root), fromHex(second.root));
-    const path = proof.map(fromHex);
-    if (isPowerOfTwo(first.size)) path.unshift(fromHex(first.root));
+    if (!Number.isSafeInteger(first.size) || !Number.isSafeInteger(second.size) || first.size < 0 || first.size > second.size) return false;
+    const length = emptyRoot(hash).length;
+    const firstRoot = digest(first.root, length);
+    const secondRoot = digest(second.root, length);
+    // The empty tree is a prefix of every tree. Nothing needs proving, but its root must be the empty root.
+    if (first.size === 0) return proof.length === 0 && equalBytes(firstRoot, emptyRoot(hash));
+    if (first.size === second.size) return proof.length === 0 && equalBytes(firstRoot, secondRoot);
+    const path = proof.map((h) => digest(h, length));
+    if (isPowerOfTwo(first.size)) path.unshift(firstRoot);
     if (path.length === 0) return false;
     let fn = first.size - 1;
     let sn = second.size - 1;
@@ -189,7 +208,7 @@ export function verifyConsistency(first: TreeHead, second: TreeHead, proof: read
       fn = Math.floor(fn / 2);
       sn = Math.floor(sn / 2);
     }
-    return sn === 0 && equalBytes(fr, fromHex(first.root)) && equalBytes(sr, fromHex(second.root));
+    return sn === 0 && equalBytes(fr, firstRoot) && equalBytes(sr, secondRoot);
   } catch {
     return false;
   }

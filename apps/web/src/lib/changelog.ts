@@ -17,11 +17,14 @@ export interface Release {
   /** "Unreleased" or a version such as "0.1.0". */
   readonly name: string;
   readonly date?: string;
+  /** A tag after the date, such as "YANKED", which Keep a Changelog allows. */
+  readonly tag?: string;
   readonly intro: readonly Segment[][];
   readonly sections: readonly Section[];
 }
 
-const SAFE_HREF = /^(https:\/\/[^\s<>"']+|\/[^\s<>"'/][^\s<>"']*|#[^\s<>"']+)$/;
+// No backslash: browsers read "/\\evil.example" as "//evil.example", an address on another site.
+const SAFE_HREF = /^(https:\/\/[^\s<>"'\\]+|\/[^\s<>"'/\\][^\s<>"'\\]*|#[^\s<>"'\\]+)$/;
 
 /** Splits a line into text, `code` and [link](address) segments. Links to anything but https or this site stay as text. */
 export function inline(source: string): Segment[] {
@@ -42,22 +45,29 @@ export function inline(source: string): Segment[] {
 }
 
 export function parseChangelog(text: string): Release[] {
-  const releases: { name: string; date?: string; intro: Segment[][]; sections: { title: string; items: Segment[][] }[] }[] = [];
+  const releases: { name: string; date?: string; tag?: string; intro: Segment[][]; sections: { title: string; items: Segment[][] }[] }[] = [];
   let release: (typeof releases)[number] | undefined;
   let section: { title: string; items: Segment[][] } | undefined;
   let continuing = false;
 
   for (const raw of text.split("\n")) {
     const line = raw.trimEnd();
-    const heading = /^## \[([^\]]+)\](?:\s+-\s+(\S+))?\s*$/.exec(line);
+    const heading = /^## \[([^\]]+)\](?:\s+-\s+(\S+))?(?:\s+\[([^\]]+)\])?\s*$/.exec(line);
     if (heading) {
-      release = { name: heading[1] ?? "", ...(heading[2] ? { date: heading[2] } : {}), intro: [], sections: [] };
+      release = {
+        name: heading[1] ?? "",
+        ...(heading[2] ? { date: heading[2] } : {}),
+        ...(heading[3] ? { tag: heading[3] } : {}),
+        intro: [],
+        sections: [],
+      };
       releases.push(release);
       section = undefined;
       continuing = false;
       continue;
     }
     if (!release) continue;
+    if (/^\[[^\]]+\]:\s*\S+/.test(line)) continue; // link reference definitions at the foot of the file
     const sub = /^### (.+)$/.exec(line);
     if (sub) {
       section = { title: sub[1] ?? "", items: [] };

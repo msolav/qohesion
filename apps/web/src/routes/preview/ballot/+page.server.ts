@@ -13,7 +13,9 @@ const noErrors: Readonly<Record<string, readonly ValidationError[]>> = {};
 export const actions: Actions = {
   /** Validates the answer with the engine. The preview records nothing. */
   default: async ({ request }) => {
-    const data = await request.formData();
+    // A body that is not a valid form (wrong content type, broken multipart) is refused, not a server error.
+    const data = await request.formData().catch(() => undefined);
+    if (!data) return fail(400, { ok: false as const, errors: { choice: [{ code: "invalid_type" as const }] } });
     // One value for a single-choice question. Several values, or a file, are passed on as they are and refused by the engine.
     const values = data.getAll("choice").map((v) => (typeof v === "string" ? v : ""));
     const answers: Answers = { choice: values.length === 0 || (values.length === 1 && values[0] === "") ? undefined : values.length === 1 ? values[0] : values };

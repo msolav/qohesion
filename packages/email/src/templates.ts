@@ -15,8 +15,13 @@ const NBSP = "\u00a0";
 
 /** Collapses whitespace and control characters, then shortens. Used for names that come from users. */
 export function cleanLabel(value: string, max = 120): string {
-  const flat = value.replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, " ").replace(/\s+/g, " ").trim();
-  return flat.length <= max ? flat : `${flat.slice(0, max - 1).trimEnd()}…`;
+  const flat = value
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ") // control characters, including line breaks and U+0085
+    .replace(/[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180f\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0]/g, "") // zero-width and direction-changing characters
+    .replace(/\s+/g, " ")
+    .trim();
+  const letters = Array.from(flat); // by code point, so that a pair of surrogates is never cut in two
+  return letters.length <= max ? flat : `${letters.slice(0, max - 1).join("").trimEnd()}…`;
 }
 
 export function escapeHtml(value: string): string {
@@ -26,14 +31,20 @@ export function escapeHtml(value: string): string {
 const SAFE_LINK = /^https:\/\/[^\s<>"'\\]+$/;
 const LOCAL_LINK = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s<>"'\\]*)?$/;
 
-/** Links are https. A local address over http is accepted for development. */
+/** Links are https, with no user name or password and only printable ASCII. A local address over http is accepted for development. */
 export function assertLink(label: string, value: string): string {
   if (!SAFE_LINK.test(value) && !LOCAL_LINK.test(value)) throw new Error(`${label} must be an https address`);
+  if (!/^[\x21-\x7e]+$/.test(value)) throw new Error(`${label} must be an https address`);
+  // "https://qohesion.app@evil.example/" reads like qohesion.app but goes to evil.example.
+  const authority = value.replace(/^https?:\/\//, "").split(/[/?#]/, 1)[0] ?? "";
+  if (authority === "" || authority.includes("@")) throw new Error(`${label} must be an https address`);
   return value;
 }
 
 /** "2027-03-01 18:30 EST (America/Toronto)". The same form in every language. */
 export function formatMoment(at: Date | string, timeZone: string): string {
+  // A time without Z or an offset would be read in the server's zone, and print a different hour on another server.
+  if (typeof at === "string" && !/(Z|[+-]\d{2}:?\d{2})$/i.test(at)) throw new Error("A time needs Z or an offset");
   const date = typeof at === "string" ? new Date(at) : at;
   if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
   const parts = new Intl.DateTimeFormat("en-CA", {

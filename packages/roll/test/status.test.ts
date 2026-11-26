@@ -118,6 +118,19 @@ describe("delivery and complaint events", () => {
     expect(go("listed", "correct_address", "registration")).toEqual({ ok: false, reason: "transition" });
   });
 
+  it("lets the administrator replace a bounced address during voting when registration stays open", () => {
+    expect(go("bounced", "correct_address", "voting", true)).toMatchObject({ ok: true, status: "listed" });
+    expect(go("bounced", "correct_address", "voting")).toEqual({ ok: false, reason: "phase" });
+  });
+
+  it("never lets a bounced address be mailed again without a correction", () => {
+    // Whatever events follow, a bounced address leaves that status only through correct_address.
+    for (const e of EVENTS) for (const p of PHASES) for (const late of [false, true]) {
+      const t = go("bounced", e, p, late);
+      if (t.ok && t.status !== "bounced") expect(e).toBe("correct_address");
+    }
+  });
+
   it("takes a complaining member out of the poll, and blocks an unprompted address", () => {
     expect(go("requested", "complain", "registration")).toMatchObject({ ok: true, status: "withdrawn" });
     expect(go("confirmed", "complain", "voting")).toMatchObject({ ok: true, status: "withdrawn" });
@@ -127,7 +140,7 @@ describe("delivery and complaint events", () => {
 
   it("blocks further unprompted mail without removing a registered member's right to vote", () => {
     expect(go("listed", "block", "registration")).toMatchObject({ ok: true, status: "blocked" });
-    expect(go("bounced", "block", "registration")).toMatchObject({ ok: true, status: "blocked" });
+    expect(go("bounced", "block", "registration")).toMatchObject({ ok: true, status: "bounced", changed: false });
     expect(go("confirmed", "block", "voting")).toMatchObject({ ok: true, status: "confirmed", changed: false });
     expect(go("voted", "block", "voting")).toMatchObject({ ok: true, status: "voted", changed: false });
   });

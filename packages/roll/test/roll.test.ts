@@ -73,6 +73,11 @@ describe("approvals", () => {
     expect(isApproved(a, "reinforced")).toBe(false);
   });
 
+  it("compare administrators without regard to case or spaces, and ignore empty names", () => {
+    const a = amendment({ id: "1", author: "alice@x.org", approvedBy: ["Alice@x.org", " alice@x.org ", "", "  ", "bob@x.org", "BOB@x.org"] });
+    expect(approvalCount(a)).toBe(1); // only Bob counts, once
+  });
+
   it("are not needed at the informal level", () => {
     expect(isApproved(amendment({ id: "1" }), "informal")).toBe(true);
     expect(isApproved(amendment({ id: "1" }), "formal")).toBe(false);
@@ -112,11 +117,18 @@ describe("applyAmendments", () => {
     expect(r.count).toBe(5);
   });
 
-  it("does not mark an amendment made before voting as late", () => {
+  it("does not mark an amendment made during registration as late", () => {
     const a = amendment({ id: "1", phase: "registration", approvedBy: ["admin-2"] });
     const r = applyAmendments(frozen.fingerprints, [a], "formal");
     expect(r.count).toBe(5);
     expect(r.late).toEqual([]);
+  });
+
+  it("marks an amendment made after the freeze as late, whether voting had started or not (ADR 0003, section 4)", () => {
+    for (const phase of ["frozen", "voting"] as const) {
+      const a = amendment({ id: "1", phase, approvedBy: ["admin-2"] });
+      expect(applyAmendments(frozen.fingerprints, [a], "formal").late).toEqual([a]);
+    }
   });
 
   it("removes an address, and ignores the removal of one that is not there", () => {
@@ -138,6 +150,34 @@ describe("applyAmendments", () => {
     expect(r2.code).toBe(r1.code);
     const readded = amendment({ id: "3", at: "2027-03-01T12:00:00Z", approvedBy: ["admin-2"] });
     expect(applyAmendments(frozen.fingerprints, [readded, remove, add], "formal").fingerprints).toContain(f);
+  });
+
+  it("orders by the instant, not by the text of the time", () => {
+    const f = fp("late@exemple.ca");
+    // ".500Z" sorts after "Z" as text, but the remove at 10:00:00 comes first in time: the address ends up added.
+    const add = amendment({ id: "1", at: "2027-03-01T10:00:00.500Z", approvedBy: ["admin-2"] });
+    const remove = amendment({ id: "2", kind: "removed", fingerprint: f, at: "2027-03-01T10:00:00Z", approvedBy: ["admin-2"] });
+    expect(applyAmendments(frozen.fingerprints, [add, remove], "formal").fingerprints).toContain(f);
+    // A time with an offset is read as the instant it names: 09:00 at -05:00 is 14:00Z, after the 12:00Z removal.
+    const addLocal = amendment({ id: "3", at: "2027-03-01T09:00:00-05:00", approvedBy: ["admin-2"] });
+    const removeUtc = amendment({ id: "4", kind: "removed", fingerprint: f, at: "2027-03-01T12:00:00Z", approvedBy: ["admin-2"] });
+    expect(applyAmendments(frozen.fingerprints, [removeUtc, addLocal], "formal").fingerprints).toContain(f);
+  });
+
+  it("breaks ties by comparing identifiers code unit by code unit, in every locale", () => {
+    const f = fp("late@exemple.ca");
+    const at = "2027-03-01T10:00:00Z";
+    // "B" < "a" in code units. The later of the two (the add, "a") wins.
+    const remove = amendment({ id: "B", kind: "removed", fingerprint: f, at, approvedBy: ["admin-2"] });
+    const add = amendment({ id: "a", at, approvedBy: ["admin-2"] });
+    expect(applyAmendments(frozen.fingerprints, [add, remove], "formal").fingerprints).toContain(f);
+    expect(applyAmendments(frozen.fingerprints, [remove, add], "formal").fingerprints).toContain(f);
+  });
+
+  it("refuses a time without an offset (it would depend on the server's zone) or an invalid time", () => {
+    for (const at of ["2027-03-01T10:00:00", "2027-03-01", "not a time", ""]) {
+      expect(() => applyAmendments(frozen.fingerprints, [amendment({ id: "1", at })], "informal"), at).toThrow(/Invalid amendment time/);
+    }
   });
 
   it("gives the same code as freezing the final list directly", () => {
