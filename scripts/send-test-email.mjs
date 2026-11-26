@@ -25,10 +25,12 @@ const body = {
   textContent:
     `Ce courriel vérifie la configuration d'envoi. Aucune action n'est requise.\n` +
     `This email checks the sending configuration. No action is required.\n\n` +
+    `Lien de contrôle / Check link: https://qohesion.app/\n\n` +
     `Envoyé / Sent: ${sentAt}`,
   htmlContent:
     `<p>Ce courriel vérifie la configuration d'envoi. Aucune action n'est requise.</p>` +
     `<p>This email checks the sending configuration. No action is required.</p>` +
+    `<p>Lien de contrôle / Check link: <a href="https://qohesion.app/">https://qohesion.app/</a></p>` +
     `<p>Envoyé / Sent: ${sentAt}</p>`,
   headers: {
     "List-Unsubscribe": "<https://qohesion.app/unsubscribe-test>",
@@ -50,6 +52,9 @@ if (response.ok) {
   console.log("  - SPF: PASS, DKIM: PASS, DMARC: PASS");
   console.log("  - the signing domain is the sending domain, not brevo.com");
   console.log("  - whether a 'Sent with Brevo' footer appears");
+  console.log("  - then download the message (three dots, 'Download message') and run:");
+  console.log("      python3 -I scripts/inspect-eml.py path/to/message.eml");
+  console.log("    The check link must stay https://qohesion.app/ (not wrapped), with no tracking image.");
   console.log("  - whether it landed in the inbox, promotions or spam");
 } else {
   console.error(`Rejected (HTTP ${response.status}): ${data.message ?? "no detail"}`);
