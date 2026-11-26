@@ -90,6 +90,19 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build --build-arg QOHESION_COMMIT=${{ github.sha }} -t qohesion:ci .
+      - name: Start it and check the version endpoint
+        run: |
+          docker run -d --name q -p 3000:3000 -e ORIGIN=http://localhost:3000 --read-only --cap-drop ALL qohesion:ci
+          for i in $(seq 1 20); do curl -fsS http://localhost:3000/version && break || sleep 1; done
+          curl -fsS http://localhost:3000/version | grep -q "\"version\":\"$(cat VERSION)\""
+          curl -fsS http://localhost:3000/version | grep -q "${GITHUB_SHA:0:7}"
+
   repository:
     runs-on: ubuntu-latest
     steps:

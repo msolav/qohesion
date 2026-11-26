@@ -56,7 +56,7 @@
           <span>{data.build.commit}</span>{/if}
       </p>
       <p>
-        <a href="https://github.com/msolav/qohesion">{t.shell.source}</a><span class="sep" aria-hidden="true">·</span>{t.shell.licence}
+        <a href={data.sourceUrl}>{t.shell.source}</a><span class="sep" aria-hidden="true">·</span>{t.shell.licence}
       </p>
     </footer>
   </div>

@@ -1,0 +1,13 @@
+.git
+.github
+**/node_modules
+**/.svelte-kit
+apps/web/build
+brand
+design
+docs
+.impeccable
+.env
+.env.*
+*.md
+!VERSION

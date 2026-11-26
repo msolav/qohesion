@@ -1,0 +1,23 @@
+# Qohesion, web application only. The database and the HTTPS proxy are added when the application uses them.
+#
+#   ORIGIN=https://vote.example.org docker compose up -d
+#
+# ORIGIN is the public address of the installation. Form submissions are refused without it.
+services:
+  web:
+    image: qohesion:${QOHESION_VERSION:-0.1.0}
+    build:
+      context: .
+      args:
+        QOHESION_COMMIT: ${QOHESION_COMMIT:-}
+    restart: unless-stopped
+    environment:
+      ORIGIN: ${ORIGIN:?Set ORIGIN to the public address, for example https://vote.example.org}
+      PORT: "3000"
+      # Address of the published source of this installation. Set it if the code was changed (AGPL). Optional.
+      QOHESION_SOURCE_URL: ${QOHESION_SOURCE_URL:-}
+    ports:
+      - "127.0.0.1:3000:3000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
