@@ -176,7 +176,8 @@ export function renderDocument(markdown, fromPath, fromOut, ctx, options = {}) {
         const className = options.tableClasses?.[tableIndex++];
         const html = Renderer.prototype.table.call(this, token);
         const classed = className ? html.replace("<table>", `<table class="${escapeHtml(className)}">`) : html;
-        return `<div class="table-wrap" tabindex="0" role="region" aria-label="Table">${classed}</div>\n`;
+        const hint = className === "compare" && options.scrollHint ? `<p class="scroll-hint" aria-hidden="true">${escapeHtml(options.scrollHint)}</p>\n` : "";
+        return `${hint}<div class="table-wrap" tabindex="0" role="region" aria-label="Table">${classed}</div>\n`;
       },
     },
   });

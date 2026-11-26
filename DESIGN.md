@@ -305,6 +305,7 @@ Seed Packet is soft and Ballot Paper is square. Seed Packet rows and the cast bu
 - **State:** hover is Sprout Hover (Slip Hover on the slip). Selected is Forest Ballot with white text and a white mark holding a green check in Seed Packet; on the slip it is Slip Hover with an X in the circle. Keyboard focus shows the ring on the row.
 - **Size:** 60px high at least (68px on the slip), 1.15rem, 700 weight.
 
+- **Marks:** the mark of the chosen option takes its meaning. In favour is Forest Ballot with a check, Against is Error Red with a cross, Abstention is Pencil Grey with a dash. In Seed Packet the whole row takes the colour, with a White Label mark carrying the glyph. In Ballot Paper the circle takes the colour and draws the glyph. The meaning is never carried by colour alone.
 ### Question block
 - **Seed Packet:** a Forest Ballot block with a tab, the question in white at headline size, the lede, a dashed rule, then the step marks (numbered circles, the current one filled) and the deadline.
 - **Ballot Paper:** the question on Slip White with a double rule beneath; step marks in Ink.
@@ -327,7 +328,7 @@ Seed Packet is soft and Ballot Paper is square. Seed Packet rows and the cast bu
 ## The Website
 **Creative North Star: "The Ballot Room at Night"**
 
-The website frames the product and does not wear its templates. It keeps the look of the navy landing page that has stood in for it since the first placeholder: a deep ground, light text, the lit logo. The two templates appear only where the product itself is shown, inside a phone-sized frame that runs the real prototype. The pages answer the questions of someone who has to run a vote for a group: what this is, what it looks like, what exists, what it costs, where the source is. Claims follow the functional register: a feature that does not exist is described as planned.
+The website frames the product and does not wear its templates. It keeps the look of the navy landing page that has stood in for it since the first placeholder: a deep ground, light text, the lit logo. The two templates appear only where the product itself is shown, inside a phone-sized frame that runs the real prototype. The pages answer the questions of someone who has to run a vote for a group: what this is, what it looks like, what exists, what it costs, where the source is. The copy is written as it reads when the offer is live: the present tense, the plain facts, no development status. It is shown only behind the password until the product matches it.
 
 ### Website colors
 - **Night Navy** (#0F224C): the ground of every page.
@@ -363,7 +364,12 @@ The masthead, the footer and the home sections share one 72rem container with a 
 - **Terminal panel:** Night Raised, 1.5px Night Rule, 14px radius, system monospace at 0.88rem, a Mint prompt, horizontally scrollable.
 - **Paper sheet:** Mist with Night Navy text and a 14px radius, 52rem wide, for terms, name and logo, and documentation. Links are Forest Ballot and underlined. Rules and code take Mist Soft.
 - **Tables:** a 1px frame with a 4px radius and the Note size, scrolling inside their own region with the first column kept in view. On the night ground the head is Night Raised and the rules Night Rule; on the paper sheet the head is Mist Soft and the frame Night Navy. A list of prices right-aligns the amount.
-- **Footer:** the legal links, the licence, and the build, in Small size on the night ground, under a Night Rule hairline.
+- **Footer:** the legal links, the project's accounts and the licence, in Small size on the night ground, under a Night Rule hairline that lines up with the rules above it. No build or version stamp is visible.
+- **Template carousel:** the phone-sized frames sit in a row that scrolls and snaps by touch, trackpad, keyboard or scrollbar, one frame at a time on a phone, with the next frame peeking at the edge. Each slide carries its template's name and one sentence above its frame. Previous and next buttons (44px, Mist Dim outline, an authored chevron) appear only when something overflows, and disable at the ends. Adding a template adds a slide.
+- **Modes row:** the three modes side by side from 62rem, each under a Night Rule hairline, the name in Site Name and its sentence in Mist Soft.
+- **Safety diagram:** five steps along one line (the roll, the ballot, the ledger, the count, the check), each with an authored 64-unit glyph in a Night Raised box, a Title-size name, one sentence, and one line that says why that step is safe, marked with a Mint dot. The glyphs are drawn at a 2px stroke in Mist with one Mint element each. Under 62rem the steps stack along a vertical line.
+- **Price ladder:** each size on its own ruled row, its price on the right in Outfit at up to 2.4rem. The figures lead the page.
+- **Rows:** on the night ground, a page's sections are rows with the heading on the left and its content on the right, like the home page. A section that holds a comparison table takes the full width, and below 44rem a line says that the table scrolls sideways.
 
 ### Website motion
 The hero enters once on load (700ms, ease-out, a 10px rise, staggered 80ms). Buttons step on hover (150ms) and press 1px. Links draw a thicker underline on hover. The receipt settles under scroll-driven animation, the one dealt moment of the home page. Nothing else moves because the page scrolled. Under reduced motion everything rests and nothing stays hidden.

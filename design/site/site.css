@@ -39,6 +39,7 @@ main{flex:1}
 .nav a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 var(--space-3);color:var(--mist);font-size:.9rem;font-weight:700;text-decoration:none;text-underline-offset:.35em}
 .nav a:hover{text-decoration:underline;text-decoration-color:var(--mist-dim)}
 .nav a[aria-current]{text-decoration:underline;text-decoration-thickness:2px;text-decoration-color:var(--mint)}
+@media (max-width:33.99rem){.nav a.wide-only:not([aria-current]){display:none}.logo img{height:1.5rem}}
 .lang{display:flex;flex:none;border:1.5px solid var(--mist-dim);border-radius:99px;overflow:hidden;font-size:.9rem;font-weight:700}
 .lang a{display:grid;place-items:center;min-width:2.9rem;min-height:2.75rem;color:var(--mist);text-decoration:none}
 .lang a:hover:not([aria-current]){background:var(--raised)}
@@ -60,9 +61,7 @@ main{flex:1}
 @media (min-width:62rem){.hero{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}}
 .hero h1{margin:0;font-family:var(--display);font-size:clamp(2.5rem,8vw,4.75rem);font-weight:700;line-height:1.02;letter-spacing:-.02em;text-wrap:balance}
 .lede{max-width:34rem;margin:var(--space-5) 0 0;color:var(--mist-soft);font-size:1.25rem;line-height:1.5}
-.status{max-width:34rem;margin:var(--space-3) 0 0;color:var(--mist-dim)}
-.facts{display:flex;flex-wrap:wrap;gap:var(--space-1) 0;margin:var(--space-5) 0 0;padding:0;list-style:none;color:var(--mist-dim);font-size:.9rem;font-weight:700}
-.facts li+li::before{content:"·";padding:0 var(--space-3);color:var(--rule)}
+.facts{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-5);margin:var(--space-5) 0 0;padding:0;list-style:none;color:var(--mist-dim);font-size:.9rem;font-weight:700}
 
 /* The phone-sized frame that runs the real prototype */
 .device{position:relative;width:100%;max-width:23.5rem;margin-inline:auto;padding:10px;background:var(--raised);border:1.5px solid var(--rule);border-radius:28px;box-shadow:0 28px 48px -24px rgba(4,10,28,.7)}
@@ -70,7 +69,8 @@ main{flex:1}
 
 /* Home: bands */
 .band{width:100%;max-width:72rem;margin:0 auto;padding:0 var(--gut)}
-.band>.in{padding:clamp(4rem,9vh,6.5rem) 0;border-top:1px solid var(--rule)}
+.band>.in{padding:3rem 0;border-top:1px solid var(--rule)}
+@media (min-width:44rem){.band>.in{padding:clamp(4rem,9vh,6.5rem) 0}}
 .split{display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:var(--space-6) var(--space-7)}
 @media (min-width:62rem){
   .split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -86,18 +86,12 @@ main{flex:1}
 .cols>h2{margin:0}
 .cols p:first-child{margin-top:0}
 
-/* Ruled rows: a name, then its sentence */
-.rows{margin:var(--space-5) 0 0}
-.rows>div{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-1) var(--space-6);padding:var(--space-4) 0;border-top:1px solid var(--rule)}
-.rows>div:last-child{border-bottom:1px solid var(--rule)}
-.rows dt{font-family:var(--display);font-size:1.6rem;font-weight:600;line-height:1.15}
-.rows dd{margin:0;max-width:38rem;color:var(--mist-soft)}
-@media (min-width:44rem){.rows>div{grid-template-columns:11rem minmax(0,1fr);align-items:baseline}}
-
 /* The example receipt code, one dealt moment */
 .stub{margin:var(--space-5) 0;padding:var(--space-5) var(--space-5);background:var(--raised);border:1.5px solid var(--rule);border-radius:14px}
 .stub .receipt{margin:0}
-.receipt{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 .12em;margin:var(--space-5) 0 var(--space-4);font-family:var(--display);font-size:clamp(1.9rem,8vw,3.5rem);font-weight:700;line-height:1.1;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.receipt{margin:0;font-family:var(--display);font-size:clamp(1.5rem,6.2vw,3.5rem);font-weight:700;line-height:1.1;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.receipt .code{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 .12em}
+.receipt .g{white-space:nowrap}
 .receipt .d{color:var(--mint)}
 .i0{--i:0}.i1{--i:1}.i2{--i:2}.i3{--i:3}.i4{--i:4}.i5{--i:5}.i6{--i:6}.i7{--i:7}.i8{--i:8}.i9{--i:9}.i10{--i:10}.i11{--i:11}
 @supports (animation-timeline:view()){
@@ -126,12 +120,12 @@ main{flex:1}
 }
 
 /* Pages other than the home page */
-.title{width:100%;max-width:52rem;margin:0 auto;padding:var(--space-6) var(--gut) var(--space-5)}
-.title.wide{max-width:72rem}
+.title{width:100%;max-width:72rem;margin:0 auto;padding:var(--space-6) var(--gut) var(--space-5)}
 .title h1{margin:0;font-size:clamp(1.6rem,4.5vw,2.4rem);font-weight:800;line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
 .title p{max-width:38rem;margin:var(--space-3) 0 0;color:var(--mist-soft);font-size:1.25rem;line-height:1.5}
-.col{width:100%;max-width:52rem;margin:0 auto;padding:0 var(--gut) var(--space-7)}
-.col.wide{max-width:72rem}
+.col{width:100%;max-width:72rem;margin:0 auto;padding:0 var(--gut) var(--space-7)}
+.col .sheet{max-width:52rem}
+.col.wide .sheet{max-width:none}
 
 /* Running text: on the night ground and on the paper sheet */
 .prose{--fg:var(--mist);--fg-soft:var(--mist-soft);--link:var(--mist);--hair:var(--rule);--frame:var(--rule);--head:var(--raised);--cell:var(--night);--code:var(--raised)}
@@ -186,7 +180,8 @@ table.pricelist td:last-child{font-weight:700}
 .sheet .docs .status{color:var(--fg-soft);font-size:.85rem;line-height:1.35}
 
 /* Footer */
-.foot{width:100%;max-width:72rem;margin:var(--space-6) auto 0;padding:var(--space-5) var(--gut) var(--space-6);border-top:1px solid var(--rule);color:var(--mist-dim);font-size:.85rem;line-height:1.4}
+.foot{width:100%;max-width:72rem;margin:var(--space-6) auto 0;padding:0 var(--gut) var(--space-6);color:var(--mist-dim);font-size:.85rem;line-height:1.4}
+.foot>.in{padding-top:var(--space-5);border-top:1px solid var(--rule)}
 .foot nav{display:flex;flex-wrap:wrap;gap:0 var(--space-5);margin-bottom:var(--space-2)}
 .foot nav a{display:inline-flex;align-items:center;min-height:2.75rem}
 .foot p{max-width:46rem;margin:0 0 var(--space-1)}
@@ -200,3 +195,79 @@ table.pricelist td:last-child{font-weight:700}
   .band p,.lede,.status{color:#000}
   .sheet{padding:0;border-radius:0}
 }
+
+/* Buttons side by side on a screen, one above the other on a phone */
+@media (max-width:29.99rem){.actions .btn{flex:1 1 100%}}
+
+/* Heading on the left, its content on the right */
+.cols>div{min-width:0}
+
+/* Carousel of templates: scrolls and snaps by itself, the buttons are an addition */
+.carousel{min-width:0}
+.car-controls{display:flex;justify-content:flex-end;gap:var(--space-2);min-height:2.75rem;margin-bottom:var(--space-3)}
+.car-controls[hidden]{visibility:hidden}
+.car-btn{display:grid;place-items:center;width:2.75rem;height:2.75rem;padding:0;background:transparent;border:1.5px solid var(--mist-dim);border-radius:99px;color:var(--mist);cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out,transform .15s ease-out}
+.car-btn svg{width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.car-btn:hover:not(:disabled){background:var(--raised);border-color:var(--mist)}
+.car-btn:active:not(:disabled){transform:translateY(1px)}
+.car-btn:disabled{opacity:.4;cursor:default}
+.track{display:flex;gap:var(--space-5);margin:0;padding:var(--space-2) var(--space-1) var(--space-4);list-style:none;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:var(--space-1);overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+.track:focus-visible{outline-offset:2px}
+.slide{flex:0 0 min(23.5rem,100%);scroll-snap-align:start}
+.slide-head{min-height:5.5rem}
+.slide h3{margin:0 0 var(--space-1);font-size:1.15rem;font-weight:700;line-height:1.2}
+.band .slide p{margin:0;color:var(--mist-soft)}
+.band .slide .more{margin-top:var(--space-3)}
+.slide .device{max-width:none;margin-inline:0}
+
+/* Three modes, side by side */
+.modes{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-5) var(--space-6);margin:var(--space-5) 0 0}
+.modes>div{padding-top:var(--space-4);border-top:1px solid var(--rule)}
+.modes dt{font-family:var(--display);font-size:1.6rem;font-weight:600;line-height:1.15}
+.modes dd{margin:var(--space-2) 0 0;color:var(--mist-soft)}
+@media (min-width:62rem){.modes{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* How a vote stays safe: five steps along one line */
+.flow{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-5);margin:var(--space-6) 0 var(--space-5);padding:0;list-style:none}
+.flow>li{position:relative;display:grid;grid-template-columns:5rem minmax(0,1fr);column-gap:var(--space-4);align-content:start}
+.flow .glyph{grid-row:1 / span 3;display:block;width:5rem;height:5rem;padding:1rem;background:var(--raised);border:1.5px solid var(--rule);border-radius:14px;stroke:var(--mist);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.flow .a{stroke:var(--mint)}
+.flow h3{margin:0;font-size:1.15rem;font-weight:700;line-height:1.2}
+.band .flow p{max-width:none;margin:var(--space-1) 0 0;color:var(--mist-soft)}
+.band .flow .why{margin-top:var(--space-2);color:var(--mist-dim);font-size:.9rem;line-height:1.4}
+.flow .why::before{content:"";display:inline-block;width:.5rem;height:.5rem;margin-right:var(--space-2);border-radius:50%;background:var(--mint)}
+.flow>li:not(:last-child)::after{content:"";position:absolute;left:calc(2.5rem - 1px);top:5.5rem;bottom:calc(-1 * var(--space-5) + 8px);width:2px;background:var(--rule)}
+@media (min-width:62rem){
+  .flow{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .flow>li{display:block}
+  .flow .glyph{margin-bottom:var(--space-4)}
+  .flow>li:not(:last-child)::after{left:calc(5rem + 8px);right:calc(-1 * var(--space-5) + 8px);top:2.5rem;bottom:auto;width:auto;height:2px}
+}
+.band .closing{margin-top:var(--space-4)}
+
+/* The receipt sits on its own slip */
+.stub{margin:var(--space-5) 0;padding:var(--space-5);background:var(--raised);border:1.5px solid var(--rule);border-radius:14px}
+
+/* Cost: one row */
+.cost{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-3) var(--space-7);align-items:center}
+.cost h2,.cost p{margin:0}
+.cost .actions{margin-top:var(--space-3)}
+@media (min-width:62rem){.cost{grid-template-columns:minmax(0,4fr) minmax(0,5fr) auto}.cost .actions{margin-top:0}}
+
+/* Pages on the night ground: rows of heading and content, like the home page */
+.night .row{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4) var(--space-7);padding:var(--space-5) 0 var(--space-6);border-top:1px solid var(--rule)}
+.night .row h2{margin:0;padding:0;border:0}
+.night .row-body>:first-child{margin-top:0}
+.night>p:first-child{max-width:38rem;margin:0 0 var(--space-5);color:var(--mist-soft);font-size:1.25rem;line-height:1.5}
+@media (min-width:62rem){.night .row{grid-template-columns:minmax(0,4fr) minmax(0,8fr)}.night .row.full{grid-template-columns:minmax(0,1fr)}}
+.scroll-hint{display:none;margin:0 0 var(--space-3);color:var(--mist-dim);font-size:.85rem}
+@media (max-width:43.99rem){.scroll-hint{display:block}}
+
+/* The price ladder: the figures lead */
+table.pricelist{max-width:none;border:0;border-radius:0;font-size:1rem}
+table.pricelist thead{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0)}
+table.pricelist th,table.pricelist td{min-width:0;padding:var(--space-4) 0;background:none;border-bottom:0;border-top:1px solid var(--rule);vertical-align:baseline}
+table.pricelist tbody tr:first-child>*{border-top:0;padding-top:0}
+table.pricelist tbody th{position:static;border-right:0;font-size:1.15rem;font-weight:700}
+table.pricelist td:last-child{font-family:var(--display);font-size:clamp(1.9rem,4vw,2.4rem);font-weight:600;line-height:1.1;text-align:right}
+table.pricelist tbody tr:last-child td,table.pricelist tbody tr:last-child th{border-top:1px solid var(--rule)}

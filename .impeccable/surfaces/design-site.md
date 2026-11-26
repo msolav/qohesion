@@ -23,6 +23,9 @@ The navy landing page that already stands at qohesion.app and dev.qohesion.app, 
 ## Unresolved
 Logo lockup on the paper pages, operator name in the footer, a share image, the final domain in canonical links.
 
+## Launch copy
+The user asked that the site speak in the present tense as the actual offer, with no development language ("No future tense or anything"). The copy on the preview therefore describes the offer as live. It is shown only behind the password. Publishing it openly before the product matches it would misstate the product.
+
 ## Direction contract
 
 THESIS: The site is the ballot room at night: a deep navy ground, the lit logo, and the real ballot screen running live inside a phone-sized frame. It refuses the SaaS template, a centred headline over a row of equal icon cards, glow gradients and stock people.

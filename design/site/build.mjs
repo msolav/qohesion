@@ -75,7 +75,7 @@ function copyTree(from, to, skip = () => false) {
 const plain = (html) => html.replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
 
 /** The frame around every page: head, masthead, main, footer. `main` is the markup inside <main>. */
-function layout({ lang, title, description, main, out, alt = null, current = null, source, build, options, absolute = false }) {
+function layout({ lang, title, description, main, out, alt = null, current = null, build, options, absolute = false, scripts = [] }) {
   const t = STRINGS[lang];
   const rel = path.posix.relative(path.posix.dirname(out), ".");
   const base = absolute ? "/" : rel === "" ? "" : `${rel}/`;
@@ -86,7 +86,7 @@ function layout({ lang, title, description, main, out, alt = null, current = nul
 
   const nav = [
     { label: t.pricing, href: to(sitePageOut(find("pricing"), lang)), here: current === "pricing" },
-    { label: t.docsNav, href: to("docs/index.html"), here: current === "docs" },
+    { label: t.docsNav, href: to("docs/index.html"), here: current === "docs", secondary: true },
   ];
   const switcher = alt
     ? `<nav class="lang" aria-label="${escapeHtml(t.langLabel)}">${LANGS.map((l) => {
@@ -114,7 +114,8 @@ function layout({ lang, title, description, main, out, alt = null, current = nul
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(fullTitle)}</title>
 <meta name="description" content="${escapeHtml(description)}">
-${options.indexable ? "" : '<meta name="robots" content="noindex, nofollow">\n'}<meta name="referrer" content="no-referrer">
+${options.indexable ? "" : '<meta name="robots" content="noindex, nofollow">\n'}<meta name="generator" content="${escapeHtml(`Qohesion website ${build.commit}, ${build.builtAt}`)}">
+<meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0F224C">
 <link rel="canonical" href="${origin}${urlOf(out)}">
 ${alternates}
@@ -129,13 +130,13 @@ ${alternates}
 <link rel="icon" href="${base}favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="${base}apple-touch-icon.png">
 <link rel="stylesheet" href="${base}site.css">
-${out === "index.html" ? `<script>${LANGUAGE_CHOICE}</script>\n` : ""}</head>
+${out === "index.html" ? `<script>${LANGUAGE_CHOICE}</script>\n` : ""}${scripts.map((src) => `<script src="${base}${src}" defer></script>\n`).join("")}</head>
 <body>
 <a class="skip" href="#main">${escapeHtml(t.skip)}</a>
 <header class="top">
 <a class="logo" href="${to(sitePageOut(home, lang))}" aria-label="${escapeHtml(t.homeLabel)}"><img src="${base}assets/logo.svg" alt="Qohesion" width="155" height="28"></a>
 <nav class="nav" aria-label="${escapeHtml(t.navLabel)}">
-${nav.map((n) => `<a href="${n.href}"${n.here ? ' aria-current="page"' : ""}>${escapeHtml(n.label)}</a>`).join("\n")}
+${nav.map((n) => `<a href="${n.href}"${n.secondary ? ' class="wide-only"' : ""}${n.here ? ' aria-current="page"' : ""}>${escapeHtml(n.label)}</a>`).join("\n")}
 </nav>
 ${switcher}
 </header>
@@ -143,11 +144,12 @@ ${switcher}
 ${main}
 </main>
 <footer class="foot">
+<div class="in">
 <nav aria-label="${escapeHtml(t.footLabel)}">
 ${footerLinks.map((l) => `<a href="${l.href}">${escapeHtml(l.label)}</a>`).join("\n")}
 </nav>
 <p>${escapeHtml(t.licence)}</p>
-<p>${escapeHtml(t.built)} ${escapeHtml(build.commit)}, ${escapeHtml(build.builtAt)}. <a href="${source.href}">${escapeHtml(source.label ?? t.pageSource)}</a></p>
+</div>
 </footer>
 </body>
 </html>
@@ -157,8 +159,21 @@ ${footerLinks.map((l) => `<a href="${l.href}">${escapeHtml(l.label)}</a>`).join(
 /** A page other than the home page: a title, then its text on the night ground or on the paper sheet. */
 function innerMain({ title, body, surface, wide }) {
   const w = wide ? " wide" : "";
-  const text = surface === "night" ? `<div class="prose">\n${body}\n</div>` : `<div class="sheet prose">\n${body}\n</div>`;
+  const text = surface === "night" ? sections(body) : `<div class="sheet prose">\n${body}\n</div>`;
   return `<div class="title${w}"><h1>${escapeHtml(title)}</h1></div>\n<div class="col${w}">\n${text}\n</div>`;
+}
+
+/** Cuts a rendered page at its level-2 headings into rows: the heading on the left, its content on the right. A row that holds a comparison table takes the full width. */
+function sections(html) {
+  const parts = html.split(/(?=<h2 )/);
+  const intro = parts[0]?.startsWith("<h2 ") ? "" : (parts.shift() ?? "");
+  const rows = parts.map((part) => {
+    const split = /^(<h2 [^>]*>[\s\S]*?<\/h2>)\n?([\s\S]*)$/.exec(part);
+    if (!split) return part;
+    const full = part.includes('class="compare"');
+    return `<section class="row${full ? " full" : ""}">\n${split[1]}\n<div class="row-body">\n${split[2]}\n</div>\n</section>`;
+  });
+  return `<div class="prose night">\n${intro}${rows.join("\n")}\n</div>`;
 }
 
 /** The title heading of a documentation page, which the frame sets apart from its text. */
@@ -199,9 +214,10 @@ export function build({ repoRoot, outDir, commit, builtAt, origin = DEFAULT_ORIG
       return docPages.includes(repoPath) ? docOutPath(repoPath) : null;
     },
     siteLink: (name) => {
-      if (name === "prototype") return `prototype/?theme=seed-packet&lang=${lang}`;
-      if (name === "prototype-paper") return `prototype/?theme=ballot-paper&lang=${lang}`;
-      return null;
+      // prototype, prototype-ballot-paper, prototype-embed, prototype-ballot-paper-embed
+      const m = /^prototype(?:-(seed-packet|ballot-paper))?(-embed)?$/.exec(name);
+      if (!m) return null;
+      return `prototype/?theme=${m[1] ?? "seed-packet"}&lang=${lang}${m[2] ? "&embed=1" : ""}`;
     },
     exists: (p) => fs.existsSync(path.join(root, p)) && fs.statSync(path.join(root, p)).isFile(),
     isDirectory: (p) => fs.existsSync(path.join(root, p)) && fs.statSync(path.join(root, p)).isDirectory(),
@@ -215,19 +231,16 @@ export function build({ repoRoot, outDir, commit, builtAt, origin = DEFAULT_ORIG
       const pageOut = sitePageOut(page, lang);
       const alt = Object.fromEntries(LANGS.map((l) => [l, sitePageOut(page, l)]));
       let main;
-      let sourceHref;
       if (page.id === "home") {
         main = renderHome({ lang, out: pageOut, ctx });
-        sourceHref = `${BLOB}/design/site/home.mjs`;
       } else {
         const markdown = splitLanguage(fs.readFileSync(path.join(root, page.source), "utf8"), lang);
-        const { html } = renderDocument(markdown, page.source, pageOut, ctx, { tableClasses: page.tableClasses });
+        const { html } = renderDocument(markdown, page.source, pageOut, ctx, { tableClasses: page.tableClasses, scrollHint: STRINGS[lang].scrollHint });
         main = innerMain({ title: page.title[lang], body: html, surface: page.surface, wide: page.wide === true });
-        sourceHref = `${BLOB}/${page.source}`;
       }
       write(
         pageOut,
-        layout({ lang, title: page.title[lang], description: page.description[lang], main, out: pageOut, alt, current: page.id, source: { href: sourceHref }, build: info, options }),
+        layout({ lang, title: page.title[lang], description: page.description[lang], main, out: pageOut, alt, current: page.id, build: info, options, scripts: page.id === "home" ? ["assets/carousel.js"] : [] }),
       );
     }
   }
@@ -252,7 +265,6 @@ export function build({ repoRoot, outDir, commit, builtAt, origin = DEFAULT_ORIG
         main: innerMain({ title: heading, body: taken.rest, surface: "paper", wide: WIDE_DOCS.has(repoPath) }),
         out: pageOut,
         current: "docs",
-        source: { href: `${BLOB}/${repoPath}` },
         build: info,
         options,
       }),
@@ -293,7 +305,6 @@ ${groups.map((g) => `<h2>${escapeHtml(g.title)}</h2>\n${list(g.items)}`).join("\
       main: innerMain({ title: "Documentation", body: indexBody, surface: "paper" }),
       out: indexOut,
       current: "docs",
-      source: { href: `${REPO}/tree/main/docs`, label: STRINGS.en.docsIndexSource },
       build: info,
       options,
     }),
@@ -312,7 +323,6 @@ ${groups.map((g) => `<h2>${escapeHtml(g.title)}</h2>\n${list(g.items)}`).join("\
 <div class="col"><p><a class="btn primary" href="/">${escapeHtml(fr.notFoundBack)}</a></p>
 <div lang="en"><h2>${escapeHtml(en.notFound)}</h2><p>${escapeHtml(en.notFoundText)}</p><p><a href="/en/">${escapeHtml(en.notFoundBack)}</a></p></div></div>`,
       out: "404.html",
-      source: { href: `${BLOB}/design/site/build.mjs` },
       build: info,
       options,
       absolute: true,
@@ -323,6 +333,7 @@ ${groups.map((g) => `<h2>${escapeHtml(g.title)}</h2>\n${list(g.items)}`).join("\
 
   // Files the pages load, and the ballot screen prototype that the home page runs in its frames.
   fs.copyFileSync(path.join(here, "site.css"), path.join(out, "site.css"));
+  fs.copyFileSync(path.join(here, "carousel.js"), path.join(out, "assets/carousel.js"));
   fs.copyFileSync(path.join(root, "design/prototype/assets/mark.svg"), path.join(out, "assets/mark.svg"));
   fs.copyFileSync(path.join(root, "brand/gradient/qohesion-logo-gradient-dark.svg"), path.join(out, "assets/logo.svg"));
   fs.copyFileSync(path.join(root, "brand/gradient/favicon-32.png"), path.join(out, "favicon-32.png"));

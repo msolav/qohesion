@@ -5,6 +5,8 @@
   "use strict";
   var root = document.documentElement;
   var query = new URLSearchParams(location.search);
+  /* Shown inside another page: the language choice and the appearance panel belong to that page. */
+  if (query.get("embed") === "1") root.classList.add("embed");
   var DEFAULTS = {
     "seed-packet": { brand: "#1F5C46", accent: "#C63A22" },
     "ballot-paper": { brand: "#1F5C46", accent: "#14151A" }

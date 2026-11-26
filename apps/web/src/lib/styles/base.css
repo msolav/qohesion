@@ -65,6 +65,10 @@ img,svg{display:block}
 .choice label{display:flex;align-items:center;gap:var(--space-4);min-height:var(--touch);padding:var(--space-3) var(--space-4);cursor:pointer;font-size:1.15rem;font-weight:700;line-height:1.2}
 .choice input:focus-visible+label{outline:3px solid var(--focus);outline-offset:3px}
 .mark{flex:none;display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;border:2px solid currentColor}
+/* The mark of the chosen option takes its meaning: green and a check, red and a cross, grey and a dash. */
+.choice input[value="for"]+label{--opt:#1F5C46}
+.choice input[value="against"]+label{--opt:#B3261E}
+.choice input[value="abstain"]+label{--opt:#4C4C47}
 
 .error{margin-top:var(--space-3);font-weight:700;color:var(--danger)}
 .error[hidden]{display:none}

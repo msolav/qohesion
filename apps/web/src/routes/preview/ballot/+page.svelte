@@ -1,4 +1,5 @@
 <script lang="ts">
+  const glyph: Record<string, string> = { for: "M3.5 8.5l3 3 6-7", against: "M4 4l8 8M12 4l-8 8", abstain: "M4 8h8" };
   import { enhance } from "$app/forms";
   import { page } from "$app/state";
   import { resolveText } from "@qohesion/engine";
@@ -100,7 +101,7 @@
                 <label for="c-{option.id}">
                   <span class="mark" aria-hidden="true">
                     <svg viewBox="0 0 16 16" width="14" height="14" focusable="false"
-                      ><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                      ><path d={glyph[option.id] ?? glyph["for"]} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
                   </span>
                   <span>{resolveText(option.label, data.locale)}</span>
                 </label>

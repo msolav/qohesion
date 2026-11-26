@@ -61,7 +61,7 @@ test("each page shows one language only, and the switch leads to the same page i
     pricing: { fr: ["Event pass", "The offers"], en: ["Forfait par scrutin", "Les offres"] },
     terms: { fr: ["Full terms", "In short"], en: ["Conditions complètes", "En bref"] },
     brand: { fr: ["Permitted without asking", "What this covers"], en: ["Permis sans demande", "Ce que couvre"] },
-    home: { fr: ["Two templates for the ballot screen", "Install on your own server"], en: ["Deux modèles d’écran de vote", "S’installer sur son propre serveur"] },
+    home: { fr: ["Ballot screen templates", "Install on your own server"], en: ["Des modèles d’écran de vote", "S’installer sur son propre serveur"] },
   };
   for (const p of PAGES) {
     for (const lang of ["fr", "en"]) {
@@ -110,21 +110,42 @@ test("no link inside the site points to a Markdown file, and every one resolves"
   }
 });
 
-test("the home page opens with the brand line and runs the real ballot screen in its frames", () => {
+test("the home page opens with the brand line, runs the real ballot screen and offers a carousel of templates", () => {
   for (const [lang, h1] of [["fr", "Décidons ensemble."], ["en", "Decide together."]]) {
     const html = read(sitePageOut(page("home"), lang));
     assert.ok(html.includes(`<h1 id="top-title">${h1}</h1>`), `${lang}: the brand line is missing`);
     const frames = [...html.matchAll(/<iframe src="([^"]+)" title="([^"]+)"([^>]*)>/g)];
-    assert.equal(frames.length, 2, `${lang}: expected two frames`);
-    assert.ok(frames[0]?.[1]?.includes(`prototype/?theme=seed-packet&amp;lang=${lang}`), `${lang}: first frame`);
-    assert.ok(frames[1]?.[1]?.includes(`prototype/?theme=ballot-paper&amp;lang=${lang}`), `${lang}: second frame`);
-    assert.ok(!frames[0]?.[3]?.includes("lazy") && frames[1]?.[3]?.includes('loading="lazy"'), `${lang}: only the second frame loads lazily`);
+    assert.equal(frames.length, 3, `${lang}: one frame in the hero and one per template`);
+    assert.ok(frames[0]?.[1]?.includes(`theme=seed-packet&amp;lang=${lang}&amp;embed=1`), `${lang}: hero frame`);
+    assert.ok(frames[1]?.[1]?.includes(`theme=ballot-paper&amp;lang=${lang}&amp;embed=1`), `${lang}: first template frame`);
+    assert.ok(frames[2]?.[1]?.includes(`theme=seed-packet&amp;lang=${lang}&amp;embed=1`), `${lang}: second template frame`);
+    assert.ok(!frames[0]?.[3]?.includes("lazy") && frames[1]?.[3]?.includes('loading="lazy"') && frames[2]?.[3]?.includes('loading="lazy"'), `${lang}: only the hero frame loads at once`);
     assert.ok(frames.every((f) => (f[2] ?? "").length > 10), `${lang}: a frame has no name`);
-    assert.ok(html.includes('href="https://github.com/msolav/qohesion"'), `${lang}: no link to the source`);
-    assert.equal((html.match(/<section /g) ?? []).length, 6, `${lang}: expected six sections`);
+    assert.ok(html.includes('href="https://github.com/msolav/qohesion"') && html.includes('href="https://www.instagram.com/qohesion/"'), `${lang}: source and Instagram links`);
+    assert.equal((html.match(/<section /g) ?? []).length, 7, `${lang}: expected seven sections`);
+    assert.ok(html.includes("data-carousel") && html.includes("data-controls hidden") && (html.match(/aria-roledescription="slide"/g) ?? []).length === 2, `${lang}: the carousel is incomplete`);
+    assert.equal((html.match(/<li><svg class="glyph"/g) ?? []).length, 5, `${lang}: the safety diagram has five steps`);
+    assert.ok(html.includes('<ol class="flow">'), `${lang}: the steps are not an ordered list`);
   }
   assert.ok(fs.existsSync(path.join(outDir, "prototype/index.html")), "the prototype is not part of the build");
+  assert.ok(fs.existsSync(path.join(outDir, "assets/carousel.js")), "the carousel script is not part of the build");
   assert.ok(!fs.existsSync(path.join(outDir, "prototype/.DS_Store")));
+});
+
+test("the offer is described as it is, in the present tense, with no development language", () => {
+  const banned = {
+    en: /\b(will|planned|under development|pre-alpha|not written|draft|to define|coming soon)\b/i,
+    fr: /(\bsera\b|\bseront\b|fonctionnera|\bprévu|en cours de développement|pré-alpha|ébauche|à définir|bientôt)/i,
+  };
+  for (const lang of ["fr", "en"]) {
+    for (const id of ["home", "pricing"]) {
+      const html = read(sitePageOut(page(id), lang));
+      const text = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<[^>]+>/g, " ");
+      const hit = banned[lang].exec(text);
+      assert.equal(hit, null, `${lang} ${id}: "${hit?.[0]}" reads as development language`);
+      assert.ok(!html.includes("Built from") && !html.includes("Construit à partir"), `${lang} ${id}: a build stamp is visible`);
+    }
+  }
 });
 
 test("what the home page claims is what the repository holds", () => {
@@ -170,9 +191,11 @@ test("pages are not indexed, load nothing from another site, and only the French
     const html = read(out);
     assert.ok(html.includes('<meta name="robots" content="noindex, nofollow">'), out);
     assert.ok(!/(src|href)="https?:\/\/[^"]*\.(css|js|woff2?|svg|png)"/i.test(html), `${out} loads a resource from another site`);
-    assert.match(html, /abc1234, 2026-01-01 00:00 UTC/, out);
+    assert.match(html, /<meta name="generator" content="Qohesion website abc1234, 2026-01-01 00:00 UTC">/, out);
     const scripts = (html.match(/<script/gi) ?? []).length;
-    assert.equal(scripts, out === "index.html" ? 1 : 0, `${out} has ${scripts} script(s)`);
+    const expected = { "index.html": 2, "en/index.html": 1 }[out] ?? 0;
+    assert.equal(scripts, expected, `${out} has ${scripts} script(s)`);
+    for (const m of html.matchAll(/<script src="([^"]+)"/g)) assert.ok(!/^(https?:)?\/\//.test(m[1] ?? ""), `${out} loads a script from another site`);
   }
   assert.equal(read("robots.txt"), "User-agent: *\nDisallow: /\n");
   assert.ok(read("index.html").includes('location.replace("en/")'), "the French home page does not choose the language");

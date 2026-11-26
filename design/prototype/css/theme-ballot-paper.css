@@ -36,15 +36,10 @@
 }
 [data-theme="ballot-paper"] .choice+.choice label{border-top:1px solid var(--ink)}
 [data-theme="ballot-paper"] .choice:hover label{background:var(--hover)}
-[data-theme="ballot-paper"] .mark svg{display:none}
-[data-theme="ballot-paper"] .mark{width:2rem;height:2rem;border-width:2px;border-color:var(--ink)}
-[data-theme="ballot-paper"] .mark::after{
-  content:"";width:1.05rem;height:1.05rem;opacity:0;transition:opacity .15s ease-out;
-  background:
-    linear-gradient(45deg,transparent 43%,var(--ink) 43% 57%,transparent 57%),
-    linear-gradient(-45deg,transparent 43%,var(--ink) 43% 57%,transparent 57%);
-}
-[data-theme="ballot-paper"] .choice input:checked+label .mark::after{opacity:1}
+[data-theme="ballot-paper"] .mark svg{width:1.1rem;height:1.1rem;color:var(--opt,var(--ink));opacity:0;transition:opacity .15s ease-out}
+[data-theme="ballot-paper"] .mark{width:2rem;height:2rem;border-width:2px;border-color:var(--ink);transition:border-color .15s ease-out}
+[data-theme="ballot-paper"] .choice input:checked+label .mark{border-color:var(--opt,var(--ink))}
+[data-theme="ballot-paper"] .choice input:checked+label .mark svg{opacity:1}
 [data-theme="ballot-paper"] .choice input:checked+label{background:var(--hover)}
 
 [data-theme="ballot-paper"] .error{margin:0;padding:var(--space-3) var(--space-5)}

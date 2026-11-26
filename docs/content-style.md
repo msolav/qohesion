@@ -22,6 +22,7 @@ Text is **objective, neutral, functional, descriptive and procedural.**
 3. **No appeal to individuality.** Do not address the reader as an individual ("your voice", "you decide"). Use the third person and impersonal forms ("the administrator enters the list", "the ballot is recorded"). Controls are named by their action ("Submit ballot").
 4. **No assumed context.** Define each term the first time it appears on a page (ballot, roll, quorum, administrator, receipt). State the organization, the decision, the dates with time zone, and what happens next.
 5. **Claims must be checkable.** A statement about security, privacy or verification names the mechanism and its limit. A feature that does not exist yet is not described as existing.
+   Exception: the development preview of the website, which sits behind a password, carries the copy as it will read when the offer is live. That copy is never published openly before the product matches it.
 6. **Procedures use numbered steps.** One action per step, in the order performed.
 
 ## Message pattern
