@@ -1,0 +1,28 @@
+/* Application shell: skip link, footer, home page, template links. Uses the tokens of the active template. */
+
+.skip{position:absolute;left:var(--space-4);top:-4rem;z-index:10;padding:var(--space-3) var(--space-4);background:var(--ink);color:var(--bg);font-weight:700;border-radius:8px;text-decoration:none}
+.skip:focus{top:var(--space-3)}
+
+.page{padding:0 var(--space-4)}
+
+.home{padding:var(--space-6) 0 var(--space-5)}
+.home h1{font-size:clamp(2rem,9vw,2.75rem);line-height:1.05;font-weight:800;letter-spacing:-.015em;text-wrap:balance}
+.home .line{margin-top:var(--space-4);font-size:1.1rem;max-width:34rem}
+.home .state{margin-top:var(--space-3);color:var(--ink-2);max-width:34rem}
+.home .links{display:grid;gap:var(--space-3);margin-top:var(--space-6);padding:0;list-style:none}
+.home .links a{display:block;padding:var(--space-4);border:1.5px solid var(--ink);border-radius:var(--radius);background:var(--surface);font-weight:700;text-decoration:none}
+.home .links a:hover{background:var(--hover)}
+.home .links small{display:block;margin-top:var(--space-1);font-weight:400;color:var(--ink-2)}
+
+.templates{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4);align-items:center;margin-top:var(--space-5);font-size:.9rem;color:var(--ink-2)}
+.templates a{display:inline-block;padding:var(--space-2) 0;min-height:2.75rem;line-height:1.75rem}
+.templates a[aria-current="true"]{font-weight:700;color:var(--ink);text-decoration-thickness:2px}
+
+.foot{margin-top:auto;padding:var(--space-5) var(--space-4) var(--space-6);font-size:.85rem;color:var(--ink-2)}
+.foot p+p{margin-top:var(--space-2)}
+.foot a{display:inline-block;padding:var(--space-1) 0}
+.foot .sep{margin:0 var(--space-2)}
+.foot .meta{font-variant-numeric:tabular-nums}
+
+.root{display:contents}
+.voter .sample{padding:var(--space-4) 0 0;text-align:left}

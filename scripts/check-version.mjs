@@ -9,10 +9,10 @@ const problems = [];
 const version = readFileSync("VERSION", "utf8").trim();
 if (!SEMVER.test(version)) problems.push(`VERSION "${version}" is not a valid Semantic Version (example: 0.1.0)`);
 
-const packagesDir = "packages";
-if (existsSync(packagesDir)) {
-  for (const name of readdirSync(packagesDir)) {
-    const file = join(packagesDir, name, "package.json");
+for (const dir of ["packages", "apps"]) {
+  if (!existsSync(dir)) continue;
+  for (const name of readdirSync(dir)) {
+    const file = join(dir, name, "package.json");
     if (!existsSync(file)) continue;
     const declared = JSON.parse(readFileSync(file, "utf8")).version;
     if (declared !== version) problems.push(`${file} declares ${declared}, VERSION is ${version}`);
