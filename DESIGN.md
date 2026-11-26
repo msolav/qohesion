@@ -59,6 +59,11 @@ typography:
     fontWeight: 400
     lineHeight: 1.45
     fontFeature: "'tnum'"
+  email:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.55
   code:
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
     fontSize: "0.88em"
@@ -183,6 +188,7 @@ Forest green and ink on a faintly green paper white, with one signal red kept fo
 
 **Display Font:** Figtree (with system-ui, -apple-system, Segoe UI, sans-serif)
 **Body Font:** Figtree in Seed Packet; Public Sans in Ballot Paper (same fallbacks; token `body-ballot-paper`)
+**Email Font:** the system sans stack (-apple-system, Segoe UI, Helvetica, Arial), because email clients do not load bundled fonts and the product makes no request to another site
 **Code Font:** the system monospace stack (ui-monospace, SFMono-Regular, Menlo, Consolas), not bundled, for code spans in reading surfaces such as the changelog
 
 **Character:** Round, open and heavy where it labels, plain where it explains. Weight carries the hierarchy (800 for the question and the cast button, 700 for labels and choices, 400 for explanation) more than size does. Both families are bundled as Latin variable subsets under the SIL Open Font License.

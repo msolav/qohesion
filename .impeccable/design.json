@@ -221,6 +221,10 @@
       "code": {
         "displayName": "Code",
         "purpose": "Inline code in the changelog, system monospace stack."
+      },
+      "email": {
+        "displayName": "Email",
+        "purpose": "Body of emails sent by the service, in the system sans stack."
       }
     },
     "shadows": [
