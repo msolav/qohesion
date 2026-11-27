@@ -84,7 +84,7 @@ export interface ConsoleMessages {
     readonly newKeyTitle: string; readonly newKeyText: string; readonly danger: string; readonly dangerText: string; readonly confirmName: string; readonly deleteSpace: string;
   };
   readonly voter: {
-    readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollOne: string; readonly rollNote: string; readonly results: string;
+    readonly lede: string; readonly untitled: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollOne: string; readonly rollNote: string; readonly results: string;
     readonly cancelledDetail: string; readonly cancelledDetailNone: string; readonly doneChange: string;
     readonly questionOf: string; readonly summaryTitle: string; readonly changeAnswer: string; readonly doneMany: string; readonly rollFixed: string; readonly rollLate: string; readonly stepOf: string; readonly start: string; readonly rulesTitle: string; readonly agree: string; readonly next: string; readonly back: string; readonly confirmTitle: string; readonly confirmChoice: string; readonly confirmFinal: string; readonly confirmSubmit: string; readonly showAll: string; readonly pickFirst: string; readonly doneDeadline: string; readonly addToCalendar: string; readonly calendarSummary: string; readonly calendarAlarm: string; readonly calendarNote: string; readonly introClose: string;
     readonly namedValue: string; readonly namedNote: string; readonly namedWho: Readonly<Record<ResultsAudience, string>>; readonly cancelledTitle: string; readonly cancelledText: string;
@@ -432,7 +432,7 @@ const en: ConsoleMessages = {
     deleteSpace: "Delete everything",
   },
   voter: {
-    lede: "Choose one option, then submit the ballot.",
+    lede: "Choose one option, then submit the ballot.", untitled: "Untitled poll",
     facts: "How this vote works",
     closes: "Closes",
     noClose: "When an administrator closes it",
@@ -1058,7 +1058,7 @@ const fr: ConsoleMessages = {
     deleteSpace: "Tout supprimer",
   },
   voter: {
-    lede: "Choisir une option, puis déposer le bulletin.",
+    lede: "Choisir une option, puis déposer le bulletin.", untitled: "Scrutin sans titre",
     facts: "Fonctionnement de ce vote",
     closes: "Fermeture",
     noClose: "Quand l’administration le ferme",

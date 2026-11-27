@@ -726,7 +726,7 @@
     <div class="bld-phone">
       <!-- The surface scrolls; only the ballot inside it is inert, so that nothing can be chosen but the preview can be read. -->
       <div class="preview-surface" data-theme={theme}>
-        <div class="voter" inert><div class="ballot"><BallotView {locale} poll={preview} preview /></div></div>
+        <div class="voter" lang={editing} inert><div class="ballot"><BallotView locale={editing} poll={preview} preview /></div></div>
       </div>
     </div>
   </aside>

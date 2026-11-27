@@ -154,7 +154,7 @@
   {#if step === "all" || step === "intro"}
     <div class="ballot__head">
       {#if step === "intro" && organization}<p class="org-name">{organization}</p>{/if}
-      <h1 id="q-title" tabindex="-1">{poll.title || "…"}</h1>
+      <h1 id="q-title" tabindex="-1">{poll.title || m.voter.untitled}</h1>
       {#if step === "all" && poll.question}<p class="question" id="q-text">{poll.question}</p>{/if}
       {#if poll.description}<p class="lede">{poll.description}</p>{:else if step === "intro" || !poll.question}<p class="lede">{m.voter.lede}</p>{/if}
       {#if step === "intro" && poll.closesAt}<p class="when-line">{fill(m.voter.introClose, { date: when(poll.closesAt) })}</p>{/if}

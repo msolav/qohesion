@@ -98,3 +98,12 @@
 
 [data-theme="boarding-pass"] .cast{letter-spacing:.01em}
 [data-theme="boarding-pass"] .done__code{font-family:var(--mono);border-style:dashed}
+
+/* Settings: flush rows between dashed rules, as the facts are; square icon and badge */
+[data-theme="boarding-pass"] .props{gap:0}
+[data-theme="boarding-pass"] .prop[data-tone]{padding:var(--space-3) var(--space-4);border:0;border-top:1.5px dashed var(--ink);border-radius:0;background:none}
+[data-theme="boarding-pass"] .prop[data-tone="strict"]{border-top:5px double var(--ink)}
+[data-theme="boarding-pass"] .prop:first-child[data-tone]{border-top:0}
+[data-theme="boarding-pass"] .prop__icon,[data-theme="boarding-pass"] .prop__badge{border-radius:4px}
+[data-theme="boarding-pass"] .prop[data-tone="open"] .prop__icon{border-radius:4px}
+[data-theme="boarding-pass"] .prop__label{font:500 .72rem/1.3 var(--mono);letter-spacing:.1em}

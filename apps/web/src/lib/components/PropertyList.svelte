@@ -21,8 +21,8 @@
       <div class="prop__body">
         <p class="prop__head">
           <span class="prop__label">{p.label}</span>
-          {#each p.badges as badge (badge)}<span class="prop__badge">{badge}</span>{/each}
         </p>
+        <p class="prop__badges">{#each p.badges as badge (badge)}<span class="prop__badge">{badge}</span>{/each}</p>
         {#each p.text as line, i (i)}<p class="prop__text">{line}</p>{/each}
         {#if links && p.learn}
           <a class="prop__more" href={learnHref(locale, p.learn)} target="_blank" rel="noopener">{g.props.learn}<span class="sr-only"> · {p.label} ({g.props.newTab})</span></a>
