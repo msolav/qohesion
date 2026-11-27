@@ -69,6 +69,10 @@ An option of a poll may have an icon and a colour, chosen from short fixed lists
 - **Changing a vote.** A poll can let members vote again until it closes, and the last ballot counts. This needs sealed ballots: a vote that can be replaced is tied to its voter by a pseudonym (a keyed hash of the poll and the roll entry), which shows who voted and never what. Earlier ballots stay in the ledger and are left out of the count. Turnout counts members, not ballots.
 - **What this edition does not do.** A personal link is the proof of the address: whoever holds it can vote once. This is the informal, one-step level of ADR 0003 (section 4). The formal levels (a confirmation by a code sent to the address, a registration phase, a roll co-signed by several administrators, threshold keys) are not built, and the ballot says that anyone with the link can vote.
 
+### 4c. Content in several languages
+
+A poll offers one or more languages (French, English), the first being the default. The question, the details and each option are written in every language offered, and a poll that lacks one of them is refused, so a member never meets an empty question. The columns `title`, `description` and `options` keep the default language; the other texts sit in a JSON column. A member reads the poll in the language of the screen when it is offered, and in the default language otherwise, text by text.
+
 ### 5. Scope of the first test
 
 Included: space creation, keys, poll creation with one single-choice question (in favour, against, abstention, or custom options), the roll with personal links, opening and closing, voting with receipt, optional sealed ballots with a counting key, results with the visibility settings, a ledger page, an optional password in front of the whole edition.

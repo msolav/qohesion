@@ -44,7 +44,7 @@
       <div class="cx-tools">
         {#if session}
           <span class="cx-who">{session.label}{#if !(session.owner && session.administrator)} · {roleLabel}{/if}</span>
-          <form method="POST" action="/signout"><button class="cx-link" type="submit">{m.nav.signOut}</button></form>
+          <form method="POST" action="/signout"><button class="cx-signout" type="submit">{m.nav.signOut}</button></form>
         {/if}
         <nav class="cx-lang" aria-label={t.shell.language}>
           {#each LOCALES as locale (locale)}

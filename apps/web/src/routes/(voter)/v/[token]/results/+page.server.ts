@@ -1,5 +1,6 @@
 import { error, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
+import { localize } from "#lib/poll-i18n.js";
 import { isTestEdition, service } from "#lib/server/runtime.js";
 import { receiptCheck, resultsPage } from "#lib/server/web.js";
 
@@ -10,7 +11,7 @@ export const load: PageServerLoad = ({ params, locals }) => {
   const page = resultsPage(locals, link.poll, params.token);
   if (!page.results) redirect(303, `/v/${params.token}`);
   const { poll } = link;
-  return { ...page, organization: service().getSpace(poll.spaceId)?.name ?? null, poll: { id: poll.id, title: poll.title, options: poll.options, timing: poll.timing, audience: poll.audience, status: poll.status, markFill: poll.markFill } };
+  return { ...page, organization: service().getSpace(poll.spaceId)?.name ?? null, poll: { id: poll.id, title: localize(poll, locals.locale).title, options: localize(poll, locals.locale).options, timing: poll.timing, audience: poll.audience, status: poll.status, markFill: poll.markFill } };
 };
 
 export const actions: Actions = {

@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { NO_RULES } from "../close-rules.js";
+import { NO_TRANSLATIONS } from "../poll-i18n.js";
 import { Service, maskAddress, type PollInput, type Session } from "./service.js";
 
 let now = new Date("2026-12-01T15:00:00Z");
@@ -24,6 +25,7 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   encrypted: false,
   markFill: false,
   anonymity: "secret",
+  translations: NO_TRANSLATIONS,
   ...over,
 });
 
@@ -339,6 +341,35 @@ describe("dates, closing rules and changing a vote", () => {
     must(service.updateSpace(owner, { name: "Maple", locale: "en", theme: "standard", timeZone: "Europe/Paris" }));
     expect(service.getSpace(owner.spaceId)?.timeZone).toBe("Europe/Paris");
     expect(service.updateSpace(owner, { name: "Maple", locale: "en", theme: "standard", timeZone: "Mars/Olympus" })).toEqual({ ok: false, error: "invalid_time_zone" });
+  });
+});
+
+describe("poll content in several languages", () => {
+  const two = (over: Partial<PollInput> = {}) =>
+    input({
+      kind: "choice",
+      title: "Quelle couleur?",
+      options: opts("Vert", "Bleu"),
+      translations: { languages: ["fr", "en"], title: { fr: "Quelle couleur?", en: "Which colour?" }, description: { fr: "", en: "" }, options: [{ fr: "Vert", en: "Green" }, { fr: "Bleu", en: "Blue" }] },
+      ...over,
+    });
+
+  it("stores the content in each language and gives it back", () => {
+    const poll = must(service.createPoll(owner, two()));
+    expect(poll.translations.languages).toEqual(["fr", "en"]);
+    expect(poll.translations.title.en).toBe("Which colour?");
+    expect(service.getPoll(poll.id)?.translations.options[1]).toEqual({ fr: "Bleu", en: "Blue" });
+  });
+
+  it("refuses a poll with something missing in an offered language", () => {
+    const base = two();
+    expect(service.createPoll(owner, two({ translations: { ...base.translations, title: { fr: "Quelle couleur?", en: " " } } }))).toEqual({ ok: false, error: "translation_missing" });
+    expect(service.createPoll(owner, two({ translations: { ...base.translations, options: [{ fr: "Vert", en: "Green" }, { fr: "Bleu" }] } }))).toEqual({ ok: false, error: "translation_missing" });
+  });
+
+  it("does not ask for anything more when the poll has one language", () => {
+    expect(service.createPoll(owner, two({ translations: { languages: ["fr"], title: { fr: "Quelle couleur?" }, description: {}, options: [{ fr: "Vert" }, { fr: "Bleu" }] } })).ok).toBe(true);
+    expect(service.createPoll(owner, input()).ok).toBe(true);
   });
 });
 

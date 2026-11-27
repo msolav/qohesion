@@ -15,6 +15,7 @@ import { addressFingerprint, applyEvent, checkAddress, freezeRoll, type MemberSt
 import { generateCountingKeys, keyMatches, open as openSealed, seal } from "./seal.js";
 import { isColorId, isIconId } from "../option-style.js";
 import { DEFAULT_THEME, isTheme, type Theme } from "../theme.js";
+import { NO_TRANSLATIONS, cleanLanguages, missingTexts, type Translations } from "../poll-i18n.js";
 import { NO_RULES, closeReason, parseRules, ruleProblem, type CloseRules } from "../close-rules.js";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "../zoned.js";
 import { accessTo, isAnonymity, isAudience, isTiming, type Access, type Anonymity, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
@@ -101,6 +102,8 @@ export interface Poll {
   readonly counted: boolean;
   readonly markFill: boolean;
   readonly anonymity: Anonymity;
+  /** The content in the languages offered. The columns title, description and options hold the default language. */
+  readonly translations: Translations;
   readonly createdAt: string;
   readonly openedAt: string | null;
   /** The deadline. Null only for a poll made before deadlines were required. */
@@ -146,6 +149,8 @@ export interface PollInput {
   /** One setting for every option: the colours fill the circle of each mark, or draw the icon and the outline. */
   readonly markFill: boolean;
   readonly anonymity: Anonymity;
+  /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
+  readonly translations: Translations;
 }
 
 export type Problem = { readonly ok: false; readonly error: string };
@@ -195,7 +200,7 @@ CREATE TABLE IF NOT EXISTS polls (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT NOT NULL,
   kind TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL, timing TEXT NOT NULL, audience TEXT NOT NULL, theme TEXT NOT NULL,
   close_after_hours INTEGER, opens_at TEXT, allow_change INTEGER NOT NULL DEFAULT 0, close_rules TEXT, created_at TEXT NOT NULL, opened_at TEXT, closes_at TEXT, closed_at TEXT, roll_code TEXT, roll_count INTEGER,
-  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0, anonymity TEXT NOT NULL DEFAULT 'secret');
+  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0, anonymity TEXT NOT NULL DEFAULT 'secret', i18n TEXT);
 CREATE TABLE IF NOT EXISTS roll (
   id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, address TEXT NOT NULL,
   fingerprint TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL, late INTEGER NOT NULL, added_at TEXT NOT NULL,
@@ -240,6 +245,7 @@ export class Service {
       if (!existing.includes(column)) this.#db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     };
     const names = (table: string) => (this.#db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+    addIfMissing("polls", columns, "i18n", "TEXT");
     addIfMissing("polls", columns, "anonymity", "TEXT NOT NULL DEFAULT 'secret'");
     addIfMissing("ballots", names("ballots"), "roll_id", "INTEGER");
     addIfMissing("polls", columns, "opens_at", "TEXT");
@@ -441,6 +447,7 @@ export class Service {
       counted: r["counted"] !== 0,
       markFill: r["mark_fill"] === 1,
       anonymity: isAnonymity(r["anonymity"]) ? r["anonymity"] : "secret",
+      translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
       createdAt: String(r["created_at"]),
       openedAt: r["opened_at"] === null ? null : String(r["opened_at"]),
       closesAt: r["closes_at"] === null ? null : String(r["closes_at"]),
@@ -490,6 +497,11 @@ export class Service {
     if (!isTiming(input.timing) || !isAudience(input.audience)) return "invalid_results";
     if (input.encrypted && input.timing === "live") return "encryption_needs_close";
     if (!isAnonymity(input.anonymity)) return "invalid_results";
+    const languages = cleanLanguages(input.translations.languages);
+    if (languages.length > 1 || input.translations.languages.length !== languages.length) {
+      const optionCount = input.kind === "choice" ? input.options.filter((o) => o.label.trim().length > 0).length : 0;
+      if (missingTexts({ ...input.translations, languages }, optionCount).length > 0) return "translation_missing";
+    }
     const closes = Date.parse(input.closesAt);
     if (Number.isNaN(closes)) return "closes_required";
     if (closes <= this.#now().getTime()) return "closes_past";
@@ -525,9 +537,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), this.#iso(),
       );
       this.#log(id, session, "created", "");
     });
@@ -543,8 +555,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ? WHERE id = ?",
-      input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, pollId,
+      "UPDATE polls SET title = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ? WHERE id = ?",
+      input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), pollId,
     );
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -997,4 +1009,19 @@ export function maskAddress(address: string): string {
   const host = dot > 0 ? domain.slice(0, dot) : domain;
   const tld = dot > 0 ? domain.slice(dot) : "";
   return `${address[0]}***@${host[0] ?? ""}***${tld}`;
+}
+
+function parseTranslations(json: string | null): Translations {
+  if (!json) return NO_TRANSLATIONS;
+  try {
+    const raw = JSON.parse(json) as Partial<Translations>;
+    return {
+      languages: cleanLanguages(Array.isArray(raw.languages) ? raw.languages : []),
+      title: raw.title && typeof raw.title === "object" ? raw.title : {},
+      description: raw.description && typeof raw.description === "object" ? raw.description : {},
+      options: Array.isArray(raw.options) ? raw.options : [],
+    };
+  } catch {
+    return NO_TRANSLATIONS;
+  }
 }

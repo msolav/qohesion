@@ -28,6 +28,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       encrypted: poll.encrypted,
       markFill: poll.markFill,
       anonymity: poll.anonymity,
+      translations: poll.translations,
     },
   };
 };

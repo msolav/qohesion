@@ -38,6 +38,7 @@ export interface ConsoleMessages {
     readonly options: string; readonly optionsHelp: string; readonly optionN: string; readonly addOption: string;
     readonly results: string; readonly resultsHelp: string; readonly timing: string; readonly audience: string; readonly timingNames: Names<ResultsTiming>; readonly audienceNames: Names<ResultsAudience>;
     readonly template: string; readonly templateSeed: string; readonly templateBallot: string;
+    readonly languagesTitle: string; readonly languagesHelp: string; readonly defaultLanguage: string; readonly missingLanguage: string;
     readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string;
     readonly rulesTitle: string; readonly rulesHelp: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleThresholdNone: string; readonly ruleThresholdMajority: string; readonly ruleThresholdPercent: string; readonly ruleNeedsReadable: string; readonly members: string; readonly percent: string;
     readonly anonymityTitle: string; readonly anonymityNames: Names<Anonymity>;
@@ -85,6 +86,7 @@ export interface ConsoleMessages {
     readonly unknownTitle: string; readonly unknownText: string; readonly seeResults: string; readonly publicResults: string;
   };
   readonly build: {
+    readonly needLanguages: string; readonly needOptionLanguages: string;
     readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"question" | "choices" | "results" | "closing" | "review", string>>;
     readonly next: string; readonly back: string; readonly change: string; readonly reviewLead: string;
     readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly fillLabel: string; readonly fillHelp: string; readonly fillOutline: string; readonly fillSolid: string; readonly styleDefault: string;
@@ -181,6 +183,10 @@ const en: ConsoleMessages = {
     template: "Ballot template",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    languagesTitle: "Languages of the poll",
+    languagesHelp: "Members read the poll in their language when it is offered, and in the default language otherwise. Each language needs the question and every option.",
+    defaultLanguage: "Default",
+    missingLanguage: "Something is missing in this language",
     opening: "Opening",
     openManual: "Administrators open the poll",
     openDate: "On a date and time",
@@ -396,6 +402,8 @@ const en: ConsoleMessages = {
     publicResults: "Results of this poll",
   },
   build: {
+    needLanguages: "Write the question in every language offered (missing: {languages}).",
+    needOptionLanguages: "Write every option in every language offered.",
     stepsLabel: "Steps",
     step: "Step {n} of {total}",
     stepNames: { question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
@@ -512,6 +520,7 @@ const en: ConsoleMessages = {
     invalid_type: "The answer is not valid.",
     attestation_required: "Confirm that you have permission to contact these people.",
     mail_not_configured: "Email is not set up on this server.",
+    translation_missing: "The question and every option are needed in each language offered.",
     closes_required: "Enter the closing date and time.",
     closes_past: "The closing date must be in the future.",
     dates_order: "The opening must come before the closing.",
@@ -599,6 +608,10 @@ const fr: ConsoleMessages = {
     template: "Modèle de bulletin",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    languagesTitle: "Langues du scrutin",
+    languagesHelp: "Les membres lisent le scrutin dans leur langue quand elle est offerte, et dans la langue par défaut sinon. Chaque langue exige la question et chaque option.",
+    defaultLanguage: "Par défaut",
+    missingLanguage: "Il manque quelque chose dans cette langue",
     opening: "Ouverture",
     openManual: "L’administration ouvre le scrutin",
     openDate: "À une date et une heure",
@@ -814,6 +827,8 @@ const fr: ConsoleMessages = {
     publicResults: "Résultats de ce scrutin",
   },
   build: {
+    needLanguages: "Rédiger la question dans chaque langue offerte (manque: {languages}).",
+    needOptionLanguages: "Rédiger chaque option dans chaque langue offerte.",
     stepsLabel: "Étapes",
     step: "Étape {n} de {total}",
     stepNames: { question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
@@ -930,6 +945,7 @@ const fr: ConsoleMessages = {
     invalid_type: "La réponse n’est pas valide.",
     attestation_required: "Confirmer que vous avez la permission de joindre ces personnes.",
     mail_not_configured: "Le courriel n’est pas configuré sur ce serveur.",
+    translation_missing: "La question et chaque option sont nécessaires dans chaque langue offerte.",
     closes_required: "Saisir la date et l’heure de fermeture.",
     closes_past: "La date de fermeture doit être dans le futur.",
     dates_order: "L’ouverture doit précéder la fermeture.",

@@ -35,9 +35,9 @@
 </p>{/if}
 {#if warn}<p class="cx-notice warn" role="note">{m.form.smallRoll}</p>{/if}
 
-<section class="cx-section" aria-labelledby="facts-h">
-  <h2 id="facts-h" class="gap">{m.poll.facts}</h2>
-  <div class="cx-progress">
+<section class="cx-section first" aria-labelledby="facts-h">
+  <h2 id="facts-h">{m.poll.facts}</h2>
+  <div class="cx-ticket gap">
     <div class="cx-turnout">
       <p class="figure"><b>{data.turnout ?? 0}</b><span>{m.results.of} {poll.rollCount ?? data.rollSize}</span></p>
       <p class="cx-help">{m.poll.voted}{#if data.turnout !== null && (poll.rollCount ?? 0) > 0}<span class="sep" aria-hidden="true">·</span>{Math.round((data.turnout / (poll.rollCount ?? 1)) * 100)} %{/if}</p>

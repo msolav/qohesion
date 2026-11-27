@@ -6,6 +6,7 @@
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { COLOR_IDS, ICON_IDS, ICONS, COLORS, colorName, iconName } from "#lib/option-style.js";
   import { AUDIENCES, TIMINGS, type Anonymity, type ResultsAudience, type ResultsTiming } from "#lib/results-rules.js";
+  import { LANGS, type Lang } from "#lib/poll-i18n.js";
   import type { PollInput } from "#lib/server/service.js";
   import { THEMES, THEME_NAMES, type Theme } from "#lib/theme.js";
   import { DEFAULT_TIME_ZONE, utcToLocalInput, zonedToUtc } from "#lib/zoned.js";
@@ -23,24 +24,34 @@
   const m = $derived(consoleMessages[locale]);
   const start = (() => initial)();
 
+  type Texts = Record<Lang, string>;
+  const blank = (): Texts => ({ fr: "", en: "" });
   interface Row {
     key: number;
-    label: string;
+    /** The text of the option in each language. */
+    texts: Texts;
     icon: string;
     color: string;
     open: boolean;
   }
   let nextKey = 0;
-  const row = (label = "", icon = "", color = ""): Row => ({ key: nextKey++, label, icon, color, open: false });
+  const row = (texts: Partial<Texts> = {}, icon = "", color = ""): Row => ({ key: nextKey++, texts: { ...blank(), ...texts }, icon, color, open: false });
+  const t0 = start?.translations;
 
   // Everything typed or chosen lives in state, so it survives a change of language and any refresh of the page.
   let step = $state(0);
-  let title = $state(start?.title ?? "");
-  let description = $state(start?.description ?? "");
+  // The languages offered, the default first. A new poll starts in the language of the screen.
+  const ui = (() => locale)();
+  const startLangs: Lang[] = t0 && t0.languages.length > 0 ? [...t0.languages] : [ui];
+  let languages = $state<Lang[]>(startLangs);
+  const def = $derived(languages[0] ?? ui);
+  let editing = $state<Lang>(startLangs[0] ?? ui);
+  let titles = $state<Texts>({ ...blank(), ...(t0?.title ?? {}), ...(t0 && t0.languages.length > 0 ? {} : { [ui]: start?.title ?? "" }) });
+  let descriptions = $state<Texts>({ ...blank(), ...(t0?.description ?? {}), ...(t0 && t0.languages.length > 0 ? {} : { [ui]: start?.description ?? "" }) });
   let markFillValue = $state<"outline" | "fill">(start?.markFill ? "fill" : "outline");
   const markFill = $derived(markFillValue === "fill");
   let kind = $state<"yes-no" | "choice">(start?.kind ?? "yes-no");
-  let rows = $state<Row[]>(start && start.options.length > 0 ? start.options.map((o) => row(o.label, o.icon ?? "", o.color ?? "")) : [row(), row(), row()]);
+  let rows = $state<Row[]>(start && start.options.length > 0 ? start.options.map((o, i) => row({ ...(t0?.options[i] ?? {}), ...(t0 && t0.languages.length > 0 ? {} : { [ui]: o.label ?? "" }) }, o.icon ?? "", o.color ?? "")) : [row(), row(), row()]);
   let timing = $state<ResultsTiming>(start?.timing ?? "close");
   let audience = $state<ResultsAudience>(start?.audience ?? "voters");
   let anonymity = $state<Anonymity>(start?.anonymity ?? "secret");
@@ -69,6 +80,11 @@
   $effect(() => {
     enhanced = true;
   });
+  // At least one language stays; the language being edited is always one of those offered.
+  $effect(() => {
+    if (languages.length === 0) languages = [ui];
+    if (!languages.includes(editing)) editing = languages[0] ?? ui;
+  });
   // Live totals need readable ballots, so choosing them turns encryption off.
   $effect(() => {
     if (timing === "live") encryption = "none";
@@ -81,21 +97,25 @@
   // A refusal from the server sends the person to the step that holds the problem.
   $effect(() => {
     if (!error) return;
-    step = error.startsWith("title") || error === "description_too_long" ? 0 : error.startsWith("option") ? 1 : ["closes_required", "closes_past", "dates_order", "opens_past", "invalid_rule", "rules_need_readable", "change_needs_encryption"].includes(error) ? 3 : 2;
+    step = error.startsWith("title") || error === "translation_missing" || error === "description_too_long" ? 0 : error.startsWith("option") ? 1 : ["closes_required", "closes_past", "dates_order", "opens_past", "invalid_rule", "rules_need_readable", "change_needs_encryption"].includes(error) ? 3 : 2;
   });
 
-  const labels = $derived(rows.map((r) => r.label.trim()).filter((l) => l.length > 0));
+  const labels = $derived(rows.map((r) => r.texts[def].trim()).filter((l) => l.length > 0));
+  const shown = (texts: Texts): string => texts[editing].trim() || texts[def].trim();
+  const langName = (l: Lang): string => (l === "fr" ? "Français" : "English");
+  /** What is still missing in a language: the question, or an option the default language has. */
+  const gaps = (l: Lang): boolean => titles[l].trim() === "" || rows.some((r) => r.texts[def].trim() !== "" && r.texts[l].trim() === "");
   const previewRules = $derived({
     afterVotes: ruleVotes && /^\d+$/.test(ruleVotesN) ? Number(ruleVotesN) : null,
     turnoutPercent: ruleTurnout && /^\d+$/.test(ruleTurnoutP) ? Number(ruleTurnoutP) : null,
     threshold: ruleThreshold === "majority" ? ("majority" as const) : ruleThreshold === "percent" && /^\d+$/.test(ruleThresholdP) ? Number(ruleThresholdP) : null,
   });
   const preview = $derived({
-    title,
-    description,
+    title: shown(titles),
+    description: shown(descriptions),
     options:
       kind === "choice"
-        ? rows.map((r) => ({ id: `p${r.key}`, label: r.label.trim() || null, icon: r.icon || null, color: r.color || null }))
+        ? rows.map((r) => ({ id: `p${r.key}`, label: shown(r.texts) || null, icon: r.icon || null, color: r.color || null }))
         : [{ id: "for", label: null }, { id: "against", label: null }, { id: "abstain", label: null }],
     timing,
     audience,
@@ -119,13 +139,22 @@
 
   /** Whether the step can be left. A step with a missing answer says what is missing and keeps the person on it. */
   function check(at: number): boolean {
-    if (at === 0 && title.trim() === "") {
-      problem = m.build.needTitle;
-      document.getElementById("title")?.focus();
-      return false;
+    if (at === 0) {
+      const empty = languages.filter((l) => titles[l].trim() === "");
+      if (empty.length > 0) {
+        problem = languages.length === 1 ? m.build.needTitle : fill(m.build.needLanguages, { languages: empty.map(langName).join(", ") });
+        editing = empty[0] ?? editing;
+        void tick().then(() => document.getElementById(`title-${editing}`)?.focus());
+        return false;
+      }
     }
     if (at === 1 && kind === "choice") {
       const lower = labels.map((l) => l.toLowerCase());
+      const untranslated = languages.some((l) => rows.some((r) => r.texts[def].trim() !== "" && r.texts[l].trim() === ""));
+      if (untranslated) {
+        problem = m.build.needOptionLanguages;
+        return false;
+      }
       if (labels.length < 2 || new Set(lower).size !== lower.length) {
         problem = labels.length < 2 ? m.build.needOptions : m.errors["options_duplicate"] ?? "";
         return false;
@@ -147,7 +176,7 @@
 
   async function focusOption(key: number): Promise<void> {
     await tick();
-    document.getElementById(`option-${key}`)?.focus();
+    document.getElementById(`option-${key}-${editing}`)?.focus();
   }
   function addAfter(i: number): void {
     if (rows.length >= 12) return;
@@ -217,14 +246,43 @@
     <!-- 1. Question -->
     <section class="bld-step" id="step-0" hidden={enhanced && step !== 0} aria-labelledby="h-0">
       <h2 id="h-0">{stepLabel("question")}</h2>
+      <fieldset class="cx-field">
+        <legend class="cx-label">{m.form.languagesTitle}</legend>
+        <p class="cx-help">{m.form.languagesHelp}</p>
+        <div class="bld-langs">
+          {#each LANGS as lang (lang)}
+            <label class="bld-pick"><input type="checkbox" name="languages" value={lang} checked={languages.includes(lang)} onchange={(e) => { const on = (e.currentTarget as HTMLInputElement).checked; languages = on ? [...languages, lang] : languages.filter((l) => l !== lang); }} /><span class="mode">{langName(lang)}</span></label>
+          {/each}
+        </div>
+        {#if languages.length > 1}
+          <div class="bld-langs" role="radiogroup" aria-label={m.form.defaultLanguage}>
+            {#each languages as lang (lang)}
+              <label class="bld-pick"><input type="radio" name="default_language" value={lang} checked={def === lang} onchange={() => { languages = [lang, ...languages.filter((l) => l !== lang)]; }} /><span class="mode">{m.form.defaultLanguage}: {langName(lang)}</span></label>
+            {/each}
+          </div>
+        {/if}
+      </fieldset>
+
+      {#if languages.length > 1}
+        <div class="bld-tabs" role="group" aria-label={m.form.languagesTitle}>
+          {#each languages as lang (lang)}
+            <button type="button" class="bld-tab" aria-pressed={editing === lang} onclick={() => (editing = lang)}>{langName(lang)}{#if gaps(lang)}<span class="gap-dot" role="img" aria-label={m.form.missingLanguage}></span>{/if}</button>
+          {/each}
+        </div>
+      {/if}
+
       <div class="cx-field" class:invalid={problem && step === 0}>
-        <label for="title">{m.form.question}</label>
-        <input id="title" name="title" type="text" class="big" maxlength="140" data-first bind:value={title} onkeydown={onTitleKey} autocomplete="off" aria-describedby="title-help{problem && step === 0 ? ' step-problem' : ''}" required />
+        <label for="title-{editing}">{m.form.question}</label>
+        {#each languages as lang (lang)}
+          <input id="title-{lang}" name="title_{lang}" type="text" class="big" lang={lang} maxlength="140" hidden={lang !== editing} data-first={lang === editing ? "" : undefined} bind:value={titles[lang]} onkeydown={onTitleKey} autocomplete="off" aria-describedby="title-help{problem && step === 0 ? ' step-problem' : ''}" required />
+        {/each}
         <p class="cx-help" id="title-help">{m.form.questionHelp}</p>
       </div>
       <div class="cx-field">
-        <label for="description">{m.form.details} <span class="cx-help">({m.common.optional})</span></label>
-        <textarea id="description" name="description" maxlength="2000" aria-describedby="description-help" bind:value={description}></textarea>
+        <label for="description-{editing}">{m.form.details} <span class="cx-help">({m.common.optional})</span></label>
+        {#each languages as lang (lang)}
+          <textarea id="description-{lang}" name="description_{lang}" lang={lang} maxlength="2000" hidden={lang !== editing} aria-describedby="description-help" bind:value={descriptions[lang]}></textarea>
+        {/each}
         <p class="cx-help" id="description-help">{m.form.detailsHelp}</p>
       </div>
       {#if problem && step === 0}<p class="cx-error" id="step-problem" role="alert">{problem}</p>{/if}
@@ -255,8 +313,10 @@
                   <button type="button" class="bld-swatch" data-color={r.color || undefined} aria-expanded={r.open} aria-controls="style-{r.key}" aria-label={fill(m.build.styleOpen, { n: i + 1 })} onclick={() => (r.open = !r.open)}>
                     <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d={r.icon ? ICONS[r.icon]?.d : ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity={r.icon ? 1 : 0.35} /></svg>
                   </button>
-                  <label class="sr-only" for="option-{r.key}">{fill(m.form.optionN, { n: i + 1 })}</label>
-                  <input id="option-{r.key}" name="option" type="text" maxlength="120" placeholder={fill(m.form.optionN, { n: i + 1 })} bind:value={r.label} onkeydown={(e) => onOptionKey(e, i)} autocomplete="off" data-first={i === 0 ? "" : undefined} />
+                  <label class="sr-only" for="option-{r.key}-{editing}">{fill(m.form.optionN, { n: i + 1 })}</label>
+                  {#each languages as lang (lang)}
+                    <input id="option-{r.key}-{lang}" name="option_{lang}" type="text" lang={lang} maxlength="120" hidden={lang !== editing} placeholder={fill(m.form.optionN, { n: i + 1 })} bind:value={r.texts[lang]} onkeydown={(e) => onOptionKey(e, i)} autocomplete="off" data-first={i === 0 && lang === editing ? "" : undefined} />
+                  {/each}
                   <div class="bld-row-tools">
                     <button type="button" class="bld-tool" aria-label={fill(m.build.moveUp, { n: i + 1 })} disabled={i === 0} onclick={() => move(i, i - 1)}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
                     <button type="button" class="bld-tool" aria-label={fill(m.build.moveDown, { n: i + 1 })} disabled={i === rows.length - 1} onclick={() => move(i, i + 1)}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
@@ -413,7 +473,7 @@
       <h2 id="h-4">{stepLabel("review")}</h2>
       <p class="cx-help">{m.build.reviewLead}</p>
       <dl class="bld-review">
-        <div><dt>{m.form.question}</dt><dd>{title || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
+        <div><dt>{m.form.question}</dt><dd>{titles[def] || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.options}</dt><dd>{kind === "choice" ? labels.join(" · ") || "–" : m.form.kindYesNo}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.results}</dt><dd>{m.resultsStatement[timing][audience]}<br />{encryption === "sealed" ? m.seal.sealed.title : m.seal.none.title}<br />{m.form.anonymityNames.title[anonymity]}</dd><dd><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}</button></dd></div>
         <div><dt>{m.build.stepNames.closing}</dt><dd>{m.form.opening}: {opensMode === "date" && opensAt ? opensAt.replace("T", " ") : m.form.openManual}<br />{m.form.closeAt}: {closesAt ? closesAt.replace("T", " ") : "–"} · {THEME_NAMES[theme][locale]}</dd><dd><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}</button></dd></div>
