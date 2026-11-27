@@ -6,6 +6,7 @@
 
   let { data, form }: PageProps = $props();
   const m = $derived(consoleMessages[data.locale]);
+  let addresses = $state("");
   const poll = $derived(data.poll);
   const report = $derived(form && "report" in form ? form.report : null);
   const failed = $derived(form && "error" in form ? form : null);
@@ -14,6 +15,10 @@
   const mailError = $derived(form && "mailError" in form ? form.mailError : null);
   const toSendNew = $derived(data.entries.filter((e) => e.status !== "voted" && !e.invitedOn).length);
   const toSendAll = $derived(data.entries.filter((e) => e.status !== "voted").length);
+  // The box empties once the addresses have been added.
+  $effect(() => {
+    if (report) addresses = "";
+  });
   const reasons = $derived({ invalid: m.roll.reasonInvalid, disposable: m.roll.reasonDisposable });
 </script>
 
@@ -23,7 +28,7 @@
     <form class="cx-form gap" method="POST" action="?/add" use:enhance>
       <div class="cx-field" class:invalid={failed}>
         <label class="sr-only" for="addresses">{m.roll.add}</label>
-        <textarea id="addresses" name="addresses" rows="5" placeholder={m.roll.addPlaceholder} spellcheck="false" autocapitalize="none" aria-describedby="addresses-help{failed ? ' addresses-error' : ''}">{failed?.text ?? ""}</textarea>
+        <textarea id="addresses" name="addresses" rows="5" placeholder={m.roll.addPlaceholder} spellcheck="false" autocapitalize="none" aria-describedby="addresses-help{failed ? ' addresses-error' : ''}" bind:value={addresses}></textarea>
         <p class="cx-help" id="addresses-help">{m.roll.addHelp}</p>
         {#if failed}<p class="cx-error" id="addresses-error" role="alert">{errorText(m, failed.error)}</p>{/if}
       </div>

@@ -5,6 +5,10 @@
 
   let { data, form }: PageProps = $props();
   const m = $derived(consoleMessages[data.locale]);
+  let name = $state("");
+  $effect(() => {
+    if (form?.name) name = form.name;
+  });
   const created = $derived(form?.created === true ? form : null);
   const failed = $derived(form?.error ? form : null);
   const download = $derived(created ? `data:text/plain;charset=utf-8,${encodeURIComponent(`${created.name}\n${created.key}\n`)}` : "");
@@ -38,7 +42,7 @@
     <form class="cx-form" method="POST" novalidate>
       <div class="cx-field" class:invalid={failed}>
         <label for="name">{m.start.name}</label>
-        <input id="name" name="name" type="text" maxlength="80" autocomplete="organization" value={failed?.name ?? ""} aria-describedby={failed ? "name-error" : undefined} required />
+        <input id="name" name="name" type="text" maxlength="80" autocomplete="organization" bind:value={name} aria-describedby={failed ? "name-error" : undefined} required />
         {#if failed}<p class="cx-error" id="name-error" role="alert">{errorText(m, failed.error)}</p>{/if}
       </div>
       <div class="cx-actions"><button class="cx-btn" type="submit">{m.start.submit}</button></div>

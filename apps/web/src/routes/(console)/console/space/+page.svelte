@@ -7,7 +7,14 @@
 
   let { data, form }: PageProps = $props();
   const m = $derived(consoleMessages[data.locale]);
+  // The name being edited is kept in state, so that a change of language does not bring back the saved one.
+  const savedName = (() => data.space?.name ?? "")();
+  let name = $state(savedName);
+  let keyLabel = $state("");
   const fmt = $derived(new Intl.DateTimeFormat(data.locale === "fr" ? "fr-CA" : "en-CA", { dateStyle: "medium" }));
+  $effect(() => {
+    if (form && "newKey" in form) keyLabel = "";
+  });
   const failedIn = (name: string) => (form && "form" in form && form.form === name ? form : null);
   const roleOf = (k: { owner: boolean; administrator: boolean }) => (k.owner && k.administrator ? m.role.both : k.owner ? m.role.owner : m.role.administrator);
 
@@ -28,7 +35,7 @@
     {#if form && "saved" in form}<p class="cx-notice" role="status">{m.space.saved}</p>{/if}
     <div class="cx-field" class:invalid={failedIn("save")}>
       <label for="name">{m.space.name}</label>
-      <input id="name" name="name" type="text" maxlength="80" value={data.space?.name ?? ""} required />
+      <input id="name" name="name" type="text" maxlength="80" bind:value={name} required />
       {#if failedIn("save")}<p class="cx-error" role="alert">{errorText(m, failedIn("save")?.error)}</p>{/if}
     </div>
     <div class="cx-two">
@@ -88,7 +95,7 @@
   <form class="cx-form gap" method="POST" action="?/addKey" use:enhance>
     <div class="cx-field" class:invalid={failedIn("key")}>
       <label for="label">{m.space.keyLabel}</label>
-      <input id="label" name="label" type="text" maxlength="60" value={failedIn("key")?.label ?? ""} required />
+      <input id="label" name="label" type="text" maxlength="60" bind:value={keyLabel} required />
       {#if failedIn("key")}<p class="cx-error" role="alert">{errorText(m, failedIn("key")?.error)}</p>{/if}
     </div>
     <fieldset class="cx-field">

@@ -9,7 +9,13 @@
   import "../lib/styles/console.css";
   import type { LayoutProps } from "./$types";
 
-  let { children }: LayoutProps = $props();
+  let { data, children }: LayoutProps = $props();
+
+  // The language switcher navigates without reloading the page, so what someone typed in a form is kept.
+  // The document language follows the displayed language.
+  $effect(() => {
+    document.documentElement.lang = data.locale;
+  });
 </script>
 
 {@render children()}

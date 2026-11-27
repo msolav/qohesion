@@ -16,6 +16,10 @@
   const m = $derived(consoleMessages[locale]);
 
   const start = (() => initial)();
+  // Typed text is kept in state, so that it survives a change of language or any other update of the page.
+  let title = $state(start?.title ?? "");
+  let description = $state(start?.description ?? "");
+  let hours = $state(String(start?.closeAfterHours ?? 72));
   let kind = $state<"yes-no" | "choice">(start?.kind ?? "yes-no");
   let timing = $state<ResultsTiming>(start?.timing ?? "close");
   let encryption = $state<"sealed" | "none">(start ? (start.encrypted ? "sealed" : "none") : "sealed");
@@ -40,14 +44,14 @@
 
   <div class="cx-field" class:invalid={titleFailed}>
     <label for="title">{m.form.question}</label>
-    <input id="title" name="title" type="text" maxlength="140" value={start?.title ?? ""} aria-describedby="title-help{titleFailed ? ' title-error' : ''}" required />
+    <input id="title" name="title" type="text" maxlength="140" bind:value={title} aria-describedby="title-help{titleFailed ? ' title-error' : ''}" required />
     <p class="cx-help" id="title-help">{m.form.questionHelp}</p>
     {#if titleFailed}<p class="cx-error" id="title-error" role="alert">{fieldError}</p>{/if}
   </div>
 
   <div class="cx-field">
     <label for="description">{m.form.details} <span class="cx-help">({m.common.optional})</span></label>
-    <textarea id="description" name="description" maxlength="2000" aria-describedby="description-help">{start?.description ?? ""}</textarea>
+    <textarea id="description" name="description" maxlength="2000" aria-describedby="description-help" bind:value={description}></textarea>
     <p class="cx-help" id="description-help">{m.form.detailsHelp}</p>
   </div>
 
@@ -122,7 +126,7 @@
     {#if byHours}
       <div class="cx-field">
         <label for="hours">{m.form.durationHelp}</label>
-        <input id="hours" name="hours" type="number" min="1" max="720" step="1" inputmode="numeric" value={start?.closeAfterHours ?? 72} />
+        <input id="hours" name="hours" type="number" min="1" max="720" step="1" inputmode="numeric" bind:value={hours} />
       </div>
     {/if}
   </fieldset>

@@ -48,7 +48,7 @@
         {/if}
         <nav class="cx-lang" aria-label={t.shell.language}>
           {#each LOCALES as locale (locale)}
-            <a href={switchTo(locale)} lang={locale} hreflang={locale} aria-label={names[locale]} aria-current={data.locale === locale ? "true" : undefined} data-sveltekit-reload>{locale.toUpperCase()}</a>
+            <a href={switchTo(locale)} lang={locale} hreflang={locale} aria-label={names[locale]} aria-current={data.locale === locale ? "true" : undefined}>{locale.toUpperCase()}</a>
           {/each}
         </nav>
       </div>

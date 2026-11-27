@@ -36,8 +36,7 @@
             lang={locale}
             hreflang={locale}
             aria-label={names[locale]}
-            aria-current={data.locale === locale ? "true" : undefined}
-            data-sveltekit-reload>{locale.toUpperCase()}</a>
+            aria-current={data.locale === locale ? "true" : undefined}>{locale.toUpperCase()}</a>
         {/each}
       </nav>
     </header>
