@@ -61,6 +61,14 @@ Results update by polling a JSON address every few seconds while the page is vis
 
 An option of a poll may have an icon and a colour, chosen from short fixed lists (16 icons, 7 colours) so that every combination stays legible in every template. Both are stored on the option, optional, and refused when not on the list. A poll's `kind` and its `options` are stored as data (not as a form of a fixed shape), so further kinds (multiple choice, ranking, scales, text) can be added later by extending the kind and the option fields, without changing the roll, the ballots or the ledger.
 
+### 4b. Dates, closing rules and changing a vote
+
+- **One organization per installation.** An installation holds one organization. Its front door is not a page about the product: the first visit sets the organization up, and later visits go to the sign-in of its administrators. Members arrive with their personal link. The hosted service, which holds many organizations, comes later.
+- **Dates.** Every poll has a closing date and time, and may have an opening date and time. They are typed and shown in the time zone of the organization and stored as instants. Administrators can always open or close earlier. A poll with an opening date is **scheduled**: a sealed poll shows its counting key at scheduling, since nobody is present at the moment of opening, and the roll is frozen when the poll opens.
+- **Closing rules.** Besides the deadline, a poll can close by itself after a number of votes, at a share of the roll that has voted (100 means everyone), or when an option has more than half of the roll or a chosen share of it. Any one that holds closes the poll. A threshold needs readable totals, so it is refused with sealed ballots. The rules are fixed when the poll opens and are stated on the ballot.
+- **Changing a vote.** A poll can let members vote again until it closes, and the last ballot counts. This needs sealed ballots: a vote that can be replaced is tied to its voter by a pseudonym (a keyed hash of the poll and the roll entry), which shows who voted and never what. Earlier ballots stay in the ledger and are left out of the count. Turnout counts members, not ballots.
+- **What this edition does not do.** A personal link is the proof of the address: whoever holds it can vote once. This is the informal, one-step level of ADR 0003 (section 4). The formal levels (a confirmation by a code sent to the address, a registration phase, a roll co-signed by several administrators, threshold keys) are not built, and the ballot says that anyone with the link can vote.
+
 ### 5. Scope of the first test
 
 Included: space creation, keys, poll creation with one single-choice question (in favour, against, abstention, or custom options), the roll with personal links, opening and closing, voting with receipt, optional sealed ballots with a counting key, results with the visibility settings, a ledger page, an optional password in front of the whole edition.

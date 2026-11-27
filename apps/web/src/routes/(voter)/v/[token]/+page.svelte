@@ -2,6 +2,7 @@
   import { enhance } from "$app/forms";
   import { page } from "$app/state";
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
+  import { formatMoment } from "#lib/zoned.js";
   import { messages } from "#lib/i18n/messages.js";
   import BallotView from "#lib/components/BallotView.svelte";
   import type { PageProps } from "./$types";
@@ -42,10 +43,11 @@
   {:else if data.state === "closed"}
     <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.closedTitle}</h2><p class="done__text">{m.voter.closedText}</p>{#if data.canSeeResults}<p class="done__next"><a href="/v/{token}/results">{m.voter.seeResults}</a></p>{/if}</section>
   {:else if data.state === "not_open"}
-    <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.notOpenTitle}</h2><p class="done__text">{m.voter.notOpenText}</p></section>
+    <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.notOpenTitle}</h2><p class="done__text">{data.poll?.opensAt ? fill(m.voter.opensOn, { date: formatMoment(data.poll.opensAt, data.locale, data.poll.timeZone) }) : m.voter.notOpenText}</p></section>
   {:else if data.poll}
     <section class="ballot-view" aria-labelledby="q-title">
       <form class="ballot" method="POST" novalidate use:enhance>
+        {#if "alreadyVoted" in data && data.alreadyVoted}<p class="receipt">{m.voter.alreadyVotedChange}</p>{/if}
         <BallotView locale={data.locale} poll={data.poll} {failure} />
       </form>
     </section>

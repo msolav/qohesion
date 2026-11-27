@@ -47,6 +47,5 @@
       </div>
       <div class="cx-actions"><button class="cx-btn" type="submit">{m.start.submit}</button></div>
     </form>
-    <p><a href="/signin">{m.start.haveKey}</a></p>
   </section>
 {/if}

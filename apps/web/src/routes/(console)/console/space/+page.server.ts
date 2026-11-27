@@ -1,8 +1,9 @@
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
-import { isTheme } from "#lib/theme.js";
+import { DEFAULT_THEME, isTheme } from "#lib/theme.js";
 import { isLocale } from "#lib/i18n/negotiate.js";
 import { service } from "#lib/server/runtime.js";
+import { DEFAULT_TIME_ZONE, TIME_ZONES, isTimeZone } from "#lib/zoned.js";
 import { SESSION_COOKIE, needSession } from "#lib/server/web.js";
 
 const text = (data: FormData | undefined, name: string): string => {
@@ -14,7 +15,7 @@ export const load: PageServerLoad = ({ locals }) => {
   const session = needSession(locals);
   if (!session.owner) redirect(303, "/console/polls");
   const space = service().getSpace(session.spaceId);
-  return { space, keys: service().listKeys(session), currentKey: session.keyId };
+  return { space, keys: service().listKeys(session), currentKey: session.keyId, timeZones: TIME_ZONES };
 };
 
 export const actions: Actions = {
@@ -24,7 +25,7 @@ export const actions: Actions = {
     const space = service().getSpace(session.spaceId);
     const locale = text(data, "language");
     const theme = text(data, "theme");
-    const result = service().updateSpace(session, { name: text(data, "name"), locale: isLocale(locale) ? locale : (space?.locale ?? "fr"), theme: isTheme(theme) ? theme : (space?.theme ?? "ballot-paper") });
+    const result = service().updateSpace(session, { name: text(data, "name"), locale: isLocale(locale) ? locale : (space?.locale ?? "fr"), theme: isTheme(theme) ? theme : (space?.theme ?? DEFAULT_THEME), timeZone: isTimeZone(text(data, "timeZone")) ? text(data, "timeZone") : (space?.timeZone ?? DEFAULT_TIME_ZONE) });
     if (!result.ok) return fail(400, { form: "save" as const, error: result.error });
     return { saved: true as const };
   },

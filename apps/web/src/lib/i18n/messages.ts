@@ -17,15 +17,6 @@ export interface Messages {
     readonly source: string;
     readonly licence: string;
   };
-  readonly home: {
-    readonly title: string;
-    readonly statement: string;
-    readonly state: string;
-    readonly previewLink: string;
-    readonly previewNote: string;
-    readonly versionLink: string;
-    readonly versionNote: string;
-  };
   readonly changelog: {
     readonly title: string;
     readonly note: string;
@@ -84,15 +75,6 @@ const en: Messages = {
     source: "Source code",
     licence: "AGPL-3.0-or-later",
   },
-  home: {
-    title: "Qohesion",
-    statement: "Qohesion is open-source software for holding votes and polls in groups such as associations, unions and councils.",
-    state: "Alpha version. Voting is not available yet: this build contains the ballot screen preview and the version information.",
-    previewLink: "Ballot screen preview",
-    previewNote: "One question with three choices, in five templates. No ballot is recorded.",
-    versionLink: "Version information",
-    versionNote: "Version, release channel, commit and build date, as JSON.",
-  },
   changelog: {
     title: "Changelog",
     note: "Changes by version, newest first. Entries are written in English. While the version number starts with 0, any version may change behaviour or data formats; the upgrade notes of each version say what an administrator must do.",
@@ -126,7 +108,7 @@ const en: Messages = {
     templateBallotPaper: "Ballot Paper",
     templateBoardingPass: "Boarding Pass",
     templateGuideMap: "Guide Map",
-    templateStandard: "Standard",
+    templateStandard: "Qohesion",
     doneTitle: "The choice is valid",
     doneText: "In this preview no ballot is recorded. In a real vote, a receipt code is displayed at this point. The code allows checking later that the ballot is included in the count. It does not reveal the choice made.",
     doneLabel: "Receipt code",
@@ -164,15 +146,6 @@ const fr: Messages = {
     source: "Code source",
     licence: "AGPL-3.0-or-later",
   },
-  home: {
-    title: "Qohesion",
-    statement: "Qohesion est un logiciel libre pour tenir des votes et des sondages dans des groupes tels que des associations, des syndicats et des conseils.",
-    state: "Version alpha. Le vote n’est pas encore disponible : cette version contient l’aperçu du bulletin de vote et les informations de version.",
-    previewLink: "Aperçu du bulletin de vote",
-    previewNote: "Une question à trois choix, dans cinq modèles. Aucun bulletin n’est enregistré.",
-    versionLink: "Informations de version",
-    versionNote: "Version, canal de publication, commit et date de compilation, en JSON.",
-  },
   changelog: {
     title: "Journal des modifications",
     note: "Modifications par version, de la plus récente à la plus ancienne. Les entrées sont rédigées en anglais. Tant que le numéro de version commence par 0, toute version peut modifier le comportement ou les formats de données; les notes de mise à jour de chaque version indiquent ce que l’administrateur doit faire.",
@@ -206,7 +179,7 @@ const fr: Messages = {
     templateBallotPaper: "Ballot Paper",
     templateBoardingPass: "Boarding Pass",
     templateGuideMap: "Guide Map",
-    templateStandard: "Standard",
+    templateStandard: "Qohesion",
     doneTitle: "Le choix est valide",
     doneText: "Dans cet aperçu, aucun bulletin n’est enregistré. Dans un vote réel, un code de reçu est affiché à cette étape. Le code permet de vérifier plus tard que le bulletin figure dans le décompte. Il ne révèle pas le choix exprimé.",
     doneLabel: "Code de reçu",

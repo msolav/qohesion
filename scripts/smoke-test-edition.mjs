@@ -45,15 +45,33 @@ class Client {
   }
 }
 
+// A week from now, as a date-and-time input value (the server reads it in the time zone of the organization).
+const closing = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16);
+
 const admin = new Client();
 const anonymous = new Client();
 const other = new Client();
 for (const c of [admin, anonymous, other]) await c.passGate();
 
-const created = await admin.send("/start", { method: "POST", form: { name: "Smoke Test Association" } });
-const key = /QK-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}/.exec(created.text)?.[0];
-check("creating an organization shows a key once", Boolean(key));
-check("creating an organization signs in", admin.session !== "");
+// An installation holds one organization. On a fresh installation the script sets it up; on one that is already set up,
+// give the key of an owner as SMOKE_KEY and the script signs in with it and adds its own poll.
+let key = process.env.SMOKE_KEY;
+if (key) {
+  const signedIn = await admin.send("/signin", { method: "POST", form: { key } });
+  check("the given key signs in", signedIn.status === 303 && admin.session !== "");
+} else {
+  const probe = await admin.send("/start");
+  if (probe.status === 303) {
+    console.error("This installation already has its organization. Give the key of an owner as SMOKE_KEY.");
+    process.exit(2);
+  }
+  const created = await admin.send("/start", { method: "POST", form: { name: "Smoke Test Association" } });
+  key = /QK-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}/.exec(created.text)?.[0];
+  check("setting up the organization shows a key once", Boolean(key));
+  check("setting up the organization signs in", admin.session !== "");
+  const again = await anonymous.send("/start");
+  check("a second organization cannot be set up", again.status === 303);
+}
 
 const refused = await other.send("/signin", { method: "POST", form: { key: "QK-AAAAAA-AAAAAA-AAAAAA-AAAAAA" } });
 check("an unknown key is refused", refused.status === 400 && other.session === "");
@@ -62,7 +80,7 @@ check("the key signs in", accepted.status === 303 && other.session !== "");
 
 check("the console needs a session", (await anonymous.send("/console/polls")).status === 303);
 
-const made = await admin.send("/console/polls/new", { method: "POST", form: { title: "Adopt the 2027 budget", kind: "yes-no", timing: "live", audience: "voters", theme: "ballot-paper", duration: "manual" } });
+const made = await admin.send("/console/polls/new", { method: "POST", form: { title: "Adopt the 2027 budget", kind: "yes-no", timing: "live", audience: "voters", theme: "ballot-paper", closes_at: closing } });
 const pollId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(made.location)?.[1];
 check("a poll is created", Boolean(pollId), made.location);
 
@@ -107,7 +125,7 @@ const checked = await admin.send(`/console/polls/${pollId}/results?/check`, { me
 check("a receipt is checked against the ledger", checked.status === 200);
 
 // A sealed poll: ballots are encrypted, totals stay hidden, and the count needs the counting key.
-const sealed = await admin.send("/console/polls/new", { method: "POST", form: { title: "Sealed question", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", duration: "manual", encryption: "sealed" } });
+const sealed = await admin.send("/console/polls/new", { method: "POST", form: { title: "Sealed question", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing, encryption: "sealed" } });
 const sealedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(sealed.location)?.[1];
 check("a sealed poll is created", Boolean(sealedId), sealed.location);
 await admin.send(`/console/polls/${sealedId}/roll?/add`, { method: "POST", form: { addresses: "s1@example.com\ns2@example.com" } });

@@ -9,7 +9,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   const entries = service().roll(session, params.id);
   const counts = summarize(entries.map((e) => e.status as MemberStatus));
   const results = service().resultsFor(params.id, "administrator");
-  return { rollSize: entries.length, voted: counts.voted, turnout: results?.turnout ?? null };
+  const space = service().getSpace(needSession(locals).spaceId);
+  return { rollSize: entries.length, voted: counts.voted, turnout: results?.turnout ?? null, timeZone: space?.timeZone ?? "America/Toronto" };
 };
 
 export const actions: Actions = {
@@ -33,6 +34,18 @@ export const actions: Actions = {
     const result = service().countPoll(needSession(locals), params.id, key);
     if (!result.ok) return fail(400, { error: result.error, step: "count" as const });
     redirect(303, `/console/polls/${params.id}/results`);
+  },
+  schedule: ({ locals, params }) => {
+    const result = service().schedulePoll(needSession(locals), params.id);
+    if (!result.ok) return fail(400, { error: result.error });
+    // As for opening: the counting key of a sealed poll exists only in this answer.
+    if (result.value.countingKey) return { countingKey: result.value.countingKey };
+    redirect(303, `/console/polls/${params.id}`);
+  },
+  unschedule: ({ locals, params }) => {
+    const result = service().unschedulePoll(needSession(locals), params.id);
+    if (!result.ok) return fail(400, { error: result.error });
+    redirect(303, `/console/polls/${params.id}`);
   },
   remove: ({ locals, params }) => {
     const result = service().deletePoll(needSession(locals), params.id);

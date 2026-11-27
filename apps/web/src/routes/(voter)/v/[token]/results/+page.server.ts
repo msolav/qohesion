@@ -10,7 +10,7 @@ export const load: PageServerLoad = ({ params, locals }) => {
   const page = resultsPage(locals, link.poll, params.token);
   if (!page.results) redirect(303, `/v/${params.token}`);
   const { poll } = link;
-  return { ...page, organization: service().getSpace(poll.spaceId)?.name ?? null, poll: { id: poll.id, title: poll.title, options: poll.options, timing: poll.timing, audience: poll.audience, status: poll.status } };
+  return { ...page, organization: service().getSpace(poll.spaceId)?.name ?? null, poll: { id: poll.id, title: poll.title, options: poll.options, timing: poll.timing, audience: poll.audience, status: poll.status, markFill: poll.markFill } };
 };
 
 export const actions: Actions = {

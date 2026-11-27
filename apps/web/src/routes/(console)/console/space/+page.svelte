@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import CopyButton from "#lib/components/CopyButton.svelte";
+  import UiIcon from "#lib/components/UiIcon.svelte";
   import { consoleMessages, errorText } from "#lib/i18n/console.js";
   import { THEMES, THEME_NAMES } from "#lib/theme.js";
   import type { PageProps } from "./$types";
@@ -42,6 +43,12 @@
       <div class="cx-field">
         <label for="language">{m.space.language}</label>
         <select id="language" name="language"><option value="fr" selected={data.space?.locale === "fr"}>Français</option><option value="en" selected={data.space?.locale === "en"}>English</option></select>
+      </div>
+      <div class="cx-field">
+        <label for="timeZone">{m.space.timeZone}</label>
+        <select id="timeZone" name="timeZone">
+          {#each data.timeZones as zone (zone)}<option value={zone} selected={data.space?.timeZone === zone}>{zone.replace("_", " ")}</option>{/each}
+        </select>
       </div>
       <div class="cx-field">
         <label for="theme">{m.space.template}</label>
@@ -101,8 +108,8 @@
     <fieldset class="cx-field">
       <legend class="cx-label">{m.space.keyRoles}</legend>
       <div class="cx-choices cols-2">
-        <label class="cx-choice check"><input type="checkbox" name="role" value="administrator" checked /><span><b>{m.role.administrator}</b></span></label>
-        <label class="cx-choice check"><input type="checkbox" name="role" value="owner" /><span><b>{m.role.owner}</b></span></label>
+        <label class="cx-choice check has-ico"><input type="checkbox" name="role" value="administrator" checked /><span><i class="ico"><UiIcon name="shield" /></i><b>{m.role.administrator}</b></span></label>
+        <label class="cx-choice check has-ico"><input type="checkbox" name="role" value="owner" /><span><i class="ico"><UiIcon name="key" /></i><b>{m.role.owner}</b></span></label>
       </div>
     </fieldset>
     <div class="cx-actions"><button class="cx-btn ghost" type="submit">{m.space.createKey}</button></div>

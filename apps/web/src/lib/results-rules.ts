@@ -5,7 +5,7 @@
  * Who sees what of a poll's results, and when (ADR 0007, section 2). Pure rules, shared by the server and the screens.
  */
 
-export type PollStatus = "draft" | "open" | "closed";
+export type PollStatus = "draft" | "scheduled" | "open" | "closed";
 /** `close`: totals appear when the poll closes. `live`: totals appear as ballots arrive. */
 export type ResultsTiming = "close" | "live";
 /** Who may see the results: the administrators only, the members on the roll, or anyone with the address. */
@@ -38,7 +38,7 @@ export function inAudience(audience: ResultsAudience, viewer: Viewer): boolean {
 }
 
 export function accessTo(poll: ResultsSettings, viewer: Viewer): Access {
-  if (poll.status === "draft") return NOTHING;
+  if (poll.status === "draft" || poll.status === "scheduled") return NOTHING;
   if (poll.status === "closed") {
     const allowed = inAudience(poll.audience, viewer);
     return { turnout: allowed, totals: allowed };

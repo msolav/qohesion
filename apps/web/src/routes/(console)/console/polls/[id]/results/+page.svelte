@@ -11,7 +11,7 @@
 
 {#if data.results}
   {#key poll.status}
-    <ResultsPanel locale={data.locale} pollId={poll.id} options={poll.options} timing={poll.timing} audience={poll.audience} initial={data.results} />
+    <ResultsPanel locale={data.locale} pollId={poll.id} options={poll.options} timing={poll.timing} audience={poll.audience} markFill={poll.markFill} initial={data.results} />
   {/key}
   {#if data.ledger}<LedgerPanel locale={data.locale} ledger={data.ledger} check={form?.check ?? null} />
   {:else if poll.status === "open"}<p class="cx-help gap">{m.results.ledgerNotYet}</p>{/if}

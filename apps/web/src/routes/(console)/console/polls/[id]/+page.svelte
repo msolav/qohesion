@@ -1,15 +1,16 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import CopyButton from "#lib/components/CopyButton.svelte";
-  import { consoleMessages, errorText } from "#lib/i18n/console.js";
+  import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
   import { optionLabel } from "#lib/option-labels.js";
   import { liveResultsWarning } from "#lib/results-rules.js";
+  import { formatMoment } from "#lib/zoned.js";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
   const m = $derived(consoleMessages[data.locale]);
   const poll = $derived(data.poll);
-  const fmt = $derived(new Intl.DateTimeFormat(data.locale === "fr" ? "fr-CA" : "en-CA", { dateStyle: "long", timeStyle: "short" }));
+  const at = (iso: string) => formatMoment(iso, data.locale, data.timeZone);
   const warn = $derived(liveResultsWarning(poll.timing, data.rollSize));
 
   function confirmWith(message: string) {
@@ -34,7 +35,7 @@
 {#if form?.error && !form.step}<p class="cx-notice error" role="alert">{errorText(m, form.error)}</p>{/if}
 
 <p class="cx-notice" class:warn={poll.status === "draft"}>
-  {poll.status === "draft" ? m.poll.draftNote : poll.status === "open" ? m.poll.openNote2 : m.poll.closedNote}
+  {poll.status === "draft" ? m.poll.draftNote : poll.status === "scheduled" ? fill(m.poll.scheduledNote, { date: poll.opensAt ? at(poll.opensAt) : "" }) : poll.status === "open" ? m.poll.openNote2 : m.poll.closedNote}
 </p>
 {#if warn}<p class="cx-notice warn" role="note">{m.form.smallRoll}</p>{/if}
 
@@ -64,12 +65,16 @@
     </ul>
     <p class="gap"><b>{m.seal.protection}</b><br />{poll.encrypted ? m.seal.sealed.title : m.seal.none.title}</p>
     <p class="gap"><b>{m.poll.resultsRule}</b><br />{m.resultsStatement[poll.timing][poll.audience]}</p>
-    <p class="cx-help gap">
-      {#if poll.openedAt}{m.poll.openedAt} {fmt.format(new Date(poll.openedAt))} · {/if}
-      {#if poll.status === "closed" && poll.closedAt}{m.poll.closedAt} {fmt.format(new Date(poll.closedAt))}
-      {:else if poll.closesAt}{m.poll.closesAt} {fmt.format(new Date(poll.closesAt))}
-      {:else}{m.poll.closesAt}: {m.poll.manual}{/if}
-    </p>
+    {#if rulesSentence(m, poll.rules)}<p class="gap">{rulesSentence(m, poll.rules)}</p>{/if}
+    {#if poll.allowChange}<p class="gap">{m.voter.changeAllowed}</p>{/if}
+    <dl class="cx-dates gap">
+      {#if poll.openedAt}<div><dt>{m.poll.openedAt}</dt><dd>{at(poll.openedAt)}</dd></div>
+      {:else if poll.opensAt}<div><dt>{m.poll.opensOn}</dt><dd>{at(poll.opensAt)}</dd></div>{/if}
+      <div>
+        <dt>{poll.status === "closed" ? m.poll.closedAt : m.poll.closesAt}</dt>
+        <dd>{poll.status === "closed" && poll.closedAt ? at(poll.closedAt) : poll.closesAt ? at(poll.closesAt) : m.poll.noDeadline}</dd>
+      </div>
+    </dl>
   </div>
 </section>
 
@@ -78,11 +83,22 @@
     <p class="cx-help">{m.poll.openNote}</p>
     <div class="cx-actions gap">
       {#if data.rollSize > 0}
-        <form method="POST" action="?/open" use:enhance={confirmWith(m.poll.confirmOpen)}><button class="cx-btn" type="submit">{m.poll.openNow}</button></form>
+        {#if poll.opensAt}
+          <form method="POST" action="?/schedule" use:enhance><button class="cx-btn" type="submit">{m.poll.scheduleNow}</button></form>
+          <form method="POST" action="?/open" use:enhance={confirmWith(m.poll.confirmOpen)}><button class="cx-btn ghost" type="submit">{m.poll.openNow}</button></form>
+        {:else}
+          <form method="POST" action="?/open" use:enhance={confirmWith(m.poll.confirmOpen)}><button class="cx-btn" type="submit">{m.poll.openNow}</button></form>
+        {/if}
       {:else}
         <p class="cx-notice warn">{m.poll.openNeedsRoll} <a href="/console/polls/{poll.id}/roll">{m.poll.roll}</a></p>
       {/if}
       <form method="POST" action="?/remove" use:enhance={confirmWith(m.poll.confirmDelete)}><button class="cx-btn danger" type="submit">{m.poll.deletePoll}</button></form>
+    </div>
+  {:else if poll.status === "scheduled"}
+    <p class="cx-help">{m.poll.scheduleNote}</p>
+    <div class="cx-actions gap">
+      <form method="POST" action="?/open" use:enhance={confirmWith(m.poll.confirmOpen)}><button class="cx-btn ghost" type="submit">{m.poll.openInstead}</button></form>
+      <form method="POST" action="?/unschedule" use:enhance><button class="cx-btn danger" type="submit">{m.poll.unschedule}</button></form>
     </div>
   {:else if poll.status === "open"}
     <p class="cx-help">{m.poll.closeNote}</p>

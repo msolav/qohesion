@@ -30,5 +30,11 @@ export QOHESION_DATA_DIR="${QOHESION_DATA_DIR:-$PWD/data}"
 export PORT HOST=127.0.0.1
 export ORIGIN="${QOHESION_ORIGIN:-http://localhost:$PORT}"
 
+# Run from a copy of the build, so that building again while this runs cannot pull its files from under it
+# (the server loads parts of itself from disk as pages are first visited).
+RELEASE="$HOME/.qohesion-releases/$(date +%Y%m%d-%H%M%S)-$$"
+mkdir -p "$RELEASE"
+cp -R build/. "$RELEASE/"
+
 echo "Test edition on $ORIGIN (email: $([ -n "${QOHESION_BREVO_API_KEY:-}" ] && echo on || echo off), password: $([ -n "${QOHESION_GATE_PASSWORD:-}" ] && echo on || echo off))"
-exec node build
+exec node "$RELEASE"

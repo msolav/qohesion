@@ -22,7 +22,7 @@ describe("messages", () => {
   });
 
   it("differ between languages, except for names and codes that are the same in both", () => {
-    const same = new Set(["brand.name", "shell.build", "shell.licence", "shell.languageFr", "shell.languageEn", "home.title",
+    const same = new Set(["brand.name", "shell.build", "shell.licence", "shell.languageFr", "shell.languageEn",
       "shell.version", "preview.organization", "preview.ballotTypeValue", "preview.quorum", "preview.templateSeedPacket", "preview.templateBallotPaper",
       "preview.templateBoardingPass", "preview.templateGuideMap", "preview.templateStandard"]);
     en.forEach(([key, text], i) => {

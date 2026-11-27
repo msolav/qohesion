@@ -4,7 +4,9 @@
 import { isColorId, isIconId } from "./option-style.js";
 import type { OptionInput, PollInput } from "./server/service.js";
 import { isAudience, isTiming } from "./results-rules.js";
-import { isTheme } from "./theme.js";
+import { DEFAULT_THEME, isTheme } from "./theme.js";
+import { DEFAULT_TIME_ZONE, zonedToUtc } from "./zoned.js";
+import type { CloseRules } from "./close-rules.js";
 
 const text = (data: FormData, name: string): string => {
   const value = data.get(name);
@@ -29,13 +31,26 @@ export function parseOptions(data: FormData): OptionInput[] {
   return options.filter((o) => o.label.trim().length > 0);
 }
 
-/** Reads the poll form. Anything the form cannot produce falls back to a value the service then refuses or accepts as a default. */
-export function parsePollForm(data: FormData): PollInput {
+const whole = (value: string): number => (/^\d+$/.test(value.trim()) ? Number(value.trim()) : Number.NaN);
+
+/** The closing rules the form describes. A rule that is ticked with a value that is not a whole number is refused by the service. */
+export function parseRules(data: FormData): CloseRules {
+  const threshold = text(data, "rule_threshold");
+  return {
+    afterVotes: text(data, "rule_votes") === "yes" ? whole(text(data, "rule_votes_n")) : null,
+    turnoutPercent: text(data, "rule_turnout") === "yes" ? whole(text(data, "rule_turnout_p")) : null,
+    threshold: threshold === "majority" ? "majority" : threshold === "percent" ? whole(text(data, "rule_threshold_p")) : null,
+  };
+}
+
+/**
+ * Reads the poll form. The dates are typed in the time zone of the organization and become instants. Anything the form
+ * cannot produce falls back to a value the service then refuses or accepts as a default.
+ */
+export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZONE): PollInput {
   const timing = text(data, "timing");
   const audience = text(data, "audience");
   const theme = text(data, "theme");
-  const hours = text(data, "hours").trim();
-  const byHours = text(data, "duration") === "hours";
   return {
     title: text(data, "title"),
     description: text(data, "description"),
@@ -43,8 +58,12 @@ export function parsePollForm(data: FormData): PollInput {
     options: parseOptions(data),
     timing: isTiming(timing) ? timing : "close",
     audience: isAudience(audience) ? audience : "voters",
-    theme: isTheme(theme) ? theme : "ballot-paper",
+    theme: isTheme(theme) ? theme : DEFAULT_THEME,
     encrypted: text(data, "encryption") === "sealed",
-    closeAfterHours: byHours ? (/^\d+$/.test(hours) ? Number(hours) : Number.NaN) : null,
+    markFill: text(data, "marks") === "fill",
+    opensAt: text(data, "opens_mode") === "date" ? (zonedToUtc(text(data, "opens_at"), timeZone) ?? "invalid") : null,
+    closesAt: zonedToUtc(text(data, "closes_at"), timeZone) ?? "",
+    rules: parseRules(data),
+    allowChange: text(data, "allow_change") === "yes",
   };
 }

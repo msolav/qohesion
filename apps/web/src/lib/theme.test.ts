@@ -5,12 +5,12 @@ import { DEFAULT_THEME, isTheme, THEME_NAMES, THEMES, themeFrom } from "./theme"
 describe("theme", () => {
   it("accepts every template", () => {
     for (const theme of THEMES) expect(themeFrom(theme)).toBe(theme);
-    expect([...THEMES]).toEqual(["seed-packet", "ballot-paper", "boarding-pass", "guide-map", "standard"]);
+    expect([...THEMES]).toEqual(["standard", "seed-packet", "ballot-paper", "boarding-pass", "guide-map"]);
   });
 
   it("falls back to the default for anything else", () => {
     for (const v of [null, undefined, "", "dark", "Seed-Packet", "seed-packet\"><script>"]) expect(themeFrom(v)).toBe(DEFAULT_THEME);
-    expect(DEFAULT_THEME).toBe("seed-packet");
+    expect(DEFAULT_THEME).toBe("standard");
   });
 
   it("recognizes only known values", () => {

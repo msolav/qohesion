@@ -34,8 +34,8 @@ async function run(url: string, init: { cookie?: string; acceptLanguage?: string
 describe("handle", () => {
   it("sets the language of the document and the template from the request", async () => {
     const r = await run("http://localhost/", { acceptLanguage: "en-CA,en;q=0.9" });
-    expect(r.html).toBe('<html lang="en" data-theme="seed-packet">');
-    expect(r.locals).toEqual({ locale: "en", theme: "seed-packet", session: null });
+    expect(r.html).toBe('<html lang="en" data-theme="standard">');
+    expect(r.locals).toEqual({ locale: "en", theme: "standard", session: null });
   });
 
   it("uses French without a browser setting", async () => {
@@ -62,7 +62,7 @@ describe("handle", () => {
 
   it("accepts a known template and ignores anything else", async () => {
     expect((await run("http://localhost/?theme=ballot-paper")).html).toContain('data-theme="ballot-paper"');
-    expect((await run('http://localhost/?theme="><script>')).html).toContain('data-theme="seed-packet"');
+    expect((await run('http://localhost/?theme="><script>')).html).toContain('data-theme="standard"');
   });
 
   it("tells caches that the page depends on language and cookie, and adds protective headers", async () => {

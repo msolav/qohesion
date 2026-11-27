@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
+import { NO_RULES } from "../close-rules.js";
 import { Service, type PollInput, type Session } from "./service.js";
 
 let now = new Date("2026-12-01T15:00:00Z");
@@ -16,8 +17,12 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   timing: "close",
   audience: "voters",
   theme: "ballot-paper",
-  closeAfterHours: null,
+  opensAt: null,
+  closesAt: "2027-01-01T00:00:00.000Z",
+  rules: NO_RULES,
+  allowChange: false,
   encrypted: false,
+  markFill: false,
   ...over,
 });
 
@@ -103,9 +108,21 @@ describe("polls and the roll", () => {
     expect(service.createPoll(owner, input({ title: " " }))).toEqual({ ok: false, error: "title_required" });
     expect(service.createPoll(owner, input({ kind: "choice", options: opts("Only one") }))).toEqual({ ok: false, error: "options_too_few" });
     expect(service.createPoll(owner, input({ kind: "choice", options: opts("Red", "red") }))).toEqual({ ok: false, error: "options_duplicate" });
-    expect(service.createPoll(owner, input({ closeAfterHours: 0 }))).toEqual({ ok: false, error: "invalid_duration" });
+    expect(service.createPoll(owner, input({ closesAt: "" }))).toEqual({ ok: false, error: "closes_required" });
+    expect(service.createPoll(owner, input({ closesAt: "2026-11-30T00:00:00.000Z" }))).toEqual({ ok: false, error: "closes_past" });
+    expect(service.createPoll(owner, input({ opensAt: "2026-12-20T00:00:00.000Z", closesAt: "2026-12-10T00:00:00.000Z" }))).toEqual({ ok: false, error: "dates_order" });
+    expect(service.createPoll(owner, input({ allowChange: true }))).toEqual({ ok: false, error: "change_needs_encryption" });
+    expect(service.createPoll(owner, input({ encrypted: true, rules: { afterVotes: null, turnoutPercent: null, threshold: "majority" } }))).toEqual({ ok: false, error: "rules_need_readable" });
+    expect(service.createPoll(owner, input({ rules: { afterVotes: 0, turnoutPercent: null, threshold: null } }))).toEqual({ ok: false, error: "invalid_rule" });
     const poll = must(service.createPoll(owner, input({ kind: "choice", options: opts("Red", "Blue", " ") })));
     expect(poll.options.map((o) => o.label)).toEqual(["Red", "Blue"]);
+  });
+
+  it("keeps one setting for how the colours are drawn, for the whole poll", () => {
+    expect(must(service.createPoll(owner, input({ markFill: true }))).markFill).toBe(true);
+    expect(must(service.createPoll(owner, input())).markFill).toBe(false);
+    const poll = must(service.createPoll(owner, input({ markFill: true })));
+    expect(must(service.updatePoll(owner, poll.id, input({ markFill: false }))).markFill).toBe(false);
   });
 
   it("keeps the icon and colour of each option, refuses unknown ones, and does not give a yes-no poll any", () => {
@@ -151,7 +168,7 @@ describe("polls and the roll", () => {
   });
 
   it("closes automatically at the set time", () => {
-    const { poll } = openedPoll({ closeAfterHours: 2 });
+    const { poll } = openedPoll({ closesAt: "2026-12-01T17:00:00.000Z" });
     expect(service.getPoll(poll.id)?.status).toBe("open");
     now = new Date("2026-12-01T17:00:01Z");
     expect(service.getPoll(poll.id)?.status).toBe("closed");
@@ -195,7 +212,8 @@ describe("voting", () => {
     const db = new DatabaseSync(":memory:");
     new Service(db, { secret: new Uint8Array(32).fill(1) });
     const columns = (table: string) => (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
-    expect(columns("ballots")).toEqual(["poll_id", "seq", "choice", "entry"]);
+    // A ballot never names its voter. Only a poll that lets members change their vote keeps a pseudonym (no readable choice: such a poll is sealed).
+    expect(columns("ballots")).toEqual(["poll_id", "seq", "choice", "entry", "voter_tag", "superseded"]);
     expect(columns("roll").some((c) => /choice|ballot/.test(c))).toBe(false);
   });
 });
@@ -232,6 +250,93 @@ describe("results visibility", () => {
     must(service.closePoll(owner, poll.id));
     expect(service.resultsFor(poll.id, "voter")?.counts).toEqual({ for: 1, against: 0, abstain: 0 });
     expect(service.resultsFor(poll.id, "anyone")?.counts).toBeNull();
+  });
+});
+
+describe("dates, closing rules and changing a vote", () => {
+  const tokensOf = (id: string) => [...service.voterTokens(owner, id).values()];
+
+  it("opens by itself at the scheduled time, freezing the roll then, and keeps the key given at scheduling", () => {
+    const poll = must(service.createPoll(owner, input({ encrypted: true, opensAt: "2026-12-02T15:00:00.000Z", closesAt: "2026-12-09T15:00:00.000Z" })));
+    expect(service.schedulePoll(owner, poll.id)).toEqual({ ok: false, error: "roll_empty" });
+    must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com"));
+    const scheduled = must(service.schedulePoll(owner, poll.id));
+    expect(scheduled.poll.status).toBe("scheduled");
+    expect(scheduled.countingKey).toMatch(/^QC-/);
+    expect(service.castBallot(tokensOf(poll.id)[0] ?? "", "for")).toEqual({ ok: false, error: "not_open" });
+    expect(service.resultsFor(poll.id, "administrator")).toBeNull();
+    must(service.addToRoll(owner, poll.id, "c@example.com"));
+    now = new Date("2026-12-02T15:00:01Z");
+    const opened = service.getPoll(poll.id);
+    expect(opened).toMatchObject({ status: "open", rollCount: 3 });
+    must(service.castBallot(tokensOf(poll.id)[0] ?? "", "for"));
+    now = new Date("2026-12-09T15:00:01Z");
+    expect(service.getPoll(poll.id)).toMatchObject({ status: "closed", counted: false });
+    must(service.countPoll(owner, poll.id, scheduled.countingKey ?? ""));
+    expect(service.resultsFor(poll.id, "administrator")?.counts).toEqual({ for: 1, against: 0, abstain: 0 });
+  });
+
+  it("refuses to schedule without an opening date in the future, and takes a scheduling back", () => {
+    const noDate = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, noDate.id, "a@example.com"));
+    expect(service.schedulePoll(owner, noDate.id)).toEqual({ ok: false, error: "opens_past" });
+    const poll = must(service.createPoll(owner, input({ opensAt: "2026-12-02T15:00:00.000Z" })));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    must(service.schedulePoll(owner, poll.id));
+    expect(must(service.unschedulePoll(owner, poll.id)).status).toBe("draft");
+    expect(service.unschedulePoll(owner, poll.id)).toEqual({ ok: false, error: "locked" });
+  });
+
+  it("closes as soon as the share of the roll that voted is reached, or the number of votes", () => {
+    const { poll, tokens } = openedPoll({ rules: { afterVotes: null, turnoutPercent: 100, threshold: null } }, "a@example.com\nb@example.com");
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    expect(service.getPoll(poll.id)?.status).toBe("open");
+    must(service.castBallot(tokens[1] ?? "", "against"));
+    expect(service.getPoll(poll.id)).toMatchObject({ status: "closed", counted: true });
+    expect(service.history(owner, poll.id).some((h) => h.action === "closed_auto" && h.detail === "turnout")).toBe(true);
+    const byCount = openedPoll({ rules: { afterVotes: 2, turnoutPercent: null, threshold: null } });
+    must(service.castBallot(byCount.tokens[0] ?? "", "for"));
+    must(service.castBallot(byCount.tokens[1] ?? "", "for"));
+    expect(service.getPoll(byCount.poll.id)?.status).toBe("closed");
+  });
+
+  it("closes when an option has more than half of the roll", () => {
+    const { poll, tokens } = openedPoll({ rules: { afterVotes: null, turnoutPercent: null, threshold: "majority" } }, "a@example.com\nb@example.com\nc@example.com\nd@example.com");
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    must(service.castBallot(tokens[1] ?? "", "for"));
+    must(service.castBallot(tokens[2] ?? "", "against"));
+    expect(service.getPoll(poll.id)?.status).toBe("open");
+    must(service.castBallot(tokens[3] ?? "", "for"));
+    expect(service.getPoll(poll.id)).toMatchObject({ status: "closed" });
+    expect(service.resultsFor(poll.id, "administrator")?.counts).toEqual({ for: 3, against: 1, abstain: 0 });
+  });
+
+  it("lets a member change their vote on a sealed poll: the last ballot counts and turnout counts members, not ballots", () => {
+    const poll = must(service.createPoll(owner, input({ encrypted: true, allowChange: true })));
+    must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com"));
+    const opened = must(service.openPoll(owner, poll.id));
+    const [a, b] = tokensOf(poll.id);
+    must(service.castBallot(a ?? "", "for"));
+    must(service.castBallot(a ?? "", "against"));
+    must(service.castBallot(a ?? "", "abstain"));
+    must(service.castBallot(b ?? "", "for"));
+    expect(service.resultsFor(poll.id, "administrator")).toMatchObject({ turnout: 2, counts: null });
+    must(service.closePoll(owner, poll.id, opened.countingKey ?? ""));
+    expect(service.resultsFor(poll.id, "administrator")?.counts).toEqual({ for: 1, against: 0, abstain: 1 });
+    expect(service.ledger(poll.id)?.size).toBe(4);
+  });
+
+  it("does not let a member vote twice where changing a vote is not allowed", () => {
+    const { tokens } = openedPoll();
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    expect(service.castBallot(tokens[0] ?? "", "against")).toEqual({ ok: false, error: "already_voted" });
+  });
+
+  it("keeps the time zone of the organization, and refuses an unknown one", () => {
+    expect(service.getSpace(owner.spaceId)?.timeZone).toBe("America/Toronto");
+    must(service.updateSpace(owner, { name: "Maple", locale: "en", theme: "standard", timeZone: "Europe/Paris" }));
+    expect(service.getSpace(owner.spaceId)?.timeZone).toBe("Europe/Paris");
+    expect(service.updateSpace(owner, { name: "Maple", locale: "en", theme: "standard", timeZone: "Mars/Olympus" })).toEqual({ ok: false, error: "invalid_time_zone" });
   });
 });
 
@@ -312,7 +417,7 @@ describe("sealed ballots", () => {
 
   it("closes by itself without the key and waits for it", () => {
     const { poll, key, tokens } = (() => {
-      const poll = must(service.createPoll(owner, input({ encrypted: true, closeAfterHours: 1 })));
+      const poll = must(service.createPoll(owner, input({ encrypted: true, closesAt: "2026-12-01T16:00:00.000Z" })));
       must(service.addToRoll(owner, poll.id, "a@example.com"));
       const opened = must(service.openPoll(owner, poll.id));
       return { poll, key: opened.countingKey ?? "", tokens: [...service.voterTokens(owner, poll.id).values()] };

@@ -17,7 +17,7 @@ export const TEMPLATES = [
   { id: "seed-packet", name: "Seed Packet", text: { fr: "Un bloc de couleur, avec de grands choix.", en: "A colour block with large choices." } },
   { id: "boarding-pass", name: "Boarding Pass", text: { fr: "Un billet à bandeau de statut, avec des choix numérotés et un talon de reçu.", en: "A ticket with a status strip, numbered choices and a receipt stub." } },
   { id: "guide-map", name: "Guide Map", text: { fr: "Un grand disque derrière la question, avec des choix en pastilles de couleur.", en: "A large disc behind the question, with colour-coded pill choices." } },
-  { id: "standard", name: "Standard", text: { fr: "Une carte sobre, avec des choix à boutons radio et un bouton bleu.", en: "A plain card with radio choices and a blue button." } },
+  { id: "standard", name: "Qohesion", text: { fr: "Une carte sobre, avec des choix à boutons radio et un bouton bleu.", en: "A plain card with radio choices and a blue button." } },
 ];
 
 /** The five steps of a vote, each with the glyph that draws it. Glyphs are authored here and shown beside their text. */

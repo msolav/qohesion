@@ -15,6 +15,7 @@
     audience,
     initial,
     token = null,
+    markFill = false,
   }: {
     locale: Locale;
     pollId: string;
@@ -23,6 +24,7 @@
     audience: ResultsAudience;
     initial: ResultsView;
     token?: string | null;
+    markFill?: boolean;
   } = $props();
 
   const m = $derived(consoleMessages[locale]);
@@ -94,7 +96,7 @@
     {#if total === 0}
       <p class="cx-notice gap">{m.results.noBallots}</p>
     {:else}
-      <ul class="cx-bars gap" aria-label={m.results.share}>
+      <ul class="cx-bars gap" data-fill={markFill ? "" : undefined} aria-label={m.results.share}>
         {#each options as option (option.id)}
           {@const n = view.counts[option.id] ?? 0}
           {@const glyph = iconPath(iconOf(option))}

@@ -9,4 +9,4 @@
 
 <h2>{m.form.editTitle}</h2>
 <div class="gap"></div>
-<PollForm locale={data.locale} submit={m.common.save} initial={form?.input ?? data.input} error={form?.error ?? null} defaultTheme={data.input.theme} />
+<PollForm locale={data.locale} submit={m.common.save} initial={form?.input ?? data.input} error={form?.error ?? null} defaultTheme={data.input.theme} timeZone={data.timeZone} />

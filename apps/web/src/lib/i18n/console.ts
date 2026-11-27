@@ -16,19 +16,19 @@ interface Names<K extends string> {
 
 export interface ConsoleMessages {
   readonly edition: { readonly label: string; readonly text: string };
-  readonly nav: { readonly label: string; readonly polls: string; readonly space: string; readonly signOut: string; readonly signIn: string; readonly start: string };
+  readonly nav: { readonly label: string; readonly polls: string; readonly space: string; readonly signOut: string; readonly signIn: string };
   readonly common: {
     readonly save: string; readonly cancel: string; readonly back: string; readonly copy: string; readonly copied: string; readonly delete: string;
     readonly open: string; readonly close: string; readonly none: string; readonly yes: string; readonly no: string; readonly optional: string;
   };
-  readonly status: Readonly<Record<"draft" | "open" | "closed", string>>;
+  readonly status: Readonly<Record<"draft" | "scheduled" | "open" | "closed", string>>;
   readonly member: Readonly<Record<"listed" | "requested" | "confirmed" | "voted" | "withdrawn" | "bounced" | "blocked", string>>;
   readonly role: { readonly owner: string; readonly administrator: string; readonly both: string };
   readonly start: {
-    readonly title: string; readonly lede: string; readonly name: string; readonly language: string; readonly submit: string; readonly haveKey: string;
+    readonly title: string; readonly lede: string; readonly name: string; readonly language: string; readonly submit: string;
     readonly keyTitle: string; readonly keyText: string; readonly keyLabel: string; readonly keyWarning: string; readonly keyContinue: string; readonly download: string;
   };
-  readonly signin: { readonly title: string; readonly lede: string; readonly key: string; readonly hint: string; readonly submit: string; readonly invalid: string; readonly tooMany: string; readonly noSpace: string; readonly create: string };
+  readonly signin: { readonly title: string; readonly lede: string; readonly key: string; readonly hint: string; readonly submit: string; readonly invalid: string; readonly tooMany: string };
   readonly polls: {
     readonly title: string; readonly empty: string; readonly emptyText: string; readonly create: string; readonly roll: string; readonly ballots: string; readonly opened: string; readonly closes: string; readonly noPolls: string;
   };
@@ -38,7 +38,9 @@ export interface ConsoleMessages {
     readonly options: string; readonly optionsHelp: string; readonly optionN: string; readonly addOption: string;
     readonly results: string; readonly resultsHelp: string; readonly timing: string; readonly audience: string; readonly timingNames: Names<ResultsTiming>; readonly audienceNames: Names<ResultsAudience>;
     readonly template: string; readonly templateSeed: string; readonly templateBallot: string;
-    readonly duration: string; readonly durationManual: string; readonly durationHours: string; readonly durationHelp: string;
+    readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string;
+    readonly rulesTitle: string; readonly rulesHelp: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleThresholdNone: string; readonly ruleThresholdMajority: string; readonly ruleThresholdPercent: string; readonly ruleNeedsReadable: string; readonly members: string; readonly percent: string;
+    readonly changeTitle: string; readonly changeLabel: string; readonly changeHelp: string; readonly changeNeedsSealed: string; readonly timeZone: string;
     readonly preview: string; readonly locked: string; readonly create: string; readonly smallRoll: string;
   };
   readonly poll: {
@@ -48,6 +50,7 @@ export interface ConsoleMessages {
     readonly openNow: string; readonly openNote: string; readonly openNeedsRoll: string; readonly closeNow: string; readonly closeNote: string; readonly deletePoll: string; readonly confirmDelete: string; readonly confirmOpen: string; readonly confirmClose: string;
     readonly edit: string; readonly draftNote: string; readonly openNote2: string; readonly closedNote: string;
     readonly settings: string; readonly resultsRule: string;
+    readonly scheduleNow: string; readonly scheduleNote: string; readonly unschedule: string; readonly scheduledNote: string; readonly openInstead: string; readonly opensOn: string; readonly closesRules: string; readonly noDeadline: string;
   };
   readonly roll: {
     readonly title: string; readonly add: string; readonly addHelp: string; readonly addPlaceholder: string; readonly addSubmit: string;
@@ -65,11 +68,13 @@ export interface ConsoleMessages {
   readonly history: { readonly title: string; readonly empty: string; readonly actions: Readonly<Record<string, string>> };
   readonly space: {
     readonly title: string; readonly settings: string; readonly name: string; readonly language: string; readonly template: string; readonly save: string; readonly saved: string;
+    readonly timeZone: string;
     readonly keys: string; readonly keysText: string; readonly keyLabel: string; readonly keyRoles: string; readonly addKey: string; readonly createKey: string; readonly revoke: string; readonly revoked: string; readonly confirmRevoke: string; readonly you: string;
     readonly newKeyTitle: string; readonly newKeyText: string; readonly danger: string; readonly dangerText: string; readonly confirmName: string; readonly deleteSpace: string;
   };
   readonly voter: {
     readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollNote: string; readonly results: string;
+    readonly yourVote: string; readonly changeAllowed: string; readonly changeFinal: string; readonly opensOn: string; readonly alreadyVotedChange: string; readonly alsoCloses: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleEveryone: string; readonly ruleMajority: string; readonly rulePercent: string; readonly or: string;
     readonly ballotType: string; readonly ballotValue: string; readonly ballotNote: string; readonly submit: string; readonly legend: string; readonly problem: string;
     readonly doneTitle: string; readonly doneText: string; readonly doneLabel: string; readonly doneNote: string; readonly doneResults: string;
     readonly votedTitle: string; readonly votedText: string; readonly closedTitle: string; readonly closedText: string; readonly notOpenTitle: string; readonly notOpenText: string;
@@ -78,7 +83,7 @@ export interface ConsoleMessages {
   readonly build: {
     readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"question" | "choices" | "results" | "closing" | "review", string>>;
     readonly next: string; readonly back: string; readonly change: string; readonly reviewLead: string;
-    readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly styleDefault: string;
+    readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly fillLabel: string; readonly fillHelp: string; readonly fillOutline: string; readonly fillSolid: string; readonly styleDefault: string;
     readonly moveUp: string; readonly moveDown: string; readonly removeOption: string; readonly drag: string; readonly moved: string;
     readonly previewTitle: string; readonly previewNote: string; readonly needTitle: string; readonly needOptions: string; readonly fixedOptions: string; readonly lookTitle: string;
   };
@@ -103,18 +108,17 @@ const en: ConsoleMessages = {
     label: "Test edition",
     text: "Not audited, and data may be erased. Do not use it for decisions that need an audited secret ballot. Each poll states whether its ballots are encrypted.",
   },
-  nav: { label: "Administration", polls: "Polls", space: "Organization", signOut: "Sign out", signIn: "Sign in", start: "Create an organization" },
+  nav: { label: "Administration", polls: "Polls", space: "Organization", signOut: "Sign out", signIn: "Sign in" },
   common: { save: "Save", cancel: "Cancel", back: "Back", copy: "Copy", copied: "Copied", delete: "Delete", open: "Open", close: "Close", none: "None", yes: "Yes", no: "No", optional: "optional" },
-  status: { draft: "Draft", open: "Open", closed: "Closed" },
+  status: { draft: "Draft", scheduled: "Scheduled", open: "Open", closed: "Closed" },
   member: { listed: "Listed", requested: "Requested", confirmed: "Confirmed", voted: "Voted", withdrawn: "Withdrawn", bounced: "Bounced", blocked: "Blocked" },
   role: { owner: "Owner", administrator: "Administrator", both: "Owner and administrator" },
   start: {
-    title: "Create an organization",
-    lede: "An organization holds polls, administrators and members. Creating one gives a key that signs in as owner and administrator.",
+    title: "Set up your organization",
+    lede: "This installation holds one organization, with its polls, administrators and members. Setting it up gives a key that signs in as owner and administrator.",
     name: "Name of the organization",
     language: "Language of the interface",
-    submit: "Create the organization",
-    haveKey: "Already have a key? Sign in",
+    submit: "Set up the organization",
     keyTitle: "Keep this key",
     keyText: "The key signs in to this organization. It is shown once and is not stored in a readable form, so it cannot be recovered. Another owner can create a new key.",
     keyLabel: "Key",
@@ -130,8 +134,6 @@ const en: ConsoleMessages = {
     submit: "Sign in",
     invalid: "This key is not valid or has been revoked. Check it and try again.",
     tooMany: "Too many attempts. Wait a few minutes and try again.",
-    noSpace: "No organization yet?",
-    create: "Create an organization",
   },
   polls: {
     title: "Polls",
@@ -175,10 +177,27 @@ const en: ConsoleMessages = {
     template: "Ballot template",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
-    duration: "Closing",
-    durationManual: "An administrator closes the poll",
-    durationHours: "Closes by itself after a number of hours",
-    durationHelp: "Counted from the moment the poll opens. Between 1 and 720 hours.",
+    opening: "Opening",
+    openManual: "Administrators open the poll",
+    openDate: "On a date and time",
+    openAt: "Opening date and time",
+    closeAt: "Closing date and time",
+    closeHelp: "Administrators can always close the poll earlier. Times are in the time zone of the organization: {tz}.",
+    rulesTitle: "Close earlier when",
+    rulesHelp: "Optional. The poll closes as soon as one of these holds, and the ballot says so.",
+    ruleVotes: "this many members have voted",
+    ruleTurnout: "this share of the roll has voted",
+    ruleThresholdNone: "No threshold",
+    ruleThresholdMajority: "An option has more than half of the roll",
+    ruleThresholdPercent: "An option reaches this share of the roll",
+    ruleNeedsReadable: "A threshold needs ballots that are not encrypted, since the totals must be readable while voting runs.",
+    members: "members",
+    percent: "% of the roll",
+    changeTitle: "Changing a vote",
+    changeLabel: "Members can change their vote until the poll closes",
+    changeHelp: "Their last ballot is the one that counts. This needs encrypted ballots: a vote that can be replaced must be tied to its voter by a pseudonym, which shows who voted and never what.",
+    changeNeedsSealed: "Changing a vote needs encrypted ballots.",
+    timeZone: "Time zone",
     preview: "What members see",
     locked: "The results settings and the options are fixed once the poll is open.",
     create: "Create the poll",
@@ -214,6 +233,14 @@ const en: ConsoleMessages = {
     closedNote: "Voting has ended.",
     settings: "Settings",
     resultsRule: "Results",
+    scheduleNow: "Schedule the opening",
+    scheduleNote: "The poll will open by itself on the date chosen. For encrypted ballots, the counting key is shown now.",
+    unschedule: "Cancel the scheduling",
+    scheduledNote: "Scheduled. The poll opens on {date}.",
+    openInstead: "Open it now instead",
+    opensOn: "Opens",
+    closesRules: "Also closes when",
+    noDeadline: "No deadline",
   },
   roll: {
     title: "Roll",
@@ -276,7 +303,7 @@ const en: ConsoleMessages = {
   history: {
     title: "History",
     empty: "Nothing yet.",
-    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", links_sent: "Links sent by email", opened: "Poll opened (roll count and code)", closed: "Poll closed", counted: "Sealed ballots counted" },
+    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", links_sent: "Links sent by email", opened: "Poll opened (roll count and code)", closed: "Poll closed", scheduled: "Opening scheduled", unscheduled: "Scheduling cancelled", closed_auto: "Poll closed by a closing rule", counted: "Sealed ballots counted" },
   },
   space: {
     title: "Organization",
@@ -286,6 +313,7 @@ const en: ConsoleMessages = {
     template: "Default ballot template",
     save: "Save the settings",
     saved: "Settings saved.",
+    timeZone: "Time zone",
     keys: "Keys",
     keysText: "Each person signs in with a key. A key holds the owner role (manages the organization), the administrator role (runs polls), or both. A key is shown once, when it is created.",
     keyLabel: "Who the key is for",
@@ -312,6 +340,18 @@ const en: ConsoleMessages = {
     rollValue: "{n} members",
     rollNote: "Identified by the code {code}.",
     results: "Results",
+    yourVote: "Your vote",
+    changeAllowed: "You can change it until the poll closes. Your last ballot is the one that counts.",
+    changeFinal: "It is final once submitted.",
+    opensOn: "This poll opens on {date}.",
+    alreadyVotedChange: "You have voted. You can change your vote until the poll closes: the last ballot counts.",
+    alsoCloses: "The poll also closes as soon as {conditions}.",
+    ruleVotes: "{n} members have voted",
+    ruleTurnout: "{p}% of the roll has voted",
+    ruleEveryone: "everyone on the roll has voted",
+    ruleMajority: "an option has more than half of the roll",
+    rulePercent: "an option reaches {p}% of the roll",
+    or: "or",
     ballotType: "Ballot",
     ballotValue: "Secret",
     ballotNote: "The ballot is recorded without your name.",
@@ -337,7 +377,7 @@ const en: ConsoleMessages = {
   build: {
     stepsLabel: "Steps",
     step: "Step {n} of {total}",
-    stepNames: { question: "Question", choices: "Choices", results: "Results", closing: "Closing and look", review: "Review" },
+    stepNames: { question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
     next: "Continue",
     back: "Back",
     change: "Change",
@@ -347,6 +387,10 @@ const en: ConsoleMessages = {
     styleTitle: "Icon and colour",
     iconLabel: "Icon",
     colorLabel: "Colour",
+    fillLabel: "Colour of the marks",
+    fillHelp: "One setting for every option of the poll: the colour draws the icon and the outline of the circle, or fills the circle.",
+    fillOutline: "Icon and circle outline",
+    fillSolid: "Filled circle",
     styleDefault: "Default",
     moveUp: "Move option {n} up",
     moveDown: "Move option {n} down",
@@ -412,6 +456,7 @@ const en: ConsoleMessages = {
     },
   },
   errors: {
+    already_set_up: "This installation already has its organization. Sign in with its key.",
     name_required: "Enter a name.",
     name_too_long: "The name is too long (80 characters at most).",
     label_required: "Enter who the key is for.",
@@ -445,6 +490,14 @@ const en: ConsoleMessages = {
     invalid_type: "The answer is not valid.",
     attestation_required: "Confirm that you have permission to contact these people.",
     mail_not_configured: "Email is not set up on this server.",
+    closes_required: "Enter the closing date and time.",
+    closes_past: "The closing date must be in the future.",
+    dates_order: "The opening must come before the closing.",
+    opens_past: "The opening date has passed. Choose a later one, or open the poll now.",
+    invalid_rule: "A closing rule needs a whole number (at most 100 for a share).",
+    rules_need_readable: "A threshold needs ballots that are not encrypted.",
+    change_needs_encryption: "Changing a vote needs encrypted ballots.",
+    invalid_time_zone: "This time zone is not known.",
     encryption_needs_close: "Live results need ballots that are not encrypted. Choose one or the other.",
     wrong_counting_key: "This counting key does not open the ballots of this poll. Check it and try again.",
   },
@@ -455,18 +508,17 @@ const fr: ConsoleMessages = {
     label: "Édition de test",
     text: "Non audité, et les données peuvent être effacées. Ne pas l’utiliser pour une décision qui exige un scrutin secret audité. Chaque scrutin indique si ses bulletins sont chiffrés.",
   },
-  nav: { label: "Administration", polls: "Scrutins", space: "Organisation", signOut: "Se déconnecter", signIn: "Se connecter", start: "Créer une organisation" },
+  nav: { label: "Administration", polls: "Scrutins", space: "Organisation", signOut: "Se déconnecter", signIn: "Se connecter" },
   common: { save: "Enregistrer", cancel: "Annuler", back: "Retour", copy: "Copier", copied: "Copié", delete: "Supprimer", open: "Ouvrir", close: "Fermer", none: "Aucun", yes: "Oui", no: "Non", optional: "facultatif" },
-  status: { draft: "Brouillon", open: "Ouvert", closed: "Fermé" },
+  status: { draft: "Brouillon", scheduled: "Planifié", open: "Ouvert", closed: "Fermé" },
   member: { listed: "Inscrit à la liste", requested: "Demandé", confirmed: "Confirmé", voted: "A voté", withdrawn: "Retiré", bounced: "Adresse refusée", blocked: "Bloqué" },
   role: { owner: "Titulaire du compte", administrator: "Administration", both: "Titulaire et administration" },
   start: {
-    title: "Créer une organisation",
-    lede: "Une organisation regroupe des scrutins, des administrateurs et des membres. La création donne une clé qui ouvre une session de titulaire du compte et d’administration.",
+    title: "Configurer votre organisation",
+    lede: "Cette installation héberge une seule organisation, avec ses scrutins, ses administrateurs et ses membres. La configuration donne une clé qui ouvre une session de titulaire du compte et d’administration.",
     name: "Nom de l’organisation",
     language: "Langue de l’interface",
-    submit: "Créer l’organisation",
-    haveKey: "Une clé existe déjà? Se connecter",
+    submit: "Configurer l’organisation",
     keyTitle: "Conserver cette clé",
     keyText: "La clé ouvre une session dans cette organisation. Elle est affichée une seule fois et n’est pas conservée sous une forme lisible: elle ne peut pas être récupérée. Une autre personne titulaire peut créer une nouvelle clé.",
     keyLabel: "Clé",
@@ -482,8 +534,6 @@ const fr: ConsoleMessages = {
     submit: "Se connecter",
     invalid: "Cette clé n’est pas valide ou a été révoquée. Vérifier la clé et réessayer.",
     tooMany: "Trop de tentatives. Attendre quelques minutes et réessayer.",
-    noSpace: "Pas encore d’organisation?",
-    create: "Créer une organisation",
   },
   polls: {
     title: "Scrutins",
@@ -527,10 +577,27 @@ const fr: ConsoleMessages = {
     template: "Modèle de bulletin",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
-    duration: "Fermeture",
-    durationManual: "L’administration ferme le scrutin",
-    durationHours: "Ferme seul après un nombre d’heures",
-    durationHelp: "Compté à partir de l’ouverture du scrutin. Entre 1 et 720 heures.",
+    opening: "Ouverture",
+    openManual: "L’administration ouvre le scrutin",
+    openDate: "À une date et une heure",
+    openAt: "Date et heure d’ouverture",
+    closeAt: "Date et heure de fermeture",
+    closeHelp: "L’administration peut toujours fermer le scrutin plus tôt. Les heures sont dans le fuseau horaire de l’organisation: {tz}.",
+    rulesTitle: "Fermer plus tôt quand",
+    rulesHelp: "Facultatif. Le scrutin se ferme dès qu’une de ces conditions est remplie, et le bulletin l’indique.",
+    ruleVotes: "ce nombre de membres ont voté",
+    ruleTurnout: "cette part de la liste a voté",
+    ruleThresholdNone: "Aucun seuil",
+    ruleThresholdMajority: "Une option a plus de la moitié de la liste",
+    ruleThresholdPercent: "Une option atteint cette part de la liste",
+    ruleNeedsReadable: "Un seuil exige des bulletins non chiffrés, puisque les totaux doivent être lisibles pendant le vote.",
+    members: "membres",
+    percent: "% de la liste",
+    changeTitle: "Modifier son vote",
+    changeLabel: "Les membres peuvent modifier leur vote jusqu’à la fermeture",
+    changeHelp: "Leur dernier bulletin est celui qui compte. Cela exige des bulletins chiffrés: un vote qui peut être remplacé doit être lié à son votant par un pseudonyme, qui montre qui a voté et jamais quoi.",
+    changeNeedsSealed: "Modifier son vote exige des bulletins chiffrés.",
+    timeZone: "Fuseau horaire",
     preview: "Ce que les membres voient",
     locked: "Les paramètres des résultats et les options sont fixés une fois le scrutin ouvert.",
     create: "Créer le scrutin",
@@ -566,6 +633,14 @@ const fr: ConsoleMessages = {
     closedNote: "Le vote est terminé.",
     settings: "Paramètres",
     resultsRule: "Résultats",
+    scheduleNow: "Planifier l’ouverture",
+    scheduleNote: "Le scrutin s’ouvrira de lui-même à la date choisie. Pour des bulletins chiffrés, la clé de dépouillement est affichée maintenant.",
+    unschedule: "Annuler la planification",
+    scheduledNote: "Planifié. Le scrutin s’ouvre le {date}.",
+    openInstead: "L’ouvrir maintenant plutôt",
+    opensOn: "Ouvre le",
+    closesRules: "Ferme aussi quand",
+    noDeadline: "Aucune échéance",
   },
   roll: {
     title: "Liste des votants",
@@ -628,7 +703,7 @@ const fr: ConsoleMessages = {
   history: {
     title: "Historique",
     empty: "Rien pour l’instant.",
-    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", links_sent: "Liens envoyés par courriel", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé", counted: "Bulletins chiffrés dépouillés" },
+    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", links_sent: "Liens envoyés par courriel", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé", scheduled: "Ouverture planifiée", unscheduled: "Planification annulée", closed_auto: "Scrutin fermé par une condition de fermeture", counted: "Bulletins chiffrés dépouillés" },
   },
   space: {
     title: "Organisation",
@@ -638,6 +713,7 @@ const fr: ConsoleMessages = {
     template: "Modèle de bulletin par défaut",
     save: "Enregistrer les paramètres",
     saved: "Paramètres enregistrés.",
+    timeZone: "Fuseau horaire",
     keys: "Clés",
     keysText: "Chaque personne ouvre une session avec une clé. Une clé porte le rôle de titulaire du compte (gère l’organisation), celui d’administration (gère les scrutins), ou les deux. Une clé est affichée une seule fois, à sa création.",
     keyLabel: "Pour qui est la clé",
@@ -664,6 +740,18 @@ const fr: ConsoleMessages = {
     rollValue: "{n} membres",
     rollNote: "Identifiée par le code {code}.",
     results: "Résultats",
+    yourVote: "Votre vote",
+    changeAllowed: "Vous pouvez le modifier jusqu’à la fermeture du scrutin. Votre dernier bulletin est celui qui compte.",
+    changeFinal: "Il est définitif une fois déposé.",
+    opensOn: "Ce scrutin ouvre le {date}.",
+    alreadyVotedChange: "Vous avez voté. Vous pouvez modifier votre vote jusqu’à la fermeture du scrutin: le dernier bulletin compte.",
+    alsoCloses: "Le scrutin se ferme aussi dès que {conditions}.",
+    ruleVotes: "{n} membres ont voté",
+    ruleTurnout: "{p} % de la liste a voté",
+    ruleEveryone: "tous les membres de la liste ont voté",
+    ruleMajority: "une option a plus de la moitié de la liste",
+    rulePercent: "une option atteint {p} % de la liste",
+    or: "ou",
     ballotType: "Bulletin",
     ballotValue: "Secret",
     ballotNote: "Le bulletin est enregistré sans votre nom.",
@@ -689,7 +777,7 @@ const fr: ConsoleMessages = {
   build: {
     stepsLabel: "Étapes",
     step: "Étape {n} de {total}",
-    stepNames: { question: "Question", choices: "Choix", results: "Résultats", closing: "Fermeture et apparence", review: "Révision" },
+    stepNames: { question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
     next: "Continuer",
     back: "Retour",
     change: "Modifier",
@@ -699,6 +787,10 @@ const fr: ConsoleMessages = {
     styleTitle: "Icône et couleur",
     iconLabel: "Icône",
     colorLabel: "Couleur",
+    fillLabel: "Couleur des marques",
+    fillHelp: "Un seul réglage pour toutes les options du scrutin: la couleur dessine l’icône et le contour du cercle, ou remplit le cercle.",
+    fillOutline: "L’icône et le contour du cercle",
+    fillSolid: "Le cercle plein",
     styleDefault: "Par défaut",
     moveUp: "Monter l’option {n}",
     moveDown: "Descendre l’option {n}",
@@ -764,6 +856,7 @@ const fr: ConsoleMessages = {
     },
   },
   errors: {
+    already_set_up: "Cette installation a déjà son organisation. Ouvrir une session avec sa clé.",
     name_required: "Saisir un nom.",
     name_too_long: "Le nom est trop long (80 caractères au maximum).",
     label_required: "Indiquer pour qui est la clé.",
@@ -797,6 +890,14 @@ const fr: ConsoleMessages = {
     invalid_type: "La réponse n’est pas valide.",
     attestation_required: "Confirmer que vous avez la permission de joindre ces personnes.",
     mail_not_configured: "Le courriel n’est pas configuré sur ce serveur.",
+    closes_required: "Saisir la date et l’heure de fermeture.",
+    closes_past: "La date de fermeture doit être dans le futur.",
+    dates_order: "L’ouverture doit précéder la fermeture.",
+    opens_past: "La date d’ouverture est passée. En choisir une plus tardive, ou ouvrir le scrutin maintenant.",
+    invalid_rule: "Une condition de fermeture exige un nombre entier (au plus 100 pour une part).",
+    rules_need_readable: "Un seuil exige des bulletins non chiffrés.",
+    change_needs_encryption: "Modifier son vote exige des bulletins chiffrés.",
+    invalid_time_zone: "Ce fuseau horaire n’est pas connu.",
     encryption_needs_close: "Les résultats en direct exigent des bulletins non chiffrés. Choisir l’un ou l’autre.",
     wrong_counting_key: "Cette clé de dépouillement n’ouvre pas les bulletins de ce scrutin. La vérifier et réessayer.",
   },
@@ -811,4 +912,13 @@ export function fill(text: string, values: Readonly<Record<string, string | numb
 
 export function errorText(m: ConsoleMessages, code: string | undefined): string {
   return (code && m.errors[code]) || m.errors["invalid_type"] || "";
+}
+
+/** The closing rules of a poll as one sentence a member can read, or an empty string when there are none. */
+export function rulesSentence(m: ConsoleMessages, rules: { afterVotes: number | null; turnoutPercent: number | null; threshold: "majority" | number | null }): string {
+  const parts: string[] = [];
+  if (rules.afterVotes !== null) parts.push(fill(m.voter.ruleVotes, { n: rules.afterVotes }));
+  if (rules.turnoutPercent !== null) parts.push(rules.turnoutPercent === 100 ? m.voter.ruleEveryone : fill(m.voter.ruleTurnout, { p: rules.turnoutPercent }));
+  if (rules.threshold !== null) parts.push(rules.threshold === "majority" ? m.voter.ruleMajority : fill(m.voter.rulePercent, { p: rules.threshold }));
+  return parts.length === 0 ? "" : fill(m.voter.alsoCloses, { conditions: parts.join(` ${m.voter.or} `) });
 }

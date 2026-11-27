@@ -125,6 +125,11 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 .cx-choice b::before{content:"";flex:none;width:1.15rem;height:1.15rem;border-radius:50%;border:2px solid var(--dim);box-sizing:border-box}
 .cx-choice.check b::before{border-radius:5px}
 .cx-choice small{color:var(--soft);font-size:.9rem;line-height:1.4}
+.cx-choice.has-ico>span{padding-right:3.4rem}
+.cx-choice .ico{position:absolute;top:var(--space-4);right:var(--space-4);display:grid;place-items:center;width:2rem;height:2rem;color:var(--dim);transition:color .15s ease-out}
+.cx-choice:hover .ico{color:var(--soft)}
+.cx-choice input:checked+span .ico{color:var(--mint)}
+.cx-choice input:disabled+span{opacity:.55}
 .cx-choice:hover>span{border-color:var(--dim)}
 .cx-choice input:checked+span{border-color:var(--mint);background:var(--raised)}
 .cx-choice input:checked+span b::before{border-color:var(--mint);background:radial-gradient(circle,var(--mint) 0 45%,transparent 50%)}
@@ -191,6 +196,8 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 .cx-bar.against{--o:var(--c-against)}
 .cx-bar.abstain{--o:var(--c-abstain)}
 .cx-bar[data-color]{--o:var(--cn)}
+.cx-bars[data-fill] .cx-bar .glyph{background:var(--o);color:#0B1B3E}
+.cx-embed .cx-bars[data-fill] .cx-bar .glyph{color:#FFFFFF}
 .cx-embed .cx-bar[data-color]{--o:var(--c)}
 .cx-bar.lead .name::after{content:"";display:inline-block;width:.45rem;height:.45rem;margin-left:var(--space-2);border-radius:50%;background:var(--mint);vertical-align:middle}
 @media (prefers-reduced-motion:reduce){.cx-bar .fill{transition:none}}
@@ -395,6 +402,10 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 .bld-pick:hover>span{border-color:var(--dim)}
 .bld-pick input:checked+span{border-color:var(--mint);background:var(--raised);color:var(--hi)}
 .bld-pick input:focus-visible+span{outline:3px solid var(--mint);outline-offset:2px}
+.bld-fill{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.bld-pick .mode{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-4) var(--space-2) var(--space-2)}
+.bld-pick .sample{display:grid;place-items:center;width:2rem;height:2rem;border:2px solid var(--cn);border-radius:50%;color:var(--cn)}
+.bld-pick .sample[data-fill]{background:var(--cn);color:#0B1B3E}
 .bld-pick .dot{width:2.75rem;padding:0;border-radius:50%;background:transparent}
 .bld-pick .dot::before{content:"";width:1.5rem;height:1.5rem;border-radius:50%;background:var(--cn)}
 .bld-pick input:checked+.dot{background:var(--raised)}
@@ -416,3 +427,15 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 .cx .preview-surface .ballot__head h1{font-size:clamp(1.6rem,6.2vw,2.05rem);line-height:1.1;font-weight:800;letter-spacing:-.01em;color:inherit}
 .cx .preview-surface .castbar{position:static;box-shadow:none;margin-inline:0;padding-inline:0}
 .cx .preview-surface a{color:inherit}
+
+.bld-rule{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+.bld-rule .cx-choice{flex:1 1 16rem}
+:is(.cx,.cx-embed) .bld-rule input[type="number"]{width:7rem}
+.bld-rule .unit{color:var(--soft)}
+.cx-card+.cx-notice,.cx-notice+.cx-card{margin-top:var(--space-4)}
+
+.cx-history .sep{margin:0 var(--space-2);color:var(--dim)}
+.cx-dates div{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-1)}
+@media (min-width:44rem){.cx-dates div{grid-template-columns:9rem minmax(0,1fr)}}
+.cx-dates dt{color:var(--dim);font-weight:700;font-size:.9rem}
+.cx-dates dd{margin:0}

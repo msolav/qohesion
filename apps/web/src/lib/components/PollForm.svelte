@@ -1,12 +1,14 @@
 <script lang="ts">
   import { tick } from "svelte";
   import BallotView from "#lib/components/BallotView.svelte";
+  import UiIcon from "#lib/components/UiIcon.svelte";
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { COLOR_IDS, ICON_IDS, ICONS, COLORS, colorName, iconName } from "#lib/option-style.js";
   import { AUDIENCES, TIMINGS, type ResultsAudience, type ResultsTiming } from "#lib/results-rules.js";
   import type { PollInput } from "#lib/server/service.js";
   import { THEMES, THEME_NAMES, type Theme } from "#lib/theme.js";
+  import { DEFAULT_TIME_ZONE, utcToLocalInput, zonedToUtc } from "#lib/zoned.js";
 
   let {
     locale,
@@ -14,7 +16,9 @@
     initial,
     error,
     defaultTheme,
-  }: { locale: Locale; submit: string; initial: PollInput | null; error: string | null; defaultTheme: Theme } = $props();
+    timeZone = DEFAULT_TIME_ZONE,
+    defaultCloses = "",
+  }: { locale: Locale; submit: string; initial: PollInput | null; error: string | null; defaultTheme: Theme; timeZone?: string; defaultCloses?: string } = $props();
 
   const m = $derived(consoleMessages[locale]);
   const start = (() => initial)();
@@ -33,13 +37,24 @@
   let step = $state(0);
   let title = $state(start?.title ?? "");
   let description = $state(start?.description ?? "");
+  let markFillValue = $state<"outline" | "fill">(start?.markFill ? "fill" : "outline");
+  const markFill = $derived(markFillValue === "fill");
   let kind = $state<"yes-no" | "choice">(start?.kind ?? "yes-no");
   let rows = $state<Row[]>(start && start.options.length > 0 ? start.options.map((o) => row(o.label, o.icon ?? "", o.color ?? "")) : [row(), row(), row()]);
   let timing = $state<ResultsTiming>(start?.timing ?? "close");
   let audience = $state<ResultsAudience>(start?.audience ?? "voters");
   let encryption = $state<"sealed" | "none">(start ? (start.encrypted ? "sealed" : "none") : "sealed");
-  let byHours = $state(start?.closeAfterHours != null);
-  let hours = $state(String(start?.closeAfterHours ?? 72));
+  const zone = (() => timeZone)();
+  let opensMode = $state<"manual" | "date">(start?.opensAt ? "date" : "manual");
+  let opensAt = $state(start?.opensAt ? utcToLocalInput(start.opensAt, zone) : "");
+  let closesAt = $state(start?.closesAt ? utcToLocalInput(start.closesAt, zone) : (() => defaultCloses)());
+  let ruleVotes = $state(start?.rules.afterVotes != null);
+  let ruleVotesN = $state(String(start?.rules.afterVotes ?? 10));
+  let ruleTurnout = $state(start?.rules.turnoutPercent != null);
+  let ruleTurnoutP = $state(String(start?.rules.turnoutPercent ?? 100));
+  let ruleThreshold = $state<"none" | "majority" | "percent">(start?.rules.threshold == null ? "none" : start.rules.threshold === "majority" ? "majority" : "percent");
+  let ruleThresholdP = $state(String(typeof start?.rules.threshold === "number" ? start.rules.threshold : 60));
+  let allowChange = $state(start?.allowChange ?? false);
   let theme = $state<Theme>(start?.theme ?? (() => defaultTheme)());
   let enhanced = $state(false);
   let problem = $state<string | null>(null);
@@ -57,13 +72,23 @@
   $effect(() => {
     if (timing === "live") encryption = "none";
   });
+  // A threshold reads the totals, and a changed vote needs a pseudonym: the first needs readable ballots, the second sealed ones.
+  $effect(() => {
+    if (encryption === "sealed") ruleThreshold = "none";
+    if (encryption !== "sealed") allowChange = false;
+  });
   // A refusal from the server sends the person to the step that holds the problem.
   $effect(() => {
     if (!error) return;
-    step = error.startsWith("title") || error === "description_too_long" ? 0 : error.startsWith("option") ? 1 : error === "invalid_duration" ? 3 : 2;
+    step = error.startsWith("title") || error === "description_too_long" ? 0 : error.startsWith("option") ? 1 : ["closes_required", "closes_past", "dates_order", "opens_past", "invalid_rule", "rules_need_readable", "change_needs_encryption"].includes(error) ? 3 : 2;
   });
 
   const labels = $derived(rows.map((r) => r.label.trim()).filter((l) => l.length > 0));
+  const previewRules = $derived({
+    afterVotes: ruleVotes && /^\d+$/.test(ruleVotesN) ? Number(ruleVotesN) : null,
+    turnoutPercent: ruleTurnout && /^\d+$/.test(ruleTurnoutP) ? Number(ruleTurnoutP) : null,
+    threshold: ruleThreshold === "majority" ? ("majority" as const) : ruleThreshold === "percent" && /^\d+$/.test(ruleThresholdP) ? Number(ruleThresholdP) : null,
+  });
   const preview = $derived({
     title,
     description,
@@ -74,7 +99,11 @@
     timing,
     audience,
     encrypted: encryption === "sealed",
-    closesAt: null,
+    markFill,
+    allowChange,
+    rules: previewRules,
+    timeZone: zone,
+    closesAt: zonedToUtc(closesAt, zone),
     rollCount: null,
     rollCode: null,
   });
@@ -205,8 +234,8 @@
       <fieldset class="cx-field">
         <legend class="cx-label">{m.form.kind}</legend>
         <div class="cx-choices cols-2">
-          <label class="cx-choice"><input type="radio" name="kind" value="yes-no" bind:group={kind} data-first /><span><b>{m.form.kindYesNo}</b><small>{m.form.kindYesNoText}</small></span></label>
-          <label class="cx-choice"><input type="radio" name="kind" value="choice" bind:group={kind} /><span><b>{m.form.kindChoice}</b><small>{m.form.kindChoiceText}</small></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="kind" value="yes-no" bind:group={kind} data-first /><span><i class="ico"><UiIcon name="check" /></i><b>{m.form.kindYesNo}</b><small>{m.form.kindYesNoText}</small></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="kind" value="choice" bind:group={kind} /><span><i class="ico"><UiIcon name="list" /></i><b>{m.form.kindChoice}</b><small>{m.form.kindChoiceText}</small></span></label>
         </div>
       </fieldset>
 
@@ -266,6 +295,15 @@
       {:else}
         <p class="cx-help">{m.build.fixedOptions}</p>
       {/if}
+
+      <fieldset class="cx-field">
+        <legend class="cx-label">{m.build.fillLabel}</legend>
+        <p class="cx-help">{m.build.fillHelp}</p>
+        <div class="bld-fill">
+          <label class="bld-pick"><input type="radio" name="marks" value="outline" bind:group={markFillValue} /><span class="mode"><span class="sample" data-color="green" aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillOutline}</span></label>
+          <label class="bld-pick"><input type="radio" name="marks" value="fill" bind:group={markFillValue} /><span class="mode"><span class="sample" data-color="green" data-fill aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillSolid}</span></label>
+        </div>
+      </fieldset>
     </section>
 
     <!-- 3. Results -->
@@ -276,7 +314,7 @@
         <legend class="cx-label">{m.form.timing}</legend>
         <div class="cx-choices cols-2">
           {#each TIMINGS as value, i (value)}
-            <label class="cx-choice"><input type="radio" name="timing" {value} bind:group={timing} data-first={i === 0 ? "" : undefined} /><span><b>{m.form.timingNames.title[value]}</b><small>{m.form.timingNames.text[value]}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="timing" {value} bind:group={timing} data-first={i === 0 ? "" : undefined} /><span><i class="ico"><UiIcon name={value === "close" ? "lock" : "pulse"} /></i><b>{m.form.timingNames.title[value]}</b><small>{m.form.timingNames.text[value]}</small></span></label>
           {/each}
         </div>
       </fieldset>
@@ -284,7 +322,7 @@
         <legend class="cx-label">{m.form.audience}</legend>
         <div class="cx-choices cols-3">
           {#each AUDIENCES as value (value)}
-            <label class="cx-choice"><input type="radio" name="audience" {value} bind:group={audience} /><span><b>{m.form.audienceNames.title[value]}</b><small>{m.form.audienceNames.text[value]}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="audience" {value} bind:group={audience} /><span><i class="ico"><UiIcon name={value === "administrators" ? "shield" : value === "voters" ? "users" : "globe"} /></i><b>{m.form.audienceNames.title[value]}</b><small>{m.form.audienceNames.text[value]}</small></span></label>
           {/each}
         </div>
       </fieldset>
@@ -292,34 +330,69 @@
         <legend class="cx-label">{m.seal.title}</legend>
         <p class="cx-help">{m.seal.help}</p>
         <div class="cx-choices cols-2">
-          <label class="cx-choice"><input type="radio" name="encryption" value="sealed" bind:group={encryption} disabled={timing === "live"} /><span><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
-          <label class="cx-choice"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="sealed" bind:group={encryption} disabled={timing === "live"} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><i class="ico"><UiIcon name="eye" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
         </div>
         {#if timing === "live"}<p class="cx-help" role="status">{m.seal.liveNote}</p>{/if}
       </fieldset>
     </section>
 
-    <!-- 4. Closing and look -->
+    <!-- 4. Dates and look -->
     <section class="bld-step" id="step-3" hidden={enhanced && step !== 3} aria-labelledby="h-3">
       <h2 id="h-3">{stepLabel("closing")}</h2>
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.form.duration}</legend>
+        <legend class="cx-label">{m.form.opening}</legend>
         <div class="cx-choices cols-2">
-          <label class="cx-choice"><input type="radio" name="duration" value="manual" checked={!byHours} onchange={() => (byHours = false)} data-first /><span><b>{m.form.durationManual}</b></span></label>
-          <label class="cx-choice"><input type="radio" name="duration" value="hours" checked={byHours} onchange={() => (byHours = true)} /><span><b>{m.form.durationHours}</b></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="opens_mode" value="manual" bind:group={opensMode} data-first /><span><i class="ico"><UiIcon name="flag" /></i><b>{m.form.openManual}</b></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="opens_mode" value="date" bind:group={opensMode} /><span><i class="ico"><UiIcon name="clock" /></i><b>{m.form.openDate}</b></span></label>
         </div>
-        {#if byHours}
+        {#if opensMode === "date"}
           <div class="cx-field">
-            <label for="hours">{m.form.durationHelp}</label>
-            <input id="hours" name="hours" type="number" min="1" max="720" step="1" inputmode="numeric" bind:value={hours} />
+            <label for="opens_at">{m.form.openAt}</label>
+            <input id="opens_at" name="opens_at" type="datetime-local" bind:value={opensAt} />
           </div>
         {/if}
       </fieldset>
+
+      <div class="cx-field">
+        <label for="closes_at">{m.form.closeAt}</label>
+        <input id="closes_at" name="closes_at" type="datetime-local" bind:value={closesAt} required aria-describedby="closes-help" />
+        <p class="cx-help" id="closes-help">{fill(m.form.closeHelp, { tz: zone })}</p>
+      </div>
+
+      <fieldset class="cx-field">
+        <legend class="cx-label">{m.form.rulesTitle}</legend>
+        <p class="cx-help">{m.form.rulesHelp}</p>
+        <div class="bld-rule">
+          <label class="cx-choice check"><input type="checkbox" name="rule_votes" value="yes" bind:checked={ruleVotes} /><span><b>{m.form.ruleVotes}</b></span></label>
+          {#if ruleVotes}<label class="sr-only" for="rule_votes_n">{m.form.ruleVotes}</label><input id="rule_votes_n" name="rule_votes_n" type="number" min="1" step="1" inputmode="numeric" bind:value={ruleVotesN} /><span class="unit">{m.form.members}</span>{/if}
+        </div>
+        <div class="bld-rule">
+          <label class="cx-choice check"><input type="checkbox" name="rule_turnout" value="yes" bind:checked={ruleTurnout} /><span><b>{m.form.ruleTurnout}</b></span></label>
+          {#if ruleTurnout}<label class="sr-only" for="rule_turnout_p">{m.form.ruleTurnout}</label><input id="rule_turnout_p" name="rule_turnout_p" type="number" min="1" max="100" step="1" inputmode="numeric" bind:value={ruleTurnoutP} /><span class="unit">{m.form.percent}</span>{/if}
+        </div>
+        <div class="cx-choices cols-3">
+          <label class="cx-choice"><input type="radio" name="rule_threshold" value="none" bind:group={ruleThreshold} /><span><b>{m.form.ruleThresholdNone}</b></span></label>
+          <label class="cx-choice"><input type="radio" name="rule_threshold" value="majority" bind:group={ruleThreshold} disabled={encryption === "sealed"} /><span><b>{m.form.ruleThresholdMajority}</b></span></label>
+          <label class="cx-choice"><input type="radio" name="rule_threshold" value="percent" bind:group={ruleThreshold} disabled={encryption === "sealed"} /><span><b>{m.form.ruleThresholdPercent}</b></span></label>
+        </div>
+        {#if ruleThreshold === "percent"}
+          <div class="bld-rule"><label class="sr-only" for="rule_threshold_p">{m.form.ruleThresholdPercent}</label><input id="rule_threshold_p" name="rule_threshold_p" type="number" min="1" max="100" step="1" inputmode="numeric" bind:value={ruleThresholdP} /><span class="unit">{m.form.percent}</span></div>
+        {/if}
+        {#if encryption === "sealed"}<p class="cx-help" role="status">{m.form.ruleNeedsReadable}</p>{/if}
+      </fieldset>
+
+      <fieldset class="cx-field">
+        <legend class="cx-label">{m.form.changeTitle}</legend>
+        <label class="cx-choice check has-ico"><input type="checkbox" name="allow_change" value="yes" bind:checked={allowChange} disabled={encryption !== "sealed"} /><span><i class="ico"><UiIcon name="check" /></i><b>{m.form.changeLabel}</b><small>{m.form.changeHelp}</small></span></label>
+        {#if encryption !== "sealed"}<p class="cx-help" role="status">{m.form.changeNeedsSealed}</p>{/if}
+      </fieldset>
+
       <fieldset class="cx-field">
         <legend class="cx-label">{m.build.lookTitle}</legend>
         <div class="cx-choices cols-3">
           {#each THEMES as value (value)}
-            <label class="cx-choice"><input type="radio" name="theme" {value} bind:group={theme} /><span><b>{THEME_NAMES[value][locale]}</b></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="theme" {value} bind:group={theme} /><span><i class="ico"><UiIcon name="layout" /></i><b>{THEME_NAMES[value][locale]}</b></span></label>
           {/each}
         </div>
       </fieldset>
@@ -333,7 +406,7 @@
         <div><dt>{m.form.question}</dt><dd>{title || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.options}</dt><dd>{kind === "choice" ? labels.join(" · ") || "–" : m.form.kindYesNo}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.results}</dt><dd>{m.resultsStatement[timing][audience]}<br />{encryption === "sealed" ? m.seal.sealed.title : m.seal.none.title}</dd><dd><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}</button></dd></div>
-        <div><dt>{m.build.stepNames.closing}</dt><dd>{byHours ? `${hours} h` : m.form.durationManual} · {THEME_NAMES[theme][locale]}</dd><dd><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}</button></dd></div>
+        <div><dt>{m.build.stepNames.closing}</dt><dd>{m.form.opening}: {opensMode === "date" && opensAt ? opensAt.replace("T", " ") : m.form.openManual}<br />{m.form.closeAt}: {closesAt ? closesAt.replace("T", " ") : "–"} · {THEME_NAMES[theme][locale]}</dd><dd><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}</button></dd></div>
       </dl>
     </section>
 
@@ -351,8 +424,9 @@
     <h2 id="preview-h">{m.build.previewTitle}</h2>
     <p class="cx-help">{m.build.previewNote}</p>
     <div class="bld-phone">
-      <div class="preview-surface" data-theme={theme} inert>
-        <div class="voter"><div class="ballot"><BallotView {locale} poll={preview} preview /></div></div>
+      <!-- The surface scrolls; only the ballot inside it is inert, so that nothing can be chosen but the preview can be read. -->
+      <div class="preview-surface" data-theme={theme}>
+        <div class="voter" inert><div class="ballot"><BallotView {locale} poll={preview} preview /></div></div>
       </div>
     </div>
   </aside>

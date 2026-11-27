@@ -1,10 +1,11 @@
 <script lang="ts">
   import { consoleMessages } from "#lib/i18n/console.js";
+  import { formatMoment } from "#lib/zoned.js";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
   const m = $derived(consoleMessages[data.locale]);
-  const fmt = $derived(new Intl.DateTimeFormat(data.locale === "fr" ? "fr-CA" : "en-CA", { dateStyle: "medium", timeStyle: "short" }));
+  const fmt = $derived({ format: (d: Date) => formatMoment(d.toISOString(), data.locale, data.timeZone) });
 </script>
 
 <svelte:head><title>{m.polls.title} · Qohesion</title><meta name="robots" content="noindex" /></svelte:head>

@@ -19,7 +19,7 @@
     <h1 class="results-title">{data.poll.title}</h1>
     {#if data.results}
       {#key data.poll.status}
-        <ResultsPanel locale={data.locale} pollId={data.poll.id} options={data.poll.options} timing={data.poll.timing} audience={data.poll.audience} initial={data.results} {token} />
+        <ResultsPanel locale={data.locale} pollId={data.poll.id} options={data.poll.options} timing={data.poll.timing} audience={data.poll.audience} markFill={data.poll.markFill} initial={data.results} {token} />
       {/key}
     {/if}
     {#if data.ledger}<LedgerPanel locale={data.locale} ledger={data.ledger} check={form?.check ?? null} />{/if}

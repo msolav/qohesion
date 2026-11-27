@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
+  import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
+  import type { CloseRules } from "#lib/close-rules.js";
+  import { DEFAULT_TIME_ZONE, formatMoment } from "#lib/zoned.js";
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { iconOf, iconPath } from "#lib/option-style.js";
   import { optionLabel } from "#lib/option-labels.js";
@@ -18,6 +20,10 @@
     readonly timing: ResultsTiming;
     readonly audience: ResultsAudience;
     readonly encrypted: boolean;
+    readonly markFill: boolean;
+    readonly allowChange: boolean;
+    readonly rules: CloseRules;
+    readonly timeZone?: string;
     readonly closesAt: string | null;
     readonly rollCount: number | null;
     readonly rollCode: string | null;
@@ -31,7 +37,7 @@
   let { locale, poll, failure = null, preview = false }: { locale: Locale; poll: BallotPoll; failure?: string | null; preview?: boolean } = $props();
 
   const m = $derived(consoleMessages[locale]);
-  const fmt = $derived(new Intl.DateTimeFormat(locale === "fr" ? "fr-CA" : "en-CA", { dateStyle: "long", timeStyle: "short" }));
+  const when = (iso: string) => formatMoment(iso, locale, poll.timeZone ?? DEFAULT_TIME_ZONE);
   const check = "M3.5 8.5l3 3 6-7";
 </script>
 
@@ -44,7 +50,8 @@
   <dl class="facts" aria-label={m.voter.facts}>
     <div>
       <dt>{m.voter.closes}</dt>
-      <dd>{poll.closesAt ? fmt.format(new Date(poll.closesAt)) : m.voter.noClose}</dd>
+      <dd>{poll.closesAt ? when(poll.closesAt) : m.voter.noClose}</dd>
+      {#if rulesSentence(m, poll.rules)}<dd class="note">{rulesSentence(m, poll.rules)}</dd>{/if}
     </div>
     <div>
       <dt>{m.voter.roll}</dt>
@@ -57,12 +64,16 @@
       <dd class="note">{m.voter.ballotNote} {poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
     </div>
     <div>
+      <dt>{m.voter.yourVote}</dt>
+      <dd class="note">{poll.allowChange ? m.voter.changeAllowed : m.voter.changeFinal}</dd>
+    </div>
+    <div>
       <dt>{m.voter.results}</dt>
       <dd class="note">{m.resultsStatement[poll.timing][poll.audience]}</dd>
     </div>
   </dl>
 
-  <fieldset class="choices" aria-describedby={failure ? "choice-error" : undefined}>
+  <fieldset class="choices" data-fill={poll.markFill ? "" : undefined} aria-describedby={failure ? "choice-error" : undefined}>
     <legend class="sr-only">{m.voter.legend}</legend>
     {#each poll.options as option, i (option.id)}
       {@const icon = iconOf(option)}

@@ -23,5 +23,4 @@
     </div>
     <div class="cx-actions"><button class="cx-btn" type="submit">{m.signin.submit}</button></div>
   </form>
-  <p>{m.signin.noSpace} <a href="/start">{m.signin.create}</a></p>
 </section>

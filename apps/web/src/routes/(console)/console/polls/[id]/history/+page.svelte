@@ -15,7 +15,7 @@
     {#each data.items as item, i (i)}
       <li>
         <time datetime={item.at}>{fmt.format(new Date(item.at))}</time>
-        <span>{m.history.actions[item.action] ?? item.action}{#if item.detail} · <span class="mono">{item.detail}</span>{/if}</span>
+        <span>{m.history.actions[item.action] ?? item.action}{#if item.detail}<span class="sep" aria-hidden="true">·</span><span class="mono">{item.detail}</span>{/if}</span>
         <span class="who">{item.actor}</span>
       </li>
     {/each}

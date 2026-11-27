@@ -5,6 +5,7 @@ import { setSessionCookie, signInLimiter } from "#lib/server/web.js";
 
 export const load: PageServerLoad = ({ locals }) => {
   if (locals.session) redirect(303, "/console");
+  if (!service().isSetUp()) redirect(303, "/start");
   return {};
 };
 
