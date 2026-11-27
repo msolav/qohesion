@@ -196,8 +196,9 @@ await admin.send(`/console/polls/${gatedId}?/requestApproval`, { method: "POST",
 const waiting = await clerk.send("/console/approvals");
 check("the other administrator sees the request", waiting.text.includes("Needs approval"));
 check("the approvals page shows the organization details to confirm", waiting.text.includes("Organization details") || waiting.text.includes("Renseignements de l’organisation"));
-const requestId = /name="request" value="([a-z0-9]+)"/.exec(waiting.text)?.[1];
-const digest = /name="digest" value="([0-9a-f]{64})"/.exec(waiting.text)?.[1];
+const pairWaiting = /name="request" value="([a-z0-9]+)"[^>]*>\s*<input[^>]*name="digest" value="([0-9a-f]{64})"/.exec(waiting.text);
+const requestId = pairWaiting?.[1];
+const digest = pairWaiting?.[2];
 const answered = await clerk.send("/console/approvals?/answer", { method: "POST", form: { request: requestId, digest, answer: "approve" } });
 check("the other administrator approves", answered.status === 200);
 const publishedGate = await admin.send(`/console/polls/${gatedId}?/open`, { method: "POST", form: {} });
@@ -210,8 +211,9 @@ check("the ballot says how the poll was approved", gatedBallot.text.includes("2 
 const closeAsk = await admin.send(`/console/polls/${gatedId}?/close`, { method: "POST", form: {} });
 check("closing by hand asks for approval instead of closing", closeAsk.status === 200 && (closeAsk.text.includes("Sent to the other administrators") || closeAsk.text.includes("Soumis aux autres administrateurs")));
 const closeWaiting = await clerk.send("/console/approvals");
-const closeId = /name="request" value="([a-z0-9]+)"/.exec(closeWaiting.text)?.[1];
-const closeDigest = /name="digest" value="([0-9a-f]{64})"/.exec(closeWaiting.text)?.[1];
+const pairClose = /name="request" value="([a-z0-9]+)"[^>]*>\s*<input[^>]*name="digest" value="([0-9a-f]{64})"/.exec(closeWaiting.text);
+const closeId = pairClose?.[1];
+const closeDigest = pairClose?.[2];
 await clerk.send("/console/approvals?/answer", { method: "POST", form: { request: closeId, digest: closeDigest, answer: "approve" } });
 const closeNow = await admin.send(`/console/polls/${gatedId}?/close`, { method: "POST", form: {} });
 check("the approved close goes through", closeNow.status === 303);
