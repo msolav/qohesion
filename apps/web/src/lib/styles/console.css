@@ -558,3 +558,5 @@ button.cx-choice.preset[aria-pressed="true"] .ico{color:var(--mint)}
 .bld-extra{display:grid;gap:var(--space-3);padding:var(--space-4);border:1.5px solid var(--dim);border-radius:var(--radius)}
 .bld-extra-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
 .bld-extra h3{margin:0;font-size:1.05rem}
+.bld-extra .bld-row{grid-template-columns:minmax(0,1fr) auto}
+.bld-extra-head .bld-row-tools{opacity:1}
