@@ -90,6 +90,29 @@ export function keyMatches(countingKey: string, publicKey: string): boolean {
   return Buffer.from(derived).toString("base64url") === publicKey;
 }
 
+/**
+ * Every plaintext is padded to the same length before it is encrypted, so that the size of a sealed ballot does not
+ * tell which choice it holds ("for" and "against" would otherwise differ). Format: a zero byte, one length byte, the
+ * text, then zeros up to PAD_TO. A plaintext that does not start with a zero byte is an earlier, unpadded ballot.
+ */
+const PAD_TO = 256;
+
+function pad(plaintext: string): Buffer {
+  const bytes = Buffer.from(plaintext, "utf8");
+  if (bytes.length > PAD_TO - 2) throw new Error("A sealed ballot is limited to 254 bytes");
+  const out = Buffer.alloc(PAD_TO);
+  out[1] = bytes.length;
+  bytes.copy(out, 2);
+  return out;
+}
+
+function unpad(plain: Buffer): string | null {
+  if (plain[0] !== 0) return plain.toString("utf8");
+  if (plain.length !== PAD_TO) return null;
+  const length = plain[1] ?? 0;
+  return length > PAD_TO - 2 ? null : plain.subarray(2, 2 + length).toString("utf8");
+}
+
 export function seal(publicKey: string, plaintext: string): string {
   const recipient = createPublicKey({ key: Buffer.concat([SPKI_PREFIX, Buffer.from(publicKey, "base64url")]), format: "der", type: "spki" });
   const ephemeral = generateKeyPairSync("x25519");
@@ -98,7 +121,7 @@ export function seal(publicKey: string, plaintext: string): string {
   const key = Buffer.from(hkdfSync("sha256", shared, ephemeralPublic, INFO, 32));
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const body = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const body = Buffer.concat([cipher.update(pad(plaintext)), cipher.final()]);
   return Buffer.concat([ephemeralPublic, iv, cipher.getAuthTag(), body]).toString("base64url");
 }
 
@@ -118,7 +141,7 @@ export function open(countingKey: string, sealed: string): string | null {
     const key = Buffer.from(hkdfSync("sha256", shared, ephemeralPublic, INFO, 32));
     const decipher = createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(body), decipher.final()]).toString("utf8");
+    return unpad(Buffer.concat([decipher.update(body), decipher.final()]));
   } catch {
     return null;
   }

@@ -278,10 +278,11 @@ describe("dates, closing rules and changing a vote", () => {
     expect(scheduled.countingKey).toMatch(/^QC-/);
     expect(service.castBallot(tokensOf(poll.id)[0] ?? "", "for")).toEqual({ ok: false, error: "not_open" });
     expect(service.resultsFor(poll.id, "administrator")).toBeNull();
-    must(service.addToRoll(owner, poll.id, "c@example.com"));
+    // Once scheduled, the roll is what was set: it cannot grow before the opening.
+    expect(service.addToRoll(owner, poll.id, "c@example.com")).toEqual({ ok: false, error: "roll_scheduled" });
     now = new Date("2026-12-02T15:00:01Z");
     const opened = service.getPoll(poll.id);
-    expect(opened).toMatchObject({ status: "open", rollCount: 3 });
+    expect(opened).toMatchObject({ status: "open", rollCount: 2 });
     must(service.castBallot(tokensOf(poll.id)[0] ?? "", "for"));
     now = new Date("2026-12-09T15:00:01Z");
     expect(service.getPoll(poll.id)).toMatchObject({ status: "closed", counted: false });
@@ -703,12 +704,126 @@ describe("approvals between administrators", () => {
 
   it("only lets administrators answer", () => {
     second();
+    const ownerOnly = must(service.createKey(owner, { label: "Board", owner: true, administrator: false }));
+    const board = service.session(service.signIn(ownerOnly.key) ?? "") as Session;
     must(rule("all"));
     const poll = draft();
     const asked = must(service.requestPublication(owner, poll.id)).request;
-    const ownerOnly = must(service.createKey(owner, { label: "Board", owner: true, administrator: false }));
-    const board = service.session(service.signIn(ownerOnly.key) ?? "") as Session;
     expect(service.answerApproval(board, asked?.id ?? "", "approve", asked?.digest ?? "")).toEqual({ ok: false, error: "forbidden" });
+  });
+});
+
+describe("actions that need a permit once approvals apply", () => {
+  function setup(abstention: "neutral" | "agreement" = "neutral") {
+    const key = must(service.createKey(owner, { label: "Clerk", owner: false, administrator: true }));
+    const clerk = service.session(service.signIn(key.key) ?? "") as Session;
+    must(service.setApprovalPolicy(owner, { rule: "all", abstention, delayHours: 168 }));
+    return clerk;
+  }
+  const approve = (clerk: Session, request: { id: string; digest: string } | null | undefined) => must(service.answerApproval(clerk, request?.id ?? "", "approve", request?.digest ?? ""));
+  function published(clerk: Session, over: Partial<PollInput> = {}) {
+    const poll = must(service.createPoll(owner, input(over)));
+    must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com"));
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    approve(clerk, asked);
+    return poll;
+  }
+
+  it("closes by hand only with a permit, which is used up", () => {
+    const clerk = setup();
+    const poll = published(clerk);
+    must(service.openPoll(owner, poll.id));
+    expect(service.closePoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    expect(service.actionApprovalState(owner, "close_poll", poll.id).state).toBe("none");
+    const asked = must(service.requestAction(owner, "close_poll", poll.id)).request;
+    expect(service.actionApprovalState(owner, "close_poll", poll.id).state).toBe("pending");
+    approve(clerk, asked);
+    expect(service.actionApprovalState(owner, "close_poll", poll.id).state).toBe("approved");
+    must(service.closePoll(owner, poll.id));
+    expect(service.actionApprovalState(owner, "close_poll", poll.id).state).toBe("none");
+  });
+
+  it("closes at the deadline without asking", () => {
+    const clerk = setup();
+    const poll = published(clerk, { closesAt: "2026-12-02T15:00:00.000Z" });
+    must(service.openPoll(owner, poll.id));
+    now = new Date("2026-12-02T15:00:01Z");
+    expect(service.getPoll(poll.id)?.status).toBe("closed");
+  });
+
+  it("cancels only with a permit", () => {
+    const clerk = setup();
+    const poll = published(clerk);
+    must(service.openPoll(owner, poll.id));
+    expect(service.cancelPoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    approve(clerk, must(service.requestAction(owner, "cancel_poll", poll.id)).request);
+    expect(must(service.cancelPoll(owner, poll.id)).status).toBe("cancelled");
+  });
+
+  it("adds people to an open poll only with a permit for exactly those addresses", () => {
+    const clerk = setup();
+    const poll = published(clerk, { lateRoll: true });
+    must(service.openPoll(owner, poll.id));
+    expect(service.addToRoll(owner, poll.id, "late@example.com")).toEqual({ ok: false, error: "approval_required" });
+    approve(clerk, must(service.requestAction(owner, "add_roll", poll.id, ["late@example.com"])).request);
+    expect(service.addToRoll(owner, poll.id, "other@example.com")).toEqual({ ok: false, error: "approval_required" });
+    expect(must(service.addToRoll(owner, poll.id, "Late@example.com")).added).toBe(1);
+    expect(service.addToRoll(owner, poll.id, "late2@example.com")).toEqual({ ok: false, error: "approval_required" });
+  });
+
+  it("creates a key only for the label and roles that were approved, and revokes only with a permit", () => {
+    const clerk = setup();
+    const detail = { label: "Auditor", owner: false, administrator: true };
+    expect(service.createKey(owner, detail)).toEqual({ ok: false, error: "approval_required" });
+    approve(clerk, must(service.requestAction(owner, "add_key", "", detail)).request);
+    expect(service.createKey(owner, { ...detail, label: "Someone else" })).toEqual({ ok: false, error: "approval_required" });
+    must(service.createKey(owner, detail));
+    const target = service.listKeys(owner).find((k) => k.label === "Clerk");
+    expect(service.revokeKey(owner, target?.id ?? "")).toEqual({ ok: false, error: "approval_required" });
+  });
+
+  it("does not let a key made after a request answer it", () => {
+    const clerk = setup();
+    const poll = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    // A second key held by the owner is added with the approval of the clerk, after the request was made.
+    const detail = { label: "Second key", owner: false, administrator: true };
+    approve(clerk, must(service.requestAction(owner, "add_key", "", detail)).request);
+    const extra = must(service.createKey(owner, detail));
+    const extraSession = service.session(service.signIn(extra.key) ?? "") as Session;
+    expect(service.answerApproval(extraSession, asked?.id ?? "", "approve", asked?.digest ?? "")).toEqual({ ok: false, error: "forbidden" });
+    expect(service.pollApprovalState(owner, poll.id).state).toBe("pending");
+  });
+
+  it("keeps the rule a request was made under when the rule changes", () => {
+    const clerk = setup();
+    const poll = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    const lowered = must(service.setApprovalPolicy(owner, { rule: "none", abstention: "neutral", delayHours: 168 })).request;
+    approve(clerk, lowered);
+    expect(service.approvalPolicy(owner.spaceId).rule).toBe("none");
+    // The open request keeps its own rule, and can still be answered.
+    expect(service.approvalRequests(owner).open.map((r) => r.id)).toContain(asked?.id);
+    expect(service.approvalRequests(owner).open.find((r) => r.id === asked?.id)?.policy.rule).toBe("all");
+  });
+
+  it("asks for approval again to open a scheduled poll early, and clears the approval on unscheduling", () => {
+    const clerk = setup();
+    const poll = must(service.createPoll(owner, input({ opensAt: "2026-12-03T15:00:00.000Z", closesAt: "2026-12-09T15:00:00.000Z" })));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    expect(service.schedulePoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    approve(clerk, must(service.requestPublication(owner, poll.id)).request);
+    must(service.schedulePoll(owner, poll.id));
+    expect(service.getPoll(poll.id)?.approval).toMatchObject({ approvals: 2 });
+    expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    must(service.unschedulePoll(owner, poll.id));
+    expect(service.getPoll(poll.id)?.approval).toBeNull();
+    must(service.updatePoll(owner, poll.id, input({ title: "Renamed", opensAt: "2026-12-03T15:00:00.000Z", closesAt: "2026-12-09T15:00:00.000Z" })));
+    // The old approval was used up when the poll was scheduled, so a new request is needed.
+    expect(service.pollApprovalState(owner, poll.id).state).toBe("none");
+    expect(service.schedulePoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
   });
 });
 

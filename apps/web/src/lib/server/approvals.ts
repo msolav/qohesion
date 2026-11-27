@@ -9,7 +9,13 @@ import { approvalRequired, decide, type Answer, type ApprovalPolicy, type Tally 
  * and the life of a request. What a request means, and what happens when it is approved, belongs to the service.
  */
 
-export type ApprovalKind = "publish_poll" | "set_policy" | "space_settings";
+/**
+ * What a request is for. Changes that need nothing more are applied when approved (`set_policy`, `space_settings`). The
+ * others give a permit that the administrator uses by doing the action again: it may need a secret that is never stored
+ * (a counting key, a new key), or the exact content that was approved.
+ */
+export type ApprovalKind = "publish_poll" | "set_policy" | "space_settings" | "open_scheduled" | "close_poll" | "cancel_poll" | "add_roll" | "add_key" | "revoke_key" | "delete_space";
+const APPLIED_ON_APPROVAL: ReadonlySet<ApprovalKind> = new Set(["set_policy", "space_settings"]);
 export type RequestStatus = "pending" | "approved" | "rejected" | "lapsed" | "applied" | "superseded" | "blocked";
 
 export interface ApprovalAnswer {
@@ -32,6 +38,10 @@ export interface ApprovalRequest {
   readonly proposer: string;
   /** Eligible administrators when the request was made. */
   readonly eligible: number;
+  /** Their keys. Only these can answer, and only their answers count, whoever is added or revoked later. */
+  readonly eligibleIds: readonly string[];
+  /** The rule that applied when the request was made. A later change of the rule does not change open requests. */
+  readonly policy: ApprovalPolicy;
   readonly createdAt: string;
   readonly expiresAt: string;
   readonly status: RequestStatus;
@@ -75,6 +85,9 @@ export class ApprovalStore {
     this.#db = db;
     this.#now = now;
     this.#ctx = ctx;
+    const columns = (db.prepare("PRAGMA table_info(approval_requests)").all() as { name: string }[]).map((c) => c.name);
+    if (!columns.includes("eligible_ids")) db.exec("ALTER TABLE approval_requests ADD COLUMN eligible_ids TEXT");
+    if (!columns.includes("policy")) db.exec("ALTER TABLE approval_requests ADD COLUMN policy TEXT");
   }
 
   /** True when a change in this organization needs the answers of other administrators. */
@@ -95,8 +108,8 @@ export class ApprovalStore {
     const id = randomBytes(9).toString("base64url").toLowerCase().replace(/[^a-z0-9]/g, "x");
     this.#db.prepare("UPDATE approval_requests SET status = 'superseded', decided_at = ? WHERE space_id = ? AND kind = ? AND subject = ? AND status IN ('pending', 'approved')").run(at.toISOString(), spaceId, kind, subject);
     this.#db
-      .prepare("INSERT INTO approval_requests (id, space_id, kind, subject, digest, payload, proposer_id, proposer_label, eligible, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')")
-      .run(id, spaceId, kind, subject, digest, JSON.stringify(payload), who.keyId, who.label, admins.length, at.toISOString(), new Date(at.getTime() + policy.delayHours * ONE_HOUR).toISOString());
+      .prepare("INSERT INTO approval_requests (id, space_id, kind, subject, digest, payload, proposer_id, proposer_label, eligible, eligible_ids, policy, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')")
+      .run(id, spaceId, kind, subject, digest, JSON.stringify(payload), who.keyId, who.label, admins.length, JSON.stringify(admins.map((a) => a.id)), JSON.stringify(policy), at.toISOString(), new Date(at.getTime() + policy.delayHours * ONE_HOUR).toISOString());
     if (admins.some((a) => a.id === who.keyId)) this.#record(id, who, "approve");
     return this.#evaluate(id);
   }
@@ -106,7 +119,8 @@ export class ApprovalStore {
     this.#expire();
     const request = this.get(spaceId, requestId);
     if (!request || request.status !== "pending") return null;
-    if (!this.#ctx.administratorsOf(spaceId).some((a) => a.id === who.keyId)) return null;
+    // Only those who were eligible when the request was made. A key made or revoked since changes nothing.
+    if (!request.eligibleIds.includes(who.keyId)) return null;
     this.#record(requestId, who, answer);
     return this.#evaluate(requestId);
   }
@@ -141,6 +155,16 @@ export class ApprovalStore {
     return this.open(spaceId).filter((r) => !r.answers.some((a) => a.keyId === keyId)).length;
   }
 
+  /**
+   * The approved, unused request that lets this action go ahead, or null. It must carry the digest of what is being
+   * done now, and it holds for as long as the request was open.
+   */
+  permit(spaceId: string, kind: ApprovalKind, subject: string, digest: string): ApprovalRequest | null {
+    const request = this.latest(spaceId, kind, subject);
+    if (!request || request.status !== "approved" || request.digest !== digest) return null;
+    return Date.parse(request.expiresAt) > this.#now().getTime() ? request : null;
+  }
+
   /** Marks an approved request as used (a poll was published, a change applied). */
   consume(requestId: string): void {
     this.#db.prepare("UPDATE approval_requests SET status = 'applied' WHERE id = ? AND status = 'approved'").run(requestId);
@@ -166,7 +190,7 @@ export class ApprovalStore {
     if (built.tally.outcome === "approved") {
       this.#db.prepare("UPDATE approval_requests SET status = 'approved', decided_at = ? WHERE id = ?").run(at, requestId);
       // Changes that need nothing more from anyone are applied now. A poll waits to be opened by an administrator.
-      if (built.kind !== "publish_poll") {
+      if (APPLIED_ON_APPROVAL.has(built.kind)) {
         const done = this.#ctx.apply({ ...built, status: "approved", decidedAt: at });
         this.#db.prepare("UPDATE approval_requests SET status = ? WHERE id = ?").run(done ? "applied" : "blocked", requestId);
       }
@@ -183,14 +207,18 @@ export class ApprovalStore {
       .prepare("SELECT key_id, label, answer, at FROM approval_answers WHERE request_id = ? ORDER BY at, rowid")
       .all(id)
       .map((a) => ({ keyId: String(a["key_id"]), label: String(a["label"]), answer: String(a["answer"]) as Answer, at: String(a["at"]) }));
-    const policy = this.#ctx.policyOf(spaceId);
+    const stored = r["policy"] === null || r["policy"] === undefined ? null : (JSON.parse(String(r["policy"])) as ApprovalPolicy);
+    // A request made before the rule was kept with it follows the rule in force.
+    const policy = stored ?? this.#ctx.policyOf(spaceId);
+    const ids = r["eligible_ids"] === null || r["eligible_ids"] === undefined ? null : (JSON.parse(String(r["eligible_ids"])) as string[]);
+    const counted = ids === null ? answers : answers.filter((a) => ids.includes(a.keyId));
     const expiresAt = String(r["expires_at"]);
     const tally = decide({
       policy,
       eligible: Number(r["eligible"]),
-      approvals: answers.filter((a) => a.answer === "approve").length,
-      rejections: answers.filter((a) => a.answer === "reject").length,
-      abstentions: answers.filter((a) => a.answer === "abstain").length,
+      approvals: counted.filter((a) => a.answer === "approve").length,
+      rejections: counted.filter((a) => a.answer === "reject").length,
+      abstentions: counted.filter((a) => a.answer === "abstain").length,
       expired: Date.parse(expiresAt) <= this.#now().getTime(),
     });
     return {
@@ -203,6 +231,9 @@ export class ApprovalStore {
       proposerId: String(r["proposer_id"]),
       proposer: String(r["proposer_label"]),
       eligible: Number(r["eligible"]),
+      // A request made before the keys were kept follows the administrators now in post.
+      eligibleIds: ids ?? this.#ctx.administratorsOf(spaceId).map((a) => a.id),
+      policy,
       createdAt: String(r["created_at"]),
       expiresAt,
       status: String(r["status"]) as RequestStatus,

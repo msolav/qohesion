@@ -20,7 +20,7 @@ import { NO_TRANSLATIONS, cleanLanguages, missingTexts, type Translations } from
 import { NO_RULES, closeReason, parseRules, ruleProblem, type CloseRules } from "../close-rules.js";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "../zoned.js";
 import { NO_APPROVAL, isDelay, isMeaning, isRule, type Answer, type ApprovalPolicy } from "../approval.js";
-import { APPROVAL_SCHEMA, ApprovalStore, type ApprovalRequest } from "./approvals.js";
+import { APPROVAL_SCHEMA, ApprovalStore, type ApprovalKind, type ApprovalRequest } from "./approvals.js";
 import { accessTo, isAnonymity, isAudience, isTiming, type Access, type Anonymity, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -67,6 +67,15 @@ export interface PollApprovalState {
   /** What changed since the request was made, when the state is "stale". */
   readonly changes: readonly string[];
   readonly digest: string;
+}
+
+/** Actions that wait for a permit once the organization asks for approval. Doing the action uses the permit up. */
+export type ActionKind = "open_scheduled" | "close_poll" | "cancel_poll" | "add_roll" | "add_key" | "revoke_key" | "delete_space";
+
+export interface ActionApprovalState {
+  readonly required: boolean;
+  readonly state: ApprovalState;
+  readonly request: ApprovalRequest | null;
 }
 
 export type SpaceUpdate = Space & { readonly request: ApprovalRequest | null };
@@ -589,6 +598,61 @@ export class Service {
     return session.administrator ? this.#approvals.waitingFor(session.spaceId, session.keyId) : 0;
   }
 
+  #permitDigest(kind: ApprovalKind, subject: string, detail: unknown): string {
+    return sha256hex(JSON.stringify({ kind, subject, detail: detail ?? null }));
+  }
+
+  /** What an action needs: nothing, or the permit made by an approved request that names exactly this action. */
+  #gate(spaceId: string, kind: ActionKind, subject: string, detail: unknown): Result<{ requestId: string | null }> {
+    if (!this.#approvals.required(spaceId)) return ok({ requestId: null });
+    const permit = this.#approvals.permit(spaceId, kind, subject, this.#permitDigest(kind, subject, detail));
+    return permit ? ok({ requestId: permit.id }) : problem("approval_required");
+  }
+
+  #use(gate: { requestId: string | null }): void {
+    if (gate.requestId) this.#approvals.consume(gate.requestId);
+  }
+
+  /**
+   * Asks the other administrators to approve one action. The request names the action exactly (the poll, the addresses,
+   * the key's label and roles), so the permit it gives cannot be used for another one. Null when no approval is needed.
+   */
+  requestAction(session: Session, kind: ActionKind, subject: string, detail?: unknown): Result<{ request: ApprovalRequest | null }> {
+    const ownerAction = kind === "add_key" || kind === "revoke_key" || kind === "delete_space";
+    if (ownerAction ? !session.owner : !session.administrator) return problem("forbidden");
+    const summary: Record<string, unknown> = {};
+    if (kind === "add_key" && detail && typeof detail === "object") {
+      const d = detail as { label?: string; owner?: boolean; administrator?: boolean };
+      summary["label"] = d.label ?? "";
+      summary["roles"] = [d.owner ? "owner" : null, d.administrator ? "administrator" : null].filter(Boolean);
+    } else if (kind === "revoke_key") {
+      const target = this.#one("SELECT label FROM keys WHERE id = ? AND space_id = ?", subject, session.spaceId);
+      if (!target) return problem("not_found");
+      summary["label"] = String(target["label"]);
+    } else if (kind === "delete_space") {
+      summary["name"] = this.getSpace(session.spaceId)?.name ?? "";
+    } else {
+      const poll = this.pollFor(session, subject);
+      if (!poll) return problem("not_found");
+      summary["title"] = poll.title;
+      if (kind === "add_roll" && Array.isArray(detail)) summary["count"] = detail.length;
+    }
+    const request = this.#approvals.propose(session.spaceId, { keyId: session.keyId, label: session.label }, kind, subject, this.#permitDigest(kind, subject, detail), summary);
+    if (request && subject !== "" && kind !== "revoke_key" && kind !== "delete_space") this.#log(subject, session, `approval_requested_${kind}`, request.digest.slice(0, 12));
+    return ok({ request });
+  }
+
+  /** Where the approval of an action stands: nothing asked, waiting, approved and ready to use, rejected or lapsed. */
+  actionApprovalState(session: Session, kind: ActionKind, subject: string, detail?: unknown): ActionApprovalState {
+    const required = this.#approvals.required(session.spaceId);
+    if (!required) return { required, state: "not_needed", request: null };
+    const request = this.#approvals.latest(session.spaceId, kind, subject);
+    if (!request || (request.status === "approved" || request.status === "pending") && request.digest !== this.#permitDigest(kind, subject, detail)) return { required, state: "none", request: null };
+    if (request.status === "approved") return Date.parse(request.expiresAt) > this.#now().getTime() ? { required, state: "approved", request } : { required, state: "lapsed", request };
+    const state: ApprovalState = request.status === "pending" ? "pending" : request.status === "rejected" ? "rejected" : request.status === "lapsed" ? "lapsed" : "none";
+    return { required, state, request: state === "none" ? null : request };
+  }
+
   /** What a publication needs, and the record of how it was approved. Used when a poll is opened or scheduled. */
   #publicationGate(poll: Poll): Result<{ requestId: string | null; approval: PollApproval }> {
     const content = this.#pollContent(poll);
@@ -597,8 +661,8 @@ export class Service {
     if (!this.#approvals.required(poll.spaceId)) {
       return ok({ requestId: null, approval: { rule: policy.rule, approvals: 1, eligible: Math.max(1, this.#administrators(poll.spaceId).length), at, digest: content.digest } });
     }
-    const request = this.#approvals.latest(poll.spaceId, "publish_poll", poll.id);
-    if (!request || request.status !== "approved" || request.digest !== content.digest) return problem("approval_required");
+    const request = this.#approvals.permit(poll.spaceId, "publish_poll", poll.id, content.digest);
+    if (!request) return problem("approval_required");
     return ok({ requestId: request.id, approval: { rule: policy.rule, approvals: request.tally.approvals, eligible: request.tally.eligible, at, digest: content.digest } });
   }
 
@@ -631,8 +695,11 @@ export class Service {
     if (label.length === 0) return problem("label_required");
     if (label.length > 60) return problem("label_too_long");
     if (!input.owner && !input.administrator) return problem("role_required");
+    const gate = this.#gate(session.spaceId, "add_key", "", { label, owner: input.owner, administrator: input.administrator });
+    if (!gate.ok) return gate;
     const key = this.#newKeyValue();
     this.#insertKey(session.spaceId, label, key, input.owner, input.administrator);
+    this.#use(gate.value);
     return ok({ key });
   }
 
@@ -647,8 +714,11 @@ export class Service {
         const owners = this.#one("SELECT COUNT(*) AS n FROM keys WHERE space_id = ? AND owner = 1 AND revoked_at IS NULL", session.spaceId);
         if (Number(owners?.["n"] ?? 0) <= 1) return problem("last_owner");
       }
+      const gate = this.#gate(session.spaceId, "revoke_key", keyId, null);
+      if (!gate.ok) return gate;
       this.#run("UPDATE keys SET revoked_at = ? WHERE id = ?", this.#iso(), keyId);
       this.#run("DELETE FROM sessions WHERE key_id = ?", keyId);
+      this.#use(gate.value);
       return ok(null);
     });
   }
@@ -659,6 +729,8 @@ export class Service {
     const space = this.getSpace(session.spaceId);
     if (!space) return problem("not_found");
     if (confirmName.trim() !== space.name) return problem("name_mismatch");
+    const gate = this.#gate(session.spaceId, "delete_space", session.spaceId, null);
+    if (!gate.ok) return gate;
     this.#run("DELETE FROM spaces WHERE id = ?", session.spaceId);
     return ok(null);
   }
@@ -878,9 +950,14 @@ export class Service {
     if (!poll) return problem("not_found");
     if (poll.status === "closed") return problem("locked");
     if (poll.status === "open" && !poll.lateRoll) return problem("roll_locked");
+    // Once scheduled, the roll is what was approved: it can change again after unscheduling.
+    if (poll.status === "scheduled") return problem("roll_scheduled");
     const lines = text.split(/[\n\r,;]+/).map((l) => l.trim()).filter((l) => l.length > 0);
     if (lines.length === 0) return problem("nothing_entered");
     if (lines.length > MAX_ROLL) return problem("too_many_addresses");
+    // Adding people to a poll that is already open is a change of what was approved.
+    const gate = poll.status === "open" ? this.#gate(poll.spaceId, "add_roll", pollId, [...new Set(lines.map((l) => l.toLowerCase()))].sort()) : ok({ requestId: null });
+    if (!gate.ok) return gate;
     let added = 0;
     let duplicates = 0;
     const rejected: { line: string; reason: "invalid" | "disposable" }[] = [];
@@ -912,7 +989,10 @@ export class Service {
         );
         added++;
       }
-      if (added > 0) this.#log(pollId, session, poll.status === "open" ? "roll_added_late" : "roll_added", String(added));
+      if (added > 0) {
+        this.#log(pollId, session, poll.status === "open" ? "roll_added_late" : "roll_added", String(added));
+        this.#use(gate.value);
+      }
     });
     return ok({ added, duplicates, rejected });
   }
@@ -1059,6 +1139,9 @@ export class Service {
       // A scheduled poll was approved when it was scheduled. A draft needs approval where the organization asks for it.
       const gate = poll.status === "draft" ? this.#publicationGate(poll) : null;
       if (gate && !gate.ok) return gate;
+      // Opening a scheduled poll sooner than the approved date is a change of what was approved.
+      const early = poll.status === "scheduled" ? this.#gate(poll.spaceId, "open_scheduled", pollId, null) : null;
+      if (early && !early.ok) return early;
       if (poll.encrypted && poll.status === "draft") {
         const keys = this.#newKeys(poll, session);
         if (!keys.ok) return keys;
@@ -1068,6 +1151,7 @@ export class Service {
       }
       const opened = this.#openNow(poll, this.#iso(), session);
       if (opened.ok && gate?.ok) this.#stamp(pollId, gate.value);
+      if (opened.ok && early?.ok) this.#use(early.value);
       return opened;
     });
     if (!result.ok) return result;
@@ -1114,7 +1198,7 @@ export class Service {
     const poll = this.pollFor(session, pollId);
     if (!poll) return problem("not_found");
     if (poll.status !== "scheduled") return problem("locked");
-    this.#run("UPDATE polls SET status = 'draft', public_key = NULL, approval_json = NULL WHERE id = ?", pollId);
+    this.#run("UPDATE polls SET status = 'draft', public_key = NULL, approval_json = NULL, org_name = NULL WHERE id = ?", pollId);
     this.#log(pollId, session, "unscheduled", "");
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -1126,11 +1210,17 @@ export class Service {
       const poll = this.pollFor(session, pollId);
       if (!poll) return problem("not_found");
       if (poll.status !== "open") return problem("locked");
+      // Closing by hand before the deadline (or on a poll with none) needs approval. The deadline and the closing rules
+      // fixed at opening do not: the approval of the opening covered them.
+      const manual = poll.closesAt === null || Date.parse(poll.closesAt) > this.#now().getTime();
+      const gate = manual ? this.#gate(poll.spaceId, "close_poll", pollId, null) : ok({ requestId: null });
+      if (!gate.ok) return gate;
       if (poll.encrypted) {
         const counted = this.#count(poll, countingKey ?? "");
         if (!counted.ok) return counted;
       }
       this.#run("UPDATE polls SET status = 'closed', closed_at = ? WHERE id = ?", this.#iso(), pollId);
+      this.#use(gate.value);
       this.#log(pollId, session, "closed", poll.encrypted ? "counted" : "");
       const next = this.getPoll(pollId);
       return next ? ok(next) : problem("not_found");
@@ -1151,6 +1241,9 @@ export class Service {
       const cast = Number(this.#one("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?", pollId)?.["n"] ?? 0);
       // A poll can be set so that voting, once begun, cannot be called off: that is how a result is kept from being buried.
       if (poll.lockCancel && cast > 0) return problem("cancel_locked");
+      const gate = this.#gate(poll.spaceId, "cancel_poll", pollId, null);
+      if (!gate.ok) return gate;
+      this.#use(gate.value);
       this.#run("DELETE FROM ballots WHERE poll_id = ?", pollId);
       this.#run("UPDATE polls SET status = 'cancelled', closed_at = ?, public_key = NULL, cancelled_by = ?, cancelled_ballots = ? WHERE id = ?", this.#iso(), session.label, cast, pollId);
       this.#log(pollId, session, "cancelled", "");
@@ -1334,12 +1427,13 @@ export class Service {
     const poll = this.getPoll(pollId);
     if (!poll || poll.status !== "closed" || !poll.counted || !poll.publishCount) return null;
     if (!accessTo(poll, viewer).totals) return null;
-    const rows = this.#all("SELECT seq, choice, entry, superseded FROM ballots WHERE poll_id = ? ORDER BY seq", pollId);
+    // The order is that of the receipt codes, not of casting: the order of casting, set beside who was seen voting
+    // while the poll was open, would tie a published choice to a person.
+    const rows = this.#byLeaf(this.#all("SELECT choice, entry, superseded FROM ballots WHERE poll_id = ?", pollId));
     const log = new MerkleLog();
     const ballots = rows.map((r) => {
-      const bytes = new TextEncoder().encode(String(r["entry"]));
-      log.append(bytes);
-      return { receipt: receiptCode(toHex(hashLeaf(bytes))), choice: String(r["choice"]), replaced: r["superseded"] === 1 };
+      log.append(r.bytes);
+      return { receipt: r.receipt, choice: String(r.row["choice"]), replaced: r.row["superseded"] === 1 };
     });
     const key = this.#one("SELECT published_key AS k FROM polls WHERE id = ?", pollId)?.["k"];
     return { countingKey: typeof key === "string" ? key : null, root: log.root(), ballots };
@@ -1348,17 +1442,28 @@ export class Service {
   /** The ledger entries themselves (ciphertexts for a sealed poll), for someone who recounts with the published key. */
   ledgerEntries(pollId: string, viewer: Viewer): { receipt: string; entry: string }[] | null {
     if (!this.publication(pollId, viewer)) return null;
-    return this.#all("SELECT entry FROM ballots WHERE poll_id = ? ORDER BY seq", pollId).map((r) => {
-      const entry = String(r["entry"]);
-      return { receipt: receiptCode(toHex(hashLeaf(new TextEncoder().encode(entry)))), entry };
-    });
+    return this.#byLeaf(this.#all("SELECT entry FROM ballots WHERE poll_id = ?", pollId)).map((r) => ({ receipt: r.receipt, entry: String(r.row["entry"]) }));
+  }
+
+  /**
+   * Ballots in the canonical order of the published ledger: by leaf hash. The order of casting is not published, and the
+   * Merkle root is a function of the set of ballots alone, so it can be recomputed from a list in this order.
+   */
+  #byLeaf(rows: Record<string, unknown>[]): { row: Record<string, unknown>; bytes: Uint8Array; hash: string; receipt: string }[] {
+    return rows
+      .map((row) => {
+        const bytes = new TextEncoder().encode(String(row["entry"]));
+        const hash = toHex(hashLeaf(bytes));
+        return { row, bytes, hash, receipt: receiptCode(hash) };
+      })
+      .sort((a, b) => (a.hash < b.hash ? -1 : a.hash > b.hash ? 1 : 0));
   }
 
   // ---- Ledger ----
 
   #log_(pollId: string): MerkleLog {
     const log = new MerkleLog();
-    for (const r of this.#all("SELECT entry FROM ballots WHERE poll_id = ? ORDER BY seq", pollId)) log.append(new TextEncoder().encode(String(r["entry"])));
+    for (const r of this.#byLeaf(this.#all("SELECT entry FROM ballots WHERE poll_id = ?", pollId))) log.append(r.bytes);
     return log;
   }
 

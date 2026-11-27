@@ -12,6 +12,14 @@ describe("sealed ballots", () => {
     expect(open(b.countingKey, sealed)).toBeNull();
   });
 
+  it("gives every choice a ciphertext of the same length, so the size does not show the choice", () => {
+    const { publicKey, countingKey } = generateCountingKeys();
+    const sizes = new Set(["for", "against", "abstain", "p1", "a-much-longer-option-identifier"].map((c) => seal(publicKey, c).length));
+    expect(sizes.size).toBe(1);
+    expect(open(countingKey, seal(publicKey, "a-much-longer-option-identifier"))).toBe("a-much-longer-option-identifier");
+    expect(() => seal(publicKey, "x".repeat(255))).toThrow();
+  });
+
   it("gives a different ciphertext each time and hides the choice", () => {
     const { publicKey } = generateCountingKeys();
     const one = seal(publicKey, "for");
