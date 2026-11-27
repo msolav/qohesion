@@ -1,6 +1,7 @@
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { DEFAULT_THEME, isTheme } from "#lib/theme.js";
+import { isDelay, isMeaning, isRule } from "#lib/approval.js";
 import { isLocale } from "#lib/i18n/negotiate.js";
 import { service } from "#lib/server/runtime.js";
 import { DEFAULT_TIME_ZONE, TIME_ZONES, isTimeZone } from "#lib/zoned.js";
@@ -15,7 +16,7 @@ export const load: PageServerLoad = ({ locals }) => {
   const session = needSession(locals);
   if (!session.owner) redirect(303, "/console/polls");
   const space = service().getSpace(session.spaceId);
-  return { space, nameLocked: service().nameLocked(session.spaceId), keys: service().listKeys(session), currentKey: session.keyId, timeZones: TIME_ZONES };
+  return { policy: service().approvalPolicy(session.spaceId), administrators: service().administratorCount(session.spaceId), space, nameLocked: service().nameLocked(session.spaceId), keys: service().listKeys(session), currentKey: session.keyId, timeZones: TIME_ZONES };
 };
 
 export const actions: Actions = {
@@ -27,7 +28,18 @@ export const actions: Actions = {
     const theme = text(data, "theme");
     const result = service().updateSpace(session, { name: text(data, "name"), locale: isLocale(locale) ? locale : (space?.locale ?? "fr"), theme: isTheme(theme) ? theme : (space?.theme ?? DEFAULT_THEME), timeZone: isTimeZone(text(data, "timeZone")) ? text(data, "timeZone") : (space?.timeZone ?? DEFAULT_TIME_ZONE) });
     if (!result.ok) return fail(400, { form: "save" as const, error: result.error });
-    return { saved: true as const };
+    return { saved: true as const, requested: result.value.request !== null };
+  },
+  policy: async ({ request, locals }) => {
+    const session = needSession(locals);
+    const data = await request.formData().catch(() => undefined);
+    const rule = text(data, "rule");
+    const abstention = text(data, "abstention");
+    const hours = Number(text(data, "delay_hours"));
+    if (!isRule(rule) || !isMeaning(abstention) || !isDelay(hours)) return fail(400, { form: "policy" as const, error: "invalid_policy" });
+    const result = service().setApprovalPolicy(session, { rule, abstention, delayHours: hours });
+    if (!result.ok) return fail(400, { form: "policy" as const, error: result.error });
+    return { policySaved: true as const, policyRequested: result.value.request !== null };
   },
   addKey: async ({ request, locals }) => {
     const session = needSession(locals);

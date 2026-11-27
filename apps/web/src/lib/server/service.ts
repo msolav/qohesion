@@ -19,6 +19,8 @@ import { isAutoReminder, mayWrite, reminderDue, writeAgainAt, type AutoReminder 
 import { NO_TRANSLATIONS, cleanLanguages, missingTexts, type Translations } from "../poll-i18n.js";
 import { NO_RULES, closeReason, parseRules, ruleProblem, type CloseRules } from "../close-rules.js";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "../zoned.js";
+import { NO_APPROVAL, isDelay, isMeaning, isRule, type Answer, type ApprovalPolicy } from "../approval.js";
+import { APPROVAL_SCHEMA, ApprovalStore, type ApprovalRequest } from "./approvals.js";
 import { accessTo, isAnonymity, isAudience, isTiming, type Access, type Anonymity, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -44,6 +46,30 @@ const sha256hex = (text: string): string => createHash("sha256").update(text).di
 export type ThemeName = Theme;
 export type Locale = "fr" | "en";
 export type PollKind = "yes-no" | "choice";
+
+/** How a poll was approved, kept with the poll and shown to voters (ADR 0009). */
+export interface PollApproval {
+  readonly rule: "none" | "majority" | "all";
+  readonly approvals: number;
+  readonly eligible: number;
+  readonly at: string;
+  /** The digest of what was approved. */
+  readonly digest: string;
+}
+
+export type ApprovalState = "not_needed" | "none" | "pending" | "approved" | "rejected" | "lapsed" | "stale";
+
+export interface PollApprovalState {
+  /** Whether publishing this poll needs the approval of other administrators. */
+  readonly required: boolean;
+  readonly state: ApprovalState;
+  readonly request: ApprovalRequest | null;
+  /** What changed since the request was made, when the state is "stale". */
+  readonly changes: readonly string[];
+  readonly digest: string;
+}
+
+export type SpaceUpdate = Space & { readonly request: ApprovalRequest | null };
 
 export interface Session {
   readonly keyId: string;
@@ -120,6 +146,8 @@ export interface Poll {
   readonly paged: boolean;
   /** Administrators may keep adding participants after the poll opens (they are marked as late). Stated to voters. */
   readonly lateRoll: boolean;
+  /** How the poll was approved when it was published. Null for a poll published before approvals existed. */
+  readonly approval: PollApproval | null;
   /** Set when the poll was cancelled: when, by which key, and how many ballots had been cast. */
   readonly cancelled: { readonly by: string; readonly ballots: number } | null;
   /** The content in the languages offered. The columns title, description and options hold the default language. */
@@ -225,7 +253,7 @@ export interface HistoryItem {
 }
 
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS spaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, locale TEXT NOT NULL, theme TEXT NOT NULL, time_zone TEXT NOT NULL DEFAULT 'America/Toronto', created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS spaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, locale TEXT NOT NULL, theme TEXT NOT NULL, time_zone TEXT NOT NULL DEFAULT 'America/Toronto', approval_rule TEXT NOT NULL DEFAULT 'none', approval_abstention TEXT NOT NULL DEFAULT 'neutral', approval_delay_hours INTEGER NOT NULL DEFAULT 168, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS keys (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, label TEXT NOT NULL,
   hash TEXT NOT NULL UNIQUE, owner INTEGER NOT NULL, administrator INTEGER NOT NULL, created_at TEXT NOT NULL, revoked_at TEXT);
@@ -260,6 +288,7 @@ export class Service {
   readonly #secret: Uint8Array;
   readonly #now: () => Date;
 
+  readonly #approvals: ApprovalStore;
   constructor(db: DatabaseSync, options: ServiceOptions) {
     if (options.secret.length < 32) throw new Error("The server secret must be at least 32 bytes");
     this.#db = db;
@@ -268,6 +297,12 @@ export class Service {
     db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
     db.exec(SCHEMA);
     this.#migrate();
+    db.exec(APPROVAL_SCHEMA);
+    this.#approvals = new ApprovalStore(db, this.#now, {
+      policyOf: (spaceId) => this.approvalPolicy(spaceId),
+      administratorsOf: (spaceId) => this.#administrators(spaceId),
+      apply: (request) => this.#applyApproved(request),
+    });
   }
 
   /** Adds the columns that databases made by an earlier build lack. */
@@ -285,6 +320,10 @@ export class Service {
     addIfMissing("polls", columns, "paged", "INTEGER NOT NULL DEFAULT 1");
     addIfMissing("polls", columns, "late_roll", "INTEGER NOT NULL DEFAULT 1");
     addIfMissing("polls", columns, "org_name", "TEXT");
+    addIfMissing("polls", columns, "approval_json", "TEXT");
+    addIfMissing("spaces", names("spaces"), "approval_rule", "TEXT NOT NULL DEFAULT 'none'");
+    addIfMissing("spaces", names("spaces"), "approval_abstention", "TEXT NOT NULL DEFAULT 'neutral'");
+    addIfMissing("spaces", names("spaces"), "approval_delay_hours", "INTEGER NOT NULL DEFAULT 168");
     // A poll published before the name was kept keeps the name the organization has now.
     this.#db.exec("UPDATE polls SET org_name = (SELECT name FROM spaces WHERE spaces.id = polls.space_id) WHERE org_name IS NULL AND status != 'draft'");
     addIfMissing("polls", columns, "published_key", "TEXT");
@@ -391,17 +430,181 @@ export class Service {
     return r ? { id: String(r["id"]), name: String(r["name"]), locale: r["locale"] === "en" ? "en" : "fr", theme: isTheme(r["theme"]) ? r["theme"] : DEFAULT_THEME, timeZone: isTimeZone(r["time_zone"]) ? r["time_zone"] : DEFAULT_TIME_ZONE } : null;
   }
 
-  updateSpace(session: Session, input: { name: string; locale: Locale; theme: ThemeName; timeZone: string }): Result<Space> {
+  updateSpace(session: Session, input: { name: string; locale: Locale; theme: ThemeName; timeZone: string }): Result<SpaceUpdate> {
     if (!session.owner) return problem("forbidden");
     const name = input.name.trim();
     if (name.length === 0) return problem("name_required");
     if (name.length > 80) return problem("name_too_long");
     if (!isTimeZone(input.timeZone)) return problem("invalid_time_zone");
+    const current = this.getSpace(session.spaceId);
+    if (!current) return problem("not_found");
     // Voters were told the name on their ballot and in their emails, so it stays while a poll is scheduled or open.
-    if (name !== this.getSpace(session.spaceId)?.name && this.nameLocked(session.spaceId)) return problem("name_locked");
-    this.#run("UPDATE spaces SET name = ?, locale = ?, theme = ?, time_zone = ? WHERE id = ?", name, input.locale, input.theme, input.timeZone, session.spaceId);
+    if (name !== current.name && this.nameLocked(session.spaceId)) return problem("name_locked");
+    // The default template changes at once. The name, the language and the time zone go through approval where it applies.
+    this.#run("UPDATE spaces SET theme = ? WHERE id = ?", input.theme, session.spaceId);
+    const sensitive = name !== current.name || input.locale !== current.locale || input.timeZone !== current.timeZone;
+    let request: ApprovalRequest | null = null;
+    if (sensitive) {
+      const payload = { name, locale: input.locale, timeZone: input.timeZone };
+      request = this.#approvals.propose(session.spaceId, { keyId: session.keyId, label: session.label }, "space_settings", "", sha256hex(JSON.stringify(payload)), payload);
+      if (request === null) this.#run("UPDATE spaces SET name = ?, locale = ?, time_zone = ? WHERE id = ?", name, input.locale, input.timeZone, session.spaceId);
+    }
     const space = this.getSpace(session.spaceId);
-    return space ? ok(space) : problem("not_found");
+    return space ? ok({ ...space, request }) : problem("not_found");
+  }
+
+  // --- Approvals (ADR 0009) ---
+
+  /** The organization's approval rule, with what an abstention means and how long a request stays open. */
+  approvalPolicy(spaceId: string): ApprovalPolicy {
+    const r = this.#one("SELECT approval_rule, approval_abstention, approval_delay_hours FROM spaces WHERE id = ?", spaceId);
+    if (!r) return NO_APPROVAL;
+    const delay = Number(r["approval_delay_hours"]);
+    return {
+      rule: isRule(r["approval_rule"]) ? r["approval_rule"] : "none",
+      abstention: isMeaning(r["approval_abstention"]) ? r["approval_abstention"] : "neutral",
+      delayHours: isDelay(delay) ? delay : NO_APPROVAL.delayHours,
+    };
+  }
+
+  #administrators(spaceId: string): { id: string; label: string }[] {
+    return this.#all("SELECT id, label FROM keys WHERE space_id = ? AND administrator = 1 AND revoked_at IS NULL ORDER BY created_at, id", spaceId).map((r) => ({ id: String(r["id"]), label: String(r["label"]) }));
+  }
+
+  /** How many administrators can answer a request in this organization. */
+  administratorCount(spaceId: string): number {
+    return this.#administrators(spaceId).length;
+  }
+
+  /** Whether changes of this organization need the answers of other administrators now. */
+  approvalRequired(spaceId: string): boolean {
+    return this.#approvals.required(spaceId);
+  }
+
+  /** Changes the rule. Where approvals already apply, this is a request like any other (it cannot be lowered alone). */
+  setApprovalPolicy(session: Session, input: ApprovalPolicy): Result<{ request: ApprovalRequest | null }> {
+    if (!session.owner) return problem("forbidden");
+    if (!isRule(input.rule) || !isMeaning(input.abstention) || !isDelay(input.delayHours)) return problem("invalid_policy");
+    const current = this.approvalPolicy(session.spaceId);
+    if (current.rule === input.rule && current.abstention === input.abstention && current.delayHours === input.delayHours) return ok({ request: null });
+    const payload = { rule: input.rule, abstention: input.abstention, delayHours: input.delayHours };
+    const request = this.#approvals.propose(session.spaceId, { keyId: session.keyId, label: session.label }, "set_policy", "", sha256hex(JSON.stringify(payload)), payload);
+    if (request === null) this.#writePolicy(session.spaceId, input);
+    return ok({ request });
+  }
+
+  #writePolicy(spaceId: string, policy: ApprovalPolicy): void {
+    this.#run("UPDATE spaces SET approval_rule = ?, approval_abstention = ?, approval_delay_hours = ? WHERE id = ?", policy.rule, policy.abstention, policy.delayHours, spaceId);
+  }
+
+  /** Carries out a request that was approved. False when it can no longer be done. */
+  #applyApproved(request: ApprovalRequest): boolean {
+    const p = request.payload;
+    if (request.kind === "set_policy" && isRule(p["rule"]) && isMeaning(p["abstention"]) && isDelay(p["delayHours"])) {
+      this.#writePolicy(request.spaceId, { rule: p["rule"], abstention: p["abstention"], delayHours: p["delayHours"] });
+      return true;
+    }
+    if (request.kind === "space_settings" && typeof p["name"] === "string" && (p["locale"] === "fr" || p["locale"] === "en") && typeof p["timeZone"] === "string" && isTimeZone(p["timeZone"])) {
+      const current = this.getSpace(request.spaceId);
+      if (!current || (p["name"] !== current.name && this.nameLocked(request.spaceId))) return false;
+      this.#run("UPDATE spaces SET name = ?, locale = ?, time_zone = ? WHERE id = ?", p["name"], p["locale"], p["timeZone"], request.spaceId);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * What a poll's publication is made of, as one digest: its settings, its texts, its options, its dates and the
+   * fingerprints of its roll. Approval is of exactly this. Any change to the draft changes it.
+   */
+  #pollContent(poll: Poll): { fields: Record<string, unknown>; rollDigest: string; digest: string } {
+    const fields: Record<string, unknown> = {
+      title: poll.title, question: poll.question, description: poll.description, kind: poll.kind, options: poll.options, translations: poll.translations,
+      timing: poll.timing, audience: poll.audience, theme: poll.theme, opensAt: poll.opensAt, closesAt: poll.closesAt, rules: poll.rules,
+      allowChange: poll.allowChange, encrypted: poll.encrypted, markFill: poll.markFill, anonymity: poll.anonymity, publishCount: poll.publishCount,
+      lockCancel: poll.lockCancel, keyThreshold: poll.keyThreshold, paged: poll.paged, lateRoll: poll.lateRoll, autoReminder: poll.autoReminder,
+    };
+    const rollDigest = sha256hex(this.#all("SELECT fingerprint FROM roll WHERE poll_id = ? ORDER BY fingerprint", poll.id).map((r) => String(r["fingerprint"])).join("\n"));
+    return { fields, rollDigest, digest: sha256hex(JSON.stringify({ fields, rollDigest })) };
+  }
+
+  /** The state of the approval of a draft: what is asked, what was answered, and whether the draft changed since. */
+  pollApprovalState(session: Session, pollId: string): PollApprovalState {
+    const poll = this.pollFor(session, pollId);
+    const none: PollApprovalState = { required: false, state: "not_needed", request: null, changes: [], digest: "" };
+    if (!poll) return none;
+    const content = this.#pollContent(poll);
+    const required = this.#approvals.required(poll.spaceId);
+    if (poll.status !== "draft" || !required) return { ...none, required, digest: content.digest };
+    const request = this.#approvals.latest(poll.spaceId, "publish_poll", poll.id);
+    if (!request) return { required, state: "none", request: null, changes: [], digest: content.digest };
+    if ((request.status === "pending" || request.status === "approved") && request.digest !== content.digest) {
+      const before = (request.payload["fields"] ?? {}) as Record<string, unknown>;
+      const changes = Object.keys(content.fields).filter((k) => JSON.stringify(before[k]) !== JSON.stringify(content.fields[k]));
+      if (request.payload["rollDigest"] !== content.rollDigest) changes.push("roll");
+      return { required, state: "stale", request, changes, digest: content.digest };
+    }
+    const state: ApprovalState = request.status === "pending" ? "pending" : request.status === "approved" ? "approved" : request.status === "rejected" ? "rejected" : request.status === "lapsed" ? "lapsed" : "none";
+    return { required, state, request, changes: [], digest: content.digest };
+  }
+
+  /** Asks the other administrators to approve publishing a draft. Null when no approval is needed. */
+  requestPublication(session: Session, pollId: string): Result<{ request: ApprovalRequest | null }> {
+    const poll = this.pollFor(session, pollId);
+    if (!poll) return problem("not_found");
+    if (poll.status !== "draft") return problem("locked");
+    if (Number(this.#one("SELECT COUNT(*) AS n FROM roll WHERE poll_id = ?", pollId)?.["n"] ?? 0) === 0) return problem("roll_empty");
+    if (poll.closesAt !== null && Date.parse(poll.closesAt) <= this.#now().getTime()) return problem("closes_past");
+    const content = this.#pollContent(poll);
+    const request = this.#approvals.propose(poll.spaceId, { keyId: session.keyId, label: session.label }, "publish_poll", poll.id, content.digest, { fields: content.fields, rollDigest: content.rollDigest });
+    if (request) this.#log(pollId, session, "approval_requested", content.digest.slice(0, 12));
+    return ok({ request });
+  }
+
+  /** An administrator's answer to a request. It names the digest the administrator was shown, so a changed draft is refused. */
+  answerApproval(session: Session, requestId: string, answer: Answer, seenDigest: string): Result<ApprovalRequest> {
+    if (!session.administrator) return problem("forbidden");
+    if (answer !== "approve" && answer !== "reject" && answer !== "abstain") return problem("invalid_answer");
+    const request = this.#approvals.get(session.spaceId, requestId);
+    if (!request) return problem("not_found");
+    if (request.status !== "pending") return problem("request_closed");
+    if (request.digest !== seenDigest) return problem("approval_stale");
+    if (request.kind === "publish_poll") {
+      const poll = this.getPoll(request.subject);
+      if (!poll || poll.status !== "draft" || this.#pollContent(poll).digest !== request.digest) return problem("approval_stale");
+    }
+    const done = this.#approvals.answer(session.spaceId, { keyId: session.keyId, label: session.label }, requestId, answer);
+    if (!done) return problem("forbidden");
+    if (request.kind === "publish_poll") this.#log(request.subject, session, `approval_${answer}`, done.status);
+    return ok(done);
+  }
+
+  /** Open requests, and recent decisions, for an administrator or owner of the organization. */
+  approvalRequests(session: Session): { open: ApprovalRequest[]; recent: ApprovalRequest[] } {
+    return { open: this.#approvals.open(session.spaceId), recent: this.#approvals.recent(session.spaceId) };
+  }
+
+  /** How many open requests this key has not answered yet. */
+  approvalsWaiting(session: Session): number {
+    return session.administrator ? this.#approvals.waitingFor(session.spaceId, session.keyId) : 0;
+  }
+
+  /** What a publication needs, and the record of how it was approved. Used when a poll is opened or scheduled. */
+  #publicationGate(poll: Poll): Result<{ requestId: string | null; approval: PollApproval }> {
+    const content = this.#pollContent(poll);
+    const policy = this.approvalPolicy(poll.spaceId);
+    const at = this.#iso();
+    if (!this.#approvals.required(poll.spaceId)) {
+      return ok({ requestId: null, approval: { rule: policy.rule, approvals: 1, eligible: Math.max(1, this.#administrators(poll.spaceId).length), at, digest: content.digest } });
+    }
+    const request = this.#approvals.latest(poll.spaceId, "publish_poll", poll.id);
+    if (!request || request.status !== "approved" || request.digest !== content.digest) return problem("approval_required");
+    return ok({ requestId: request.id, approval: { rule: policy.rule, approvals: request.tally.approvals, eligible: request.tally.eligible, at, digest: content.digest } });
+  }
+
+  #stamp(pollId: string, gate: { requestId: string | null; approval: PollApproval }): void {
+    this.#run("UPDATE polls SET approval_json = ? WHERE id = ?", JSON.stringify(gate.approval), pollId);
+    if (gate.requestId) this.#approvals.consume(gate.requestId);
   }
 
   /** True while a poll of the organization is scheduled or open: its name cannot change then. */
@@ -518,6 +721,7 @@ export class Service {
       lockCancel: r["lock_cancel"] === 1,
       paged: r["paged"] !== 0,
       lateRoll: r["late_roll"] !== 0,
+      approval: parseApproval(r["approval_json"]),
       cancelled: r["cancelled_by"] === null || r["cancelled_by"] === undefined ? null : { by: String(r["cancelled_by"]), ballots: Number(r["cancelled_ballots"] ?? 0) },
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
       createdAt: String(r["created_at"]),
@@ -852,6 +1056,9 @@ export class Service {
       if (!poll) return problem("not_found");
       if (poll.status !== "draft" && poll.status !== "scheduled") return problem("locked");
       if (poll.closesAt !== null && Date.parse(poll.closesAt) <= this.#now().getTime()) return problem("closes_past");
+      // A scheduled poll was approved when it was scheduled. A draft needs approval where the organization asks for it.
+      const gate = poll.status === "draft" ? this.#publicationGate(poll) : null;
+      if (gate && !gate.ok) return gate;
       if (poll.encrypted && poll.status === "draft") {
         const keys = this.#newKeys(poll, session);
         if (!keys.ok) return keys;
@@ -859,7 +1066,9 @@ export class Service {
         shares = keys.value.shares;
         this.#run("UPDATE polls SET public_key = ? WHERE id = ?", keys.value.publicKey, pollId);
       }
-      return this.#openNow(poll, this.#iso(), session);
+      const opened = this.#openNow(poll, this.#iso(), session);
+      if (opened.ok && gate?.ok) this.#stamp(pollId, gate.value);
+      return opened;
     });
     if (!result.ok) return result;
     const poll = this.getPoll(pollId);
@@ -880,6 +1089,8 @@ export class Service {
       if (poll.opensAt === null || Date.parse(poll.opensAt) <= this.#now().getTime()) return problem("opens_past");
       if (poll.closesAt === null || Date.parse(poll.closesAt) <= Date.parse(poll.opensAt)) return problem("dates_order");
       if (Number(this.#one("SELECT COUNT(*) AS n FROM roll WHERE poll_id = ?", pollId)?.["n"] ?? 0) === 0) return problem("roll_empty");
+      const gate = this.#publicationGate(poll);
+      if (!gate.ok) return gate;
       let publicKey: string | null = null;
       if (poll.encrypted) {
         const keys = this.#newKeys(poll, session);
@@ -888,6 +1099,7 @@ export class Service {
         countingKey = keys.value.countingKey;
         shares = keys.value.shares;
       }
+      this.#stamp(pollId, gate.value);
       this.#run("UPDATE polls SET status = 'scheduled', public_key = ?, org_name = (SELECT name FROM spaces WHERE spaces.id = polls.space_id) WHERE id = ?", publicKey, pollId);
       this.#log(pollId, session, "scheduled", poll.opensAt);
       return ok(null);
@@ -902,7 +1114,7 @@ export class Service {
     const poll = this.pollFor(session, pollId);
     if (!poll) return problem("not_found");
     if (poll.status !== "scheduled") return problem("locked");
-    this.#run("UPDATE polls SET status = 'draft', public_key = NULL WHERE id = ?", pollId);
+    this.#run("UPDATE polls SET status = 'draft', public_key = NULL, approval_json = NULL WHERE id = ?", pollId);
     this.#log(pollId, session, "unscheduled", "");
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -1196,6 +1408,17 @@ export function maskAddress(address: string): string {
   const host = dot > 0 ? domain.slice(0, dot) : domain;
   const tld = dot > 0 ? domain.slice(dot) : "";
   return `${address[0]}***@${host[0] ?? ""}***${tld}`;
+}
+
+function parseApproval(json: unknown): PollApproval | null {
+  if (typeof json !== "string") return null;
+  try {
+    const v = JSON.parse(json) as Partial<PollApproval>;
+    if ((v.rule === "none" || v.rule === "majority" || v.rule === "all") && typeof v.approvals === "number" && typeof v.eligible === "number" && typeof v.at === "string" && typeof v.digest === "string") return v as PollApproval;
+  } catch {
+    // An unreadable record counts as none.
+  }
+  return null;
 }
 
 function parseTranslations(json: string | null): Translations {

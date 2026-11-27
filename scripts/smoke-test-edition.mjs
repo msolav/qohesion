@@ -162,5 +162,44 @@ check("the right counting key closes and counts", right.status === 303);
 const counted = JSON.parse((await admin.send(`/api/results/${sealedId}`)).text);
 check("totals appear after the count", counted.counts?.for === 2, JSON.stringify(counted));
 
+// Approvals between administrators: with a second administrator and the rule "all", a draft waits for the other's answer.
+const added = await admin.send("/console/space?/addKey", { method: "POST", form: { label: "Clerk", role: "administrator" } });
+const clerkKey = /QK-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}/.exec(added.text)?.[0];
+check("a second administrator key is made", Boolean(clerkKey));
+const clerk = new Client();
+await clerk.passGate();
+await clerk.send("/signin", { method: "POST", form: { key: clerkKey } });
+const ruled = await admin.send("/console/space?/policy", { method: "POST", form: { rule: "all", abstention: "neutral", delay_hours: "168" } });
+check("the owner sets the approval rule", ruled.status === 200 && ruled.text.length > 0);
+const gated = await admin.send("/console/polls/new", { method: "POST", form: { title: "Needs approval", question: "Do you agree?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing } });
+const gatedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(gated.location)?.[1];
+await admin.send(`/console/polls/${gatedId}/roll?/add`, { method: "POST", form: { addresses: "g1@example.com" } });
+const refusedOpen = await admin.send(`/console/polls/${gatedId}?/open`, { method: "POST", form: {} });
+check("opening without approval is refused", refusedOpen.status === 400);
+await admin.send(`/console/polls/${gatedId}?/requestApproval`, { method: "POST", form: {} });
+const waiting = await clerk.send("/console/approvals");
+check("the other administrator sees the request", waiting.text.includes("Needs approval"));
+const requestId = /name="request" value="([a-z0-9]+)"/.exec(waiting.text)?.[1];
+const digest = /name="digest" value="([0-9a-f]{64})"/.exec(waiting.text)?.[1];
+const answered = await clerk.send("/console/approvals?/answer", { method: "POST", form: { request: requestId, digest, answer: "approve" } });
+check("the other administrator approves", answered.status === 200);
+const publishedGate = await admin.send(`/console/polls/${gatedId}?/open`, { method: "POST", form: {} });
+check("the approved poll opens", publishedGate.status === 303);
+const gatedTokens = [...new Set([...(await admin.send(`/console/polls/${gatedId}/roll`)).text.matchAll(/\/v\/([0-9A-Z]{24})/g)].map((m) => m[1]))];
+const gatedBallot = await anonymous.send(`/v/${gatedTokens[0]}?view=all`);
+check("the ballot says how the poll was approved", gatedBallot.text.includes("2 of 2") || gatedBallot.text.includes("2 administrateurs sur 2"));
+
+// A request left waiting, and a draft changed after it was asked.
+const waitingPoll = await admin.send("/console/polls/new", { method: "POST", form: { title: "Waiting poll", question: "Adopt the rules?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing } });
+const waitingId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(waitingPoll.location)?.[1];
+await admin.send(`/console/polls/${waitingId}/roll?/add`, { method: "POST", form: { addresses: "w1@example.com" } });
+await admin.send(`/console/polls/${waitingId}?/requestApproval`, { method: "POST", form: {} });
+const waitingPage = await admin.send(`/console/polls/${waitingId}`);
+check("the overview shows the request while it waits", waitingPage.text.includes("Approvals: 1 of 2") || waitingPage.text.includes("Approbations: 1 sur 2"));
+await admin.send(`/console/polls/${waitingId}/roll?/add`, { method: "POST", form: { addresses: "w2@example.com" } });
+const stalePage = await admin.send(`/console/polls/${waitingId}`);
+check("a change after the request is flagged", stalePage.text.includes("changed after approval was asked") || stalePage.text.includes("a changé après la demande"));
+if (process.env.SMOKE_PRINT_LINK) console.log(`KEYS ${key} ${clerkKey} ${waitingId}`);
+
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

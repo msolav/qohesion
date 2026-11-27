@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { consoleMessages } from "#lib/i18n/console.js";
+  import { consoleMessages, fill } from "#lib/i18n/console.js";
   import { messages } from "#lib/i18n/messages.js";
   import { LOCALES } from "#lib/i18n/negotiate.js";
   import type { LayoutProps } from "./$types";
@@ -36,6 +36,7 @@
       {#if session}
         <nav class="cx-nav" aria-label={m.nav.label}>
           {#if session.administrator}<a href="/console/polls" aria-current={here("/console/polls")}>{m.nav.polls}</a>{/if}
+          {#if session.administrator || session.owner}<a href="/console/approvals" aria-current={here("/console/approvals")}>{m.approval.title}{#if data.waiting > 0}<span class="cx-badge" aria-label={fill(m.approval.pendingNotice, { n: data.waiting })}>{data.waiting}</span>{/if}</a>{/if}
           {#if session.owner}<a href="/console/space" aria-current={here("/console/space")}>{m.nav.space}</a>{/if}
         </nav>
       {:else}
@@ -43,7 +44,7 @@
       {/if}
       <div class="cx-tools">
         {#if session}
-          <span class="cx-who">{session.label}{#if !(session.owner && session.administrator)} · {roleLabel}{/if}</span>
+          <span class="cx-who">{session.label}{#if !(session.owner && session.administrator)}{" · "}{roleLabel}{/if}</span>
           <form method="POST" action="/signout"><button class="cx-signout" type="submit">{m.nav.signOut}</button></form>
         {/if}
         <nav class="cx-lang" aria-label={t.shell.language}>

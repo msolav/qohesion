@@ -16,7 +16,7 @@ interface Names<K extends string> {
 
 export interface ConsoleMessages {
   readonly edition: { readonly label: string; readonly text: string };
-  readonly nav: { readonly label: string; readonly polls: string; readonly space: string; readonly signOut: string; readonly signIn: string };
+  readonly nav: { readonly label: string; readonly polls: string; readonly approvals: string; readonly space: string; readonly signOut: string; readonly signIn: string };
   readonly common: {
     readonly save: string; readonly cancel: string; readonly back: string; readonly copy: string; readonly copied: string; readonly delete: string;
     readonly open: string; readonly close: string; readonly none: string; readonly yes: string; readonly no: string; readonly optional: string;
@@ -108,6 +108,21 @@ export interface ConsoleMessages {
     readonly report: string; readonly reportFailed: string; readonly sentOn: string; readonly notYet: string; readonly onlyOpen: string; readonly nothingToSend: string;
   };
   readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
+  readonly approval: {
+    readonly title: string; readonly lede: string; readonly empty: string; readonly openTitle: string; readonly recentTitle: string;
+    readonly kindPublish: string; readonly kindPolicy: string; readonly kindSettings: string;
+    readonly asked: string; readonly expires: string; readonly counts: string; readonly yourAnswer: string; readonly code: string;
+    readonly approve: string; readonly reject: string; readonly abstain: string;
+    readonly answerName: Readonly<Record<"approve" | "reject" | "abstain", string>>;
+    readonly status: Readonly<Record<"pending" | "approved" | "rejected" | "lapsed" | "applied" | "superseded" | "blocked", string>>;
+    readonly policySummary: string; readonly settingsSummary: string; readonly goToPoll: string;
+    readonly needs: string; readonly ask: string; readonly askAgain: string; readonly asking: string; readonly approvedText: string; readonly rejectedText: string; readonly lapsedText: string;
+    readonly staleTitle: string; readonly staleText: string; readonly fields: Readonly<Record<string, string>>;
+    readonly policyTitle: string; readonly policyText: string; readonly ruleLabel: string; readonly rules: Readonly<Record<"none" | "majority" | "all", string>>;
+    readonly abstentionLabel: string; readonly meanings: Readonly<Record<"agreement" | "disagreement" | "neutral" | "discarded", string>>;
+    readonly delayLabel: string; readonly delayHelp: string; readonly policySave: string; readonly policySent: string; readonly policySaved: string; readonly settingsSent: string; readonly pendingNotice: string; readonly onlyOne: string;
+    readonly factTitle: string; readonly factOnlyOne: string; readonly factNoRule: string; readonly factSingle: string; readonly factApproved: string; readonly factCode: string;
+  };
   readonly seal: {
     readonly title: string; readonly help: string; readonly sealed: { readonly title: string; readonly text: string }; readonly none: { readonly title: string; readonly text: string }; readonly liveNote: string;
     readonly factSealed: string; readonly factPlain: string; readonly ballotSealed: string; readonly ballotPlain: string;
@@ -125,7 +140,7 @@ const en: ConsoleMessages = {
     label: "Test edition",
     text: "This test edition is not audited and its data may be erased. Do not use it for decisions that need an audited secret ballot. Each poll states whether its ballots are encrypted.",
   },
-  nav: { label: "Administration", polls: "Polls", space: "Organization", signOut: "Sign out", signIn: "Sign in" },
+  nav: { label: "Administration", polls: "Polls", approvals: "Approvals", space: "Organization", signOut: "Sign out", signIn: "Sign in" },
   common: { save: "Save", cancel: "Cancel", back: "Back", copy: "Copy", copied: "Copied", delete: "Delete", open: "Open", close: "Close", none: "None", yes: "Yes", no: "No", optional: "optional" },
   status: { draft: "Draft", scheduled: "Scheduled", open: "Open", closed: "Closed", cancelled: "Cancelled" },
   member: { listed: "Listed", requested: "Requested", confirmed: "Confirmed", voted: "Voted", withdrawn: "Withdrawn", bounced: "Bounced", blocked: "Blocked" },
@@ -534,6 +549,59 @@ const en: ConsoleMessages = {
     nothingToSend: "There is nobody to send to. Everyone has voted or has already received a link.",
   },
   gate: { title: "Private test", lede: "This test is shared with chosen people. Enter the password to continue.", label: "Password", submit: "Continue", invalid: "This password is not correct." },
+  approval: {
+    title: "Approvals",
+    lede: "Changes that need the agreement of the other administrators wait here. Each one shows exactly what it covers. If a draft changes after approval was asked, the earlier answers no longer count.",
+    empty: "No request is waiting.",
+    openTitle: "Waiting for answers",
+    recentTitle: "Decided",
+    kindPublish: "Publish the poll “{title}”",
+    kindPolicy: "Change the approval rule",
+    kindSettings: "Change the organization’s details",
+    asked: "Asked by {who} on {date}",
+    expires: "Open until {date}",
+    counts: "Approvals: {a} of {needed} needed",
+    yourAnswer: "Your answer: {answer}",
+    code: "Content code {code}",
+    approve: "Approve",
+    reject: "Reject",
+    abstain: "Abstain",
+    answerName: { approve: "approved", reject: "rejected", abstain: "abstained" },
+    status: { pending: "Waiting", approved: "Approved", rejected: "Rejected", lapsed: "Lapsed", applied: "Applied", superseded: "Replaced", blocked: "Not applied: a poll is active" },
+    policySummary: "Rule: {rule}. Abstention: {meaning}. Open for {delay}.",
+    settingsSummary: "Name: {name}. Language: {language}. Time zone: {timeZone}.",
+    goToPoll: "Open the draft",
+    needs: "This organization asks for approval before a poll is published. Ask the other administrators to approve this draft as it is.",
+    ask: "Ask for approval",
+    askAgain: "Ask again",
+    asking: "Waiting for approval",
+    approvedText: "Approved. This poll can be published as it is. Any change to it will cancel the approval.",
+    rejectedText: "The request was rejected.",
+    lapsedText: "The request lapsed without a decision.",
+    staleTitle: "This draft changed after approval was asked",
+    staleText: "Answers given before the change no longer count. Changed: {fields}. Ask again to start over.",
+    fields: { title: "title", question: "question", description: "details", kind: "kind", options: "options", translations: "translations", timing: "results timing", audience: "results audience", theme: "template", opensAt: "opening date", closesAt: "closing date", rules: "closing rules", allowChange: "changing a vote", encrypted: "encryption", markFill: "mark style", anonymity: "anonymity", publishCount: "published count", lockCancel: "cancelling", keyThreshold: "counting key", paged: "pages", lateRoll: "adding participants", autoReminder: "automatic reminders", roll: "participants" },
+    policyTitle: "Approval between administrators",
+    policyText: "Publishing a poll, and changes to the organization, can need the agreement of other administrators. With one administrator nothing is asked. Once a rule is on, changing it needs approval under the rule in force.",
+    ruleLabel: "Rule",
+    rules: { none: "No approval", majority: "A majority of administrators", all: "All administrators" },
+    abstentionLabel: "An abstention counts as",
+    meanings: { agreement: "agreement", disagreement: "disagreement", neutral: "neither: it does not help or block", discarded: "nothing: the administrator is left out of the count" },
+    delayLabel: "Hours a request stays open",
+    delayHelp: "From 1 to 2160 hours (90 days). A request not decided by then lapses.",
+    policySave: "Save the rule",
+    policySent: "The change was sent to the other administrators for approval.",
+    policySaved: "The rule is saved.",
+    settingsSent: "The change was sent to the other administrators for approval. The details stay as they are until then.",
+    pendingNotice: "{n} requests wait for your answer.",
+    onlyOne: "There is one administrator, so nothing is asked of anyone yet. The rule applies once a second administrator is added.",
+    factTitle: "Approval",
+    factOnlyOne: "Published by the only administrator of this organization.",
+    factNoRule: "Published by one administrator. This organization asks for no approval.",
+    factSingle: "Published by the only administrator. The approval rule applies once there are two or more.",
+    factApproved: "Published with the approval of {a} of {n} administrators on {date}. Rule: {rule}.",
+    factCode: "Content code {code}",
+  },
   seal: {
     title: "Ballot protection",
     help: "Decided before opening and shown to participants on the ballot.",
@@ -604,6 +672,11 @@ const en: ConsoleMessages = {
     closed: "This poll is closed.",
     cancelled: "This poll was cancelled.",
     reminder_wait: "This participant was written to less than 24 hours ago. A reminder can go out once 24 hours have passed.",
+    approval_required: "This organization asks for approval first. Ask the other administrators to approve this draft as it is.",
+    approval_stale: "The content changed since this was shown. Look at it again before answering.",
+    request_closed: "This request is already decided.",
+    invalid_policy: "The rule, the meaning of an abstention and the number of hours must be valid.",
+    invalid_answer: "Answer with approve, reject or abstain.",
     roll_locked: "This poll does not allow adding participants after it opens.",
     cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
     not_open: "This poll is not open yet.",
@@ -635,7 +708,7 @@ const fr: ConsoleMessages = {
     label: "Édition de test",
     text: "Cette édition de test n’est pas auditée et ses données peuvent être effacées. Ne pas l’utiliser pour une décision qui exige un scrutin secret audité. Chaque scrutin indique si ses bulletins sont chiffrés.",
   },
-  nav: { label: "Administration", polls: "Scrutins", space: "Organisation", signOut: "Se déconnecter", signIn: "Se connecter" },
+  nav: { label: "Administration", polls: "Scrutins", approvals: "Approbations", space: "Organisation", signOut: "Se déconnecter", signIn: "Se connecter" },
   common: { save: "Enregistrer", cancel: "Annuler", back: "Retour", copy: "Copier", copied: "Copié", delete: "Supprimer", open: "Ouvrir", close: "Fermer", none: "Aucun", yes: "Oui", no: "Non", optional: "facultatif" },
   status: { draft: "Brouillon", scheduled: "Planifié", open: "Ouvert", closed: "Fermé", cancelled: "Annulé" },
   member: { listed: "Inscrit à la liste", requested: "Demandé", confirmed: "Confirmé", voted: "A voté", withdrawn: "Retiré", bounced: "Adresse refusée", blocked: "Bloqué" },
@@ -1044,6 +1117,59 @@ const fr: ConsoleMessages = {
     nothingToSend: "Personne à qui envoyer. Tous ont voté ou ont déjà reçu un lien.",
   },
   gate: { title: "Test privé", lede: "Ce test est partagé avec des personnes choisies. Saisir le mot de passe pour continuer.", label: "Mot de passe", submit: "Continuer", invalid: "Ce mot de passe n’est pas correct." },
+  approval: {
+    title: "Approbations",
+    lede: "Les changements qui demandent l’accord des autres administrateurs attendent ici. Chacun indique exactement ce qu’il couvre. Si un brouillon change après la demande, les réponses données avant ne comptent plus.",
+    empty: "Aucune demande n’attend.",
+    openTitle: "En attente de réponses",
+    recentTitle: "Décidées",
+    kindPublish: "Publier le scrutin « {title} »",
+    kindPolicy: "Changer la règle d’approbation",
+    kindSettings: "Changer les renseignements de l’organisation",
+    asked: "Demandé par {who} le {date}",
+    expires: "Ouverte jusqu’au {date}",
+    counts: "Approbations: {a} sur {needed} nécessaires",
+    yourAnswer: "Votre réponse: {answer}",
+    code: "Code du contenu {code}",
+    approve: "Approuver",
+    reject: "Refuser",
+    abstain: "S’abstenir",
+    answerName: { approve: "approuvé", reject: "refusé", abstain: "abstention" },
+    status: { pending: "En attente", approved: "Approuvée", rejected: "Refusée", lapsed: "Expirée", applied: "Appliquée", superseded: "Remplacée", blocked: "Non appliquée: un scrutin est actif" },
+    policySummary: "Règle: {rule}. Abstention: {meaning}. Ouverte pendant {delay}.",
+    settingsSummary: "Nom: {name}. Langue: {language}. Fuseau horaire: {timeZone}.",
+    goToPoll: "Ouvrir le brouillon",
+    needs: "Cette organisation demande une approbation avant la publication d’un scrutin. Demander aux autres administrateurs d’approuver ce brouillon tel quel.",
+    ask: "Demander l’approbation",
+    askAgain: "Demander de nouveau",
+    asking: "En attente d’approbation",
+    approvedText: "Approuvé. Ce scrutin peut être publié tel quel. Tout changement annulera l’approbation.",
+    rejectedText: "La demande a été refusée.",
+    lapsedText: "La demande a expiré sans décision.",
+    staleTitle: "Ce brouillon a changé après la demande d’approbation",
+    staleText: "Les réponses données avant le changement ne comptent plus. Modifié: {fields}. Demander de nouveau pour recommencer.",
+    fields: { title: "titre", question: "question", description: "détails", kind: "type", options: "options", translations: "traductions", timing: "moment des résultats", audience: "destinataires des résultats", theme: "modèle", opensAt: "date d’ouverture", closesAt: "date de fermeture", rules: "règles de fermeture", allowChange: "modification du vote", encrypted: "chiffrement", markFill: "style des marques", anonymity: "anonymat", publishCount: "décompte publié", lockCancel: "annulation", keyThreshold: "clé de dépouillement", paged: "pages", lateRoll: "ajout de participants", autoReminder: "rappels automatiques", roll: "participants" },
+    policyTitle: "Approbation entre administrateurs",
+    policyText: "La publication d’un scrutin et les changements de l’organisation peuvent demander l’accord d’autres administrateurs. Avec un seul administrateur, rien n’est demandé. Une fois une règle activée, la changer demande une approbation selon la règle en vigueur.",
+    ruleLabel: "Règle",
+    rules: { none: "Aucune approbation", majority: "Une majorité des administrateurs", all: "Tous les administrateurs" },
+    abstentionLabel: "Une abstention compte comme",
+    meanings: { agreement: "un accord", disagreement: "un désaccord", neutral: "ni l’un ni l’autre: elle n’aide ni ne bloque", discarded: "rien: l’administrateur est écarté du décompte" },
+    delayLabel: "Heures pendant lesquelles une demande reste ouverte",
+    delayHelp: "De 1 à 2160 heures (90 jours). Une demande non décidée à ce terme expire.",
+    policySave: "Enregistrer la règle",
+    policySent: "Le changement a été soumis aux autres administrateurs pour approbation.",
+    policySaved: "La règle est enregistrée.",
+    settingsSent: "Le changement a été soumis aux autres administrateurs pour approbation. Les renseignements restent inchangés d’ici là.",
+    pendingNotice: "{n} demandes attendent votre réponse.",
+    onlyOne: "Il y a un seul administrateur, donc rien n’est demandé à personne pour l’instant. La règle s’applique dès l’ajout d’un deuxième administrateur.",
+    factTitle: "Approbation",
+    factOnlyOne: "Publié par le seul administrateur de cette organisation.",
+    factNoRule: "Publié par un administrateur. Cette organisation ne demande aucune approbation.",
+    factSingle: "Publié par le seul administrateur. La règle d’approbation s’applique dès qu’il y en a deux ou plus.",
+    factApproved: "Publié avec l’approbation de {a} administrateurs sur {n}, le {date}. Règle: {rule}.",
+    factCode: "Code du contenu {code}",
+  },
   seal: {
     title: "Protection des bulletins",
     help: "Décidée avant l’ouverture et affichée aux participants sur le bulletin.",
@@ -1114,6 +1240,11 @@ const fr: ConsoleMessages = {
     closed: "Ce scrutin est fermé.",
     cancelled: "Ce scrutin a été annulé.",
     reminder_wait: "Ce participant a reçu un message il y a moins de 24 heures. Un rappel peut partir une fois les 24 heures écoulées.",
+    approval_required: "Cette organisation demande d’abord une approbation. Demander aux autres administrateurs d’approuver ce brouillon tel quel.",
+    approval_stale: "Le contenu a changé depuis son affichage. Le revoir avant de répondre.",
+    request_closed: "Cette demande est déjà décidée.",
+    invalid_policy: "La règle, le sens d’une abstention et le nombre d’heures doivent être valides.",
+    invalid_answer: "Répondre par approuver, refuser ou s’abstenir.",
     roll_locked: "Ce scrutin ne permet pas d’ajouter des participants après son ouverture.",
     cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",
     not_open: "Ce scrutin n’est pas encore ouvert.",

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import ConfirmAction from "#lib/components/ConfirmAction.svelte";
+  import ApprovalCard from "#lib/components/ApprovalCard.svelte";
   import CopyButton from "#lib/components/CopyButton.svelte";
   import RollStrip from "#lib/components/RollStrip.svelte";
   import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
@@ -97,8 +98,36 @@
 <section class="cx-section">
   {#if poll.status === "draft"}
     <p class="cx-help">{m.poll.openNote}</p>
+    {#if data.approval.required}
+      <div class="cx-approvals gap" aria-labelledby="approval-h">
+        <h2 id="approval-h">{m.approval.policyTitle}</h2>
+        {#if data.approval.state === "none"}
+          <p class="cx-notice warn">{m.approval.needs}</p>
+        {:else if data.approval.state === "stale"}
+          <div class="cx-notice warn" role="alert">
+            <div><p><b>{m.approval.staleTitle}</b></p><p>{fill(m.approval.staleText, { fields: data.approval.changes.map((k) => m.approval.fields[k] ?? k).join(", ") })}</p></div>
+          </div>
+        {:else if data.approval.state === "approved"}
+          <p class="cx-notice" role="status">{m.approval.approvedText}</p>
+        {:else if data.approval.state === "rejected"}
+          <p class="cx-notice warn">{m.approval.rejectedText}</p>
+        {:else if data.approval.state === "lapsed"}
+          <p class="cx-notice warn">{m.approval.lapsedText}</p>
+        {/if}
+        {#if data.approval.request && data.approval.state !== "stale"}
+          <ApprovalCard request={data.approval.request} locale={data.locale} timeZone={data.timeZone} me={data.me} canAnswer={data.canAnswer} showLink={false} />
+        {/if}
+        {#if data.approval.state !== "pending" && data.approval.state !== "approved" && data.rollSize > 0}
+          <form method="POST" action="?/requestApproval" use:enhance class="cx-actions">
+            <button class="cx-btn" type="submit">{data.approval.state === "none" ? m.approval.ask : m.approval.askAgain}</button>
+          </form>
+        {/if}
+      </div>
+    {/if}
     <div class="cx-actions gap">
-      {#if data.rollSize > 0}
+      {#if data.rollSize > 0 && data.approval.required && data.approval.state !== "approved"}
+        <!-- Publishing waits for the approval above. -->
+      {:else if data.rollSize > 0}
         {#if poll.opensAt}
           <form id="f-schedule" method="POST" action="?/schedule" use:enhance></form>
           <button class="cx-btn" type="submit" form="f-schedule">{m.poll.scheduleNow}</button>

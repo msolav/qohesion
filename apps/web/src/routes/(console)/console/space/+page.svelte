@@ -28,7 +28,7 @@
 <section aria-labelledby="settings-h">
   <h2 id="settings-h">{m.space.settings}</h2>
   <form class="cx-form gap" method="POST" action="?/save" use:enhance>
-    {#if form && "saved" in form}<p class="cx-notice" role="status">{m.space.saved}</p>{/if}
+    {#if form && "saved" in form}<p class="cx-notice" role="status">{"requested" in form && form.requested ? m.approval.settingsSent : m.space.saved}</p>{/if}
     <div class="cx-field" class:invalid={failedIn("save")}>
       <label for="name">{m.space.name}</label>
       <input id="name" name="name" type="text" maxlength="80" bind:value={name} readonly={data.nameLocked} aria-describedby={data.nameLocked ? "name-locked" : undefined} required />
@@ -54,6 +54,34 @@
       </div>
     </div>
     <div class="cx-actions"><button class="cx-btn" type="submit">{m.space.save}</button></div>
+  </form>
+</section>
+
+<section class="cx-section" aria-labelledby="policy-h">
+  <h2 id="policy-h">{m.approval.policyTitle}</h2>
+  <p class="cx-help">{m.approval.policyText}</p>
+  {#if data.administrators < 2}<p class="cx-notice gap" role="note">{m.approval.onlyOne}</p>{/if}
+  <form class="cx-form gap" method="POST" action="?/policy" use:enhance>
+    {#if form && "policySaved" in form}<p class="cx-notice" role="status">{"policyRequested" in form && form.policyRequested ? m.approval.policySent : m.approval.policySaved}</p>{/if}
+    <div class="cx-field">
+      <label for="rule">{m.approval.ruleLabel}</label>
+      <select id="rule" name="rule">
+        {#each ["none", "majority", "all"] as value (value)}<option {value} selected={data.policy.rule === value}>{m.approval.rules[value as "none" | "majority" | "all"]}</option>{/each}
+      </select>
+    </div>
+    <div class="cx-field">
+      <label for="abstention">{m.approval.abstentionLabel}</label>
+      <select id="abstention" name="abstention">
+        {#each ["neutral", "agreement", "disagreement", "discarded"] as value (value)}<option {value} selected={data.policy.abstention === value}>{m.approval.meanings[value as "agreement" | "disagreement" | "neutral" | "discarded"]}</option>{/each}
+      </select>
+    </div>
+    <div class="cx-field" class:invalid={failedIn("policy")}>
+      <label for="delay_hours">{m.approval.delayLabel}</label>
+      <input id="delay_hours" name="delay_hours" type="number" min="1" max="2160" step="1" inputmode="numeric" value={data.policy.delayHours} aria-describedby="delay-help" />
+      <p class="cx-help" id="delay-help">{m.approval.delayHelp}</p>
+      {#if failedIn("policy")}<p class="cx-error" role="alert">{errorText(m, failedIn("policy")?.error)}</p>{/if}
+    </div>
+    <div class="cx-actions"><button class="cx-btn" type="submit">{m.approval.policySave}</button></div>
   </form>
 </section>
 

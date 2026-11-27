@@ -1,6 +1,6 @@
 # ADR 0009: Organization governance and approvals
 
-- Status: proposed on 2026-11-27.
+- Status: proposed on 2026-11-27. Steps 1 to 3 and part of 4 and 5 of section 13 are built in the test edition: the name fixed while a poll is active, the rule with its abstention and delay settings, publication through approval with digests and resets, organization settings through approval, and the ballot's statement. Not built: keys, cancelling, closing early and late additions through approval; the setup confirmations; the tamper-evident record; signed approvals.
 - Date: 2026-11-27
 - Extends: [ADR 0003](0003-three-modes-one-engine.md) (roles, roll), [ADR 0007](0007-test-edition-and-results-visibility.md) (keys, settings fixed at opening), [ADR 0008](0008-verifiable-count-and-paged-voting.md) (verifiable count)
 - Related issues: #74 (owners and administrators), #62 (registration phase and co-signing), #63 (roll amendments, co-approved)

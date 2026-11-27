@@ -594,6 +594,124 @@ describe("sending links", () => {
   });
 });
 
+describe("approvals between administrators", () => {
+  function second(label = "Clerk"): Session {
+    const key = must(service.createKey(owner, { label, owner: false, administrator: true }));
+    return service.session(service.signIn(key.key) ?? "") as Session;
+  }
+  const rule = (rule: "majority" | "all", over: Partial<{ abstention: "agreement" | "disagreement" | "neutral" | "discarded"; delayHours: number }> = {}) =>
+    service.setApprovalPolicy(owner, { rule, abstention: "neutral", delayHours: 168, ...over });
+  function draft(over: Partial<PollInput> = {}) {
+    const poll = must(service.createPoll(owner, input(over)));
+    must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com"));
+    return poll;
+  }
+
+  it("needs nothing with one administrator, and records who published", () => {
+    must(rule("all"));
+    expect(service.approvalRequired(owner.spaceId)).toBe(false);
+    const poll = draft();
+    must(service.openPoll(owner, poll.id));
+    expect(service.getPoll(poll.id)?.approval).toMatchObject({ rule: "all", approvals: 1, eligible: 1 });
+  });
+
+  it("holds a draft until the other administrator approves the exact content", () => {
+    const clerk = second();
+    must(rule("all"));
+    const poll = draft();
+    expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    expect(asked).toMatchObject({ status: "pending", tally: { approvals: 1, needed: 2 } });
+    expect(service.pollApprovalState(owner, poll.id).state).toBe("pending");
+    expect(service.approvalsWaiting(clerk)).toBe(1);
+    expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    const answered = must(service.answerApproval(clerk, asked?.id ?? "", "approve", asked?.digest ?? ""));
+    expect(answered.status).toBe("approved");
+    expect(service.pollApprovalState(owner, poll.id).state).toBe("approved");
+    must(service.openPoll(owner, poll.id));
+    expect(service.getPoll(poll.id)?.approval).toMatchObject({ rule: "all", approvals: 2, eligible: 2, digest: asked?.digest });
+  });
+
+  it("voids the approval when the draft changes, says what changed, and refuses answers from a stale view", () => {
+    const clerk = second();
+    must(rule("all"));
+    const poll = draft();
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    must(service.updatePoll(owner, poll.id, input({ title: "Budget 2028" })));
+    const state = service.pollApprovalState(owner, poll.id);
+    expect(state.state).toBe("stale");
+    expect(state.changes).toEqual(["title"]);
+    expect(service.answerApproval(clerk, asked?.id ?? "", "approve", asked?.digest ?? "")).toEqual({ ok: false, error: "approval_stale" });
+    expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    must(service.addToRoll(owner, poll.id, "c@example.com"));
+    expect(service.pollApprovalState(owner, poll.id).changes).toEqual(["title", "roll"]);
+  });
+
+  it("voids an approved request too when the draft changes afterwards", () => {
+    const clerk = second();
+    must(rule("all"));
+    const poll = draft();
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    must(service.answerApproval(clerk, asked?.id ?? "", "approve", asked?.digest ?? ""));
+    must(service.addToRoll(owner, poll.id, "c@example.com"));
+    expect(service.pollApprovalState(owner, poll.id).state).toBe("stale");
+    expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+    const again = must(service.requestPublication(owner, poll.id)).request;
+    must(service.answerApproval(clerk, again?.id ?? "", "approve", again?.digest ?? ""));
+    must(service.openPoll(owner, poll.id));
+  });
+
+  it("rejects, and lapses after its delay", () => {
+    const clerk = second();
+    must(rule("all", { delayHours: 2 }));
+    const poll = draft();
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    expect(must(service.answerApproval(clerk, asked?.id ?? "", "reject", asked?.digest ?? "")).status).toBe("rejected");
+    const next = must(service.requestPublication(owner, poll.id)).request;
+    now = new Date(now.getTime() + 3 * 3_600_000);
+    expect(service.pollApprovalState(owner, poll.id)).toMatchObject({ state: "lapsed", request: { id: next?.id } });
+    expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "approval_required" });
+  });
+
+  it("counts an abstention as the organization decided", () => {
+    const clerk = second();
+    must(rule("all", { abstention: "agreement" }));
+    const poll = draft();
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    expect(must(service.answerApproval(clerk, asked?.id ?? "", "abstain", asked?.digest ?? "")).status).toBe("approved");
+  });
+
+  it("makes the rule itself a request once it applies: one administrator cannot lower it", () => {
+    const clerk = second();
+    must(rule("all"));
+    const lowered = must(service.setApprovalPolicy(owner, { rule: "none", abstention: "neutral", delayHours: 168 })).request;
+    expect(lowered).toMatchObject({ kind: "set_policy", status: "pending" });
+    expect(service.approvalPolicy(owner.spaceId).rule).toBe("all");
+    must(service.answerApproval(clerk, lowered?.id ?? "", "approve", lowered?.digest ?? ""));
+    expect(service.approvalPolicy(owner.spaceId).rule).toBe("none");
+  });
+
+  it("sends a change of the name through approval, and keeps the old name until then", () => {
+    const clerk = second();
+    must(rule("majority"));
+    const changed = must(service.updateSpace(owner, { name: "Renamed", locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" }));
+    expect(changed.name).toBe("Maple Court Association");
+    expect(changed.request).toMatchObject({ kind: "space_settings", status: "pending" });
+    must(service.answerApproval(clerk, changed.request?.id ?? "", "approve", changed.request?.digest ?? ""));
+    expect(service.getSpace(owner.spaceId)?.name).toBe("Renamed");
+  });
+
+  it("only lets administrators answer", () => {
+    second();
+    must(rule("all"));
+    const poll = draft();
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    const ownerOnly = must(service.createKey(owner, { label: "Board", owner: true, administrator: false }));
+    const board = service.session(service.signIn(ownerOnly.key) ?? "") as Session;
+    expect(service.answerApproval(board, asked?.id ?? "", "approve", asked?.digest ?? "")).toEqual({ ok: false, error: "forbidden" });
+  });
+});
+
 describe("the organization's name", () => {
   const rename = (name: string) => service.updateSpace(owner, { name, locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" });
 

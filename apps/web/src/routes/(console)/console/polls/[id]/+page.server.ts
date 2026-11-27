@@ -10,10 +10,31 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   const counts = summarize(entries.map((e) => e.status as MemberStatus));
   const results = service().resultsFor(params.id, "administrator");
   const space = service().getSpace(needSession(locals).spaceId);
-  return { rollSize: entries.length, voted: counts.voted, turnout: results?.turnout ?? null, timeZone: space?.timeZone ?? "America/Toronto" };
+  return {
+    rollSize: entries.length,
+    voted: counts.voted,
+    turnout: results?.turnout ?? null,
+    timeZone: space?.timeZone ?? "America/Toronto",
+    approval: service().pollApprovalState(session, params.id),
+    me: session.keyId,
+    canAnswer: session.administrator,
+  };
 };
 
 export const actions: Actions = {
+  requestApproval: ({ locals, params }) => {
+    const result = service().requestPublication(needSession(locals), params.id);
+    if (!result.ok) return fail(400, { error: result.error });
+    redirect(303, `/console/polls/${params.id}`);
+  },
+  answer: async ({ request, locals, params }) => {
+    const data = await request.formData().catch(() => undefined);
+    const text = (name: string) => (typeof data?.get(name) === "string" ? String(data?.get(name)) : "");
+    const answer = text("answer");
+    const result = service().answerApproval(needSession(locals), text("request"), answer === "approve" || answer === "reject" || answer === "abstain" ? answer : ("invalid" as never), text("digest"));
+    if (!result.ok) return fail(400, { error: result.error });
+    redirect(303, `/console/polls/${params.id}`);
+  },
   open: ({ locals, params }) => {
     const result = service().openPoll(needSession(locals), params.id);
     if (!result.ok) return fail(400, { error: result.error });

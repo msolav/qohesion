@@ -26,6 +26,8 @@
     readonly anonymity: "secret" | "named";
     readonly allowChange: boolean;
     readonly lateRoll: boolean;
+    /** How the poll was approved when published. Absent in the builder preview and for older polls. */
+    readonly approval?: { readonly rule: "none" | "majority" | "all"; readonly approvals: number; readonly eligible: number; readonly at: string; readonly digest: string } | null;
     readonly rules: CloseRules;
     readonly timeZone?: string;
     readonly closesAt: string | null;
@@ -73,6 +75,14 @@
   const when = (iso: string) => formatMoment(iso, locale, poll.timeZone ?? DEFAULT_TIME_ZONE);
   const check = "M3.5 8.5l3 3 6-7";
   const paged = $derived(step !== "all");
+  const approvalText = $derived.by(() => {
+    const a = poll.approval;
+    if (!a) return "";
+    if (a.rule === "none") return a.eligible <= 1 ? m.approval.factOnlyOne : m.approval.factNoRule;
+    if (a.eligible < 2) return m.approval.factSingle;
+    return fill(m.approval.factApproved, { a: a.approvals, n: a.eligible, date: when(a.at), rule: m.approval.rules[a.rule] });
+  });
+  const approvalCode = $derived(poll.approval ? poll.approval.digest.slice(0, 12).toUpperCase().replace(/(.{4})(?=.)/g, "$1-") : "");
   const chosenLabel = $derived.by(() => {
     const index = poll.options.findIndex((o) => o.id === chosen);
     const option = poll.options[index];
@@ -138,6 +148,13 @@
       <dt>{m.voter.results}</dt>
       <dd class="note">{m.resultsStatement[poll.timing][poll.audience]}</dd>
     </div>
+    {#if poll.approval}
+      <div>
+        <dt>{m.approval.factTitle}</dt>
+        <dd class="note">{approvalText}</dd>
+        <dd class="note">{fill(m.approval.factCode, { code: approvalCode })}</dd>
+      </div>
+    {/if}
   </dl>
   {/if}
 

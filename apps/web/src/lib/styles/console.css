@@ -544,3 +544,11 @@ button.cx-choice.preset[aria-pressed="true"] .ico{color:var(--mint)}
 .cx-shares{display:grid;gap:var(--space-4)}
 .cx-shares li{display:grid;gap:var(--space-2);justify-items:start}
 .cx-shares .cx-key{font-size:clamp(.8rem,3.2vw,1rem);width:100%}
+
+/* Approvals */
+.cx-approval{display:grid;gap:var(--space-2);padding:var(--space-4);border:1.5px solid var(--dim);border-radius:var(--radius)}
+.cx-approval header{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:baseline;justify-content:space-between}
+.cx-approval h3{margin:0;font-size:1.1rem}
+.cx-answers{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4);margin:0;padding:0;list-style:none}
+.cx-approvals{display:grid;gap:var(--space-4)}
+.cx-badge{display:inline-block;min-width:1.4rem;margin-left:.35rem;padding:0 .4rem;border-radius:999px;background:var(--mint);color:#0f224c;font-size:.8rem;font-weight:800;text-align:center}
