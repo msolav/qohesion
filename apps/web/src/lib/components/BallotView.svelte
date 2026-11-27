@@ -159,12 +159,12 @@
       <dd class="note">{poll.lateRoll ? m.voter.rollLate : m.voter.rollFixed}</dd>
     </div>
     <div>
-      <dt class="has-badge"><span class="badge"><UiIcon name={poll.anonymity === "named" ? "users" : "shield"} size={16} />{poll.anonymity === "named" ? m.voter.namedValue : m.voter.ballotValue}</span></dt>
-      <dd class="note">{poll.anonymity === "named" ? fill(m.voter.namedNote, { who: m.voter.namedWho[poll.audience] }) : m.voter.ballotNote}</dd>
-    </div>
-    <div>
-      <dt class="has-badge"><span class="badge"><UiIcon name={poll.encrypted ? "lock" : "eye"} size={16} />{poll.encrypted ? m.seal.factSealed : m.seal.factPlain}</span></dt>
-      <dd class="note">{poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
+      <dt>{m.voter.ballotType}</dt>
+      <dd class="badges">
+        <span class="badge"><UiIcon name={poll.anonymity === "named" ? "users" : "shield"} size={16} />{poll.anonymity === "named" ? m.voter.namedValue : m.voter.ballotValue}</span>
+        <span class="badge"><UiIcon name={poll.encrypted ? "lock" : "eye"} size={16} />{poll.encrypted ? m.seal.factSealed : m.seal.factPlain}</span>
+      </dd>
+      <dd class="note">{poll.anonymity === "named" ? fill(m.voter.namedNote, { who: m.voter.namedWho[poll.audience] }) : m.voter.ballotNote} {poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
     </div>
     <div>
       <dt>{m.voter.yourVote}</dt>
@@ -191,9 +191,9 @@
     <dl class="facts" aria-label={m.voter.confirmChoice}>
       {#each questions as q (q.id)}
         <div>
-          <dt>{q.prompt || poll.title}</dt>
+          <dt>{q.prompt}</dt>
           <dd class="picked">{labelOf(q)}</dd>
-          {#if step === "summary"}<dd class="change"><button class="linklike" type="button" onclick={() => onedit(q.id)}>{m.voter.changeAnswer}<span class="sr-only"> · {q.prompt || poll.title}</span></button></dd>{/if}
+          {#if step === "summary"}<dd class="change"><button class="linklike" type="button" onclick={() => onedit(q.id)}>{m.voter.changeAnswer}<span class="sr-only"> · {q.prompt}</span></button></dd>{/if}
         </div>
       {/each}
     </dl>
