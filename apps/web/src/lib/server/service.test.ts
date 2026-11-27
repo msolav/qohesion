@@ -827,6 +827,21 @@ describe("actions that need a permit once approvals apply", () => {
   });
 });
 
+describe("the guard against an older build", () => {
+  it("refuses to start on a database that holds polls with several questions", () => {
+    const db = new DatabaseSync(":memory:");
+    const secret = new Uint8Array(32).fill(7);
+    const first = new Service(db, { secret, now: () => now });
+    const created = must(first.createSpace({ name: "Org", locale: "en" }));
+    const session = first.session(first.signIn(created.key) ?? "") as Session;
+    must(first.createPoll(session, input()));
+    db.exec("ALTER TABLE polls ADD COLUMN questions TEXT");
+    expect(() => new Service(db, { secret, now: () => now })).not.toThrow();
+    db.exec("UPDATE polls SET questions = '[]'");
+    expect(() => new Service(db, { secret, now: () => now })).toThrow(/several questions/);
+  });
+});
+
 describe("the organization's name", () => {
   const rename = (name: string) => service.updateSpace(owner, { name, locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" });
 

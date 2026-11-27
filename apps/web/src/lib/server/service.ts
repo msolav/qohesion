@@ -344,6 +344,10 @@ export class Service {
     addIfMissing("spaces", names("spaces"), "approval_delay_hours", "INTEGER NOT NULL DEFAULT 168");
     // A poll published before the name was kept keeps the name the organization has now.
     this.#db.exec("UPDATE polls SET org_name = (SELECT name FROM spaces WHERE spaces.id = polls.space_id) WHERE org_name IS NULL AND status != 'draft'");
+    // ADR 0010: a database that holds polls with several questions must not be opened by a build that does not know them.
+    if (columns.includes("questions") && this.#one("SELECT 1 AS x FROM polls WHERE questions IS NOT NULL LIMIT 1")) {
+      throw new Error("This database holds polls with several questions, which this build does not know. Use a newer build.");
+    }
     addIfMissing("polls", columns, "published_key", "TEXT");
     addIfMissing("polls", columns, "cancelled_by", "TEXT");
     addIfMissing("polls", columns, "cancelled_ballots", "INTEGER");
