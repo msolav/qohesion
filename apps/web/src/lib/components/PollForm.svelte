@@ -73,6 +73,7 @@
   let keyThreshold = $state(String(Math.max(2, start?.keyThreshold ?? 2)));
   let publishCount = $state(start?.publishCount ?? false);
   let lockCancel = $state(start?.lockCancel ?? false);
+  let paged = $state(start?.paged ?? true);
   let autoReminder = $state<"none" | "daily" | "before_close">(start?.autoReminder ?? "none");
   let reminderPermission = $state(start?.reminderPermission ?? false);
   let theme = $state<Theme>(start?.theme ?? (() => defaultTheme)());
@@ -533,6 +534,10 @@
         {#if autoReminder !== "none"}
           <label class="cx-choice check"><input type="checkbox" name="reminder_permission" value="yes" bind:checked={reminderPermission} /><span><b>{m.mail.attest}</b></span></label>
         {/if}
+      </fieldset>
+
+      <fieldset class="cx-field">
+        <label class="cx-choice check has-ico"><input type="checkbox" name="paged" value="yes" bind:checked={paged} /><span><i class="ico"><UiIcon name="list" /></i><b>{m.form.pagedLabel}</b><small>{m.form.pagedHelp}</small></span></label>
       </fieldset>
 
       <fieldset class="cx-field">

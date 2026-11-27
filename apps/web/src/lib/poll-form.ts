@@ -107,6 +107,7 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     reminderPermission: text(data, "reminder_permission") === "yes",
     publishCount: text(data, "publish_count") === "yes",
     lockCancel: text(data, "lock_cancel") === "yes",
+    paged: text(data, "paged") === "yes",
     keyThreshold: text(data, "key_mode") === "shared" ? whole(text(data, "key_threshold")) : 1,
   };
 }

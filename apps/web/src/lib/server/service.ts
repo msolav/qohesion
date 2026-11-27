@@ -114,6 +114,8 @@ export interface Poll {
   readonly keyThreshold: number;
   /** Once the first ballot is cast, the poll can no longer be cancelled. */
   readonly lockCancel: boolean;
+  /** The ballot is shown one page at a time (introduction, rules, question, check) rather than all on one page. */
+  readonly paged: boolean;
   /** Set when the poll was cancelled: when, by which key, and how many ballots had been cast. */
   readonly cancelled: { readonly by: string; readonly ballots: number } | null;
   /** The content in the languages offered. The columns title, description and options hold the default language. */
@@ -168,6 +170,7 @@ export interface PollInput {
   readonly publishCount: boolean;
   readonly keyThreshold: number;
   readonly lockCancel: boolean;
+  readonly paged: boolean;
   /** The administrator confirmed permission to contact the participants, which automatic reminders need. */
   readonly reminderPermission: boolean;
   /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
@@ -269,6 +272,7 @@ export class Service {
     addIfMissing("polls", columns, "key_threshold", "INTEGER NOT NULL DEFAULT 1");
     addIfMissing("polls", columns, "publish_count", "INTEGER NOT NULL DEFAULT 0");
     addIfMissing("polls", columns, "lock_cancel", "INTEGER NOT NULL DEFAULT 0");
+    addIfMissing("polls", columns, "paged", "INTEGER NOT NULL DEFAULT 1");
     addIfMissing("polls", columns, "published_key", "TEXT");
     addIfMissing("polls", columns, "cancelled_by", "TEXT");
     addIfMissing("polls", columns, "cancelled_ballots", "INTEGER");
@@ -484,6 +488,7 @@ export class Service {
       publishCount: r["publish_count"] === 1,
       keyThreshold: Number(r["key_threshold"] ?? 1),
       lockCancel: r["lock_cancel"] === 1,
+      paged: r["paged"] !== 0,
       cancelled: r["cancelled_by"] === null || r["cancelled_by"] === undefined ? null : { by: String(r["cancelled_by"]), ballots: Number(r["cancelled_ballots"] ?? 0) },
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
       createdAt: String(r["created_at"]),
@@ -581,9 +586,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, this.#iso(),
       );
       this.#log(id, session, "created", "");
     });
@@ -599,8 +604,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ? WHERE id = ?",
-      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, pollId,
+      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ? WHERE id = ?",
+      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, pollId,
     );
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");

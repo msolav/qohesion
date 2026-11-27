@@ -28,6 +28,7 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   publishCount: false,
   keyThreshold: 1,
   lockCancel: false,
+  paged: true,
   encrypted: false,
   markFill: false,
   anonymity: "secret",

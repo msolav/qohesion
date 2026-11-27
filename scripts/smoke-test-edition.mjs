@@ -124,6 +124,22 @@ check("the closed poll shows its ledger", ledger.text.includes(receipt ?? "?"));
 const checked = await admin.send(`/console/polls/${pollId}/results?/check`, { method: "POST", form: { receipt: receipt?.toLowerCase() ?? "" } });
 check("a receipt is checked against the ledger", checked.status === 200);
 
+// A poll shown one page at a time: introduction first, the same ballot on one page by link, a calendar file with an alarm.
+const paged = await admin.send("/console/polls/new", { method: "POST", form: { title: "Paged poll", question: "Do you agree?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing, paged: "yes" } });
+const pagedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(paged.location)?.[1];
+check("a paged poll is created", Boolean(pagedId), paged.location);
+await admin.send(`/console/polls/${pagedId}/roll?/add`, { method: "POST", form: { addresses: "p1@example.com" } });
+const pagedLinks = [...new Set([...(await admin.send(`/console/polls/${pagedId}/roll`)).text.matchAll(/\/v\/([0-9A-Z]{24})/g)].map((m) => m[1]))];
+await admin.send(`/console/polls/${pagedId}?/open`, { method: "POST", form: {} });
+if (process.env.SMOKE_PRINT_LINK) console.log(`${base}/v/${pagedLinks[0]}`);
+const intro = await anonymous.send(`/v/${pagedLinks[0]}`);
+check("a paged ballot starts with its introduction", intro.text.includes('data-step="intro"') && intro.text.includes("?view=all"));
+const onePage = await anonymous.send(`/v/${pagedLinks[0]}?view=all`);
+check("the same ballot can be shown on one page", onePage.text.includes('data-step="all"'));
+const ics = await anonymous.send(`/v/${pagedLinks[0]}/calendar.ics`);
+check("a calendar file gives the closing time with an alarm 24 hours before", ics.status === 200 && ics.text.includes("TRIGGER:-PT24H") && ics.text.includes("BEGIN:VEVENT"));
+check("the calendar file holds no personal link", !ics.text.includes(pagedLinks[0] ?? "?"));
+
 // A sealed poll: ballots are encrypted, totals stay hidden, and the count needs the counting key.
 const sealed = await admin.send("/console/polls/new", { method: "POST", form: { title: "Sealed poll", question: "Do you agree?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing, encryption: "sealed" } });
 const sealedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(sealed.location)?.[1];

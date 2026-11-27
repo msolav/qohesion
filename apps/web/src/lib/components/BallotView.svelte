@@ -37,20 +37,78 @@
    * the preview in the poll builder, so that what an administrator sees is what a member gets. In a preview the
    * choices are shown but cannot be used.
    */
-  let { locale, poll, failure = null, preview = false }: { locale: Locale; poll: BallotPoll; failure?: string | null; preview?: boolean } = $props();
+  let {
+    locale,
+    poll,
+    failure = null,
+    preview = false,
+    step = "all",
+    chosen = $bindable(""),
+    agreed = $bindable(false),
+    organization = "",
+    calendarHref = "",
+    stepNo = 1,
+    stepTotal = 1,
+    onnext = () => {},
+    onback = () => {},
+  }: {
+    locale: Locale;
+    poll: BallotPoll;
+    failure?: string | null;
+    preview?: boolean;
+    /** "all" shows everything on one page; the other values show one page of the paged flow. */
+    step?: "all" | "intro" | "rules" | "question" | "confirm";
+    chosen?: string;
+    agreed?: boolean;
+    organization?: string;
+    calendarHref?: string;
+    stepNo?: number;
+    stepTotal?: number;
+    onnext?: () => void;
+    onback?: () => void;
+  } = $props();
 
   const m = $derived(consoleMessages[locale]);
   const when = (iso: string) => formatMoment(iso, locale, poll.timeZone ?? DEFAULT_TIME_ZONE);
   const check = "M3.5 8.5l3 3 6-7";
+  const paged = $derived(step !== "all");
+  const chosenLabel = $derived.by(() => {
+    const index = poll.options.findIndex((o) => o.id === chosen);
+    const option = poll.options[index];
+    return option ? optionLabel(locale, option) || fill(m.form.optionN, { n: index + 1 }) : "";
+  });
+  /** The last page of a flow is where the ballot is sent: the check page when the vote is final, else the question. */
+  const sendsHere = $derived(step === "confirm" || (step === "question" && poll.allowChange));
 </script>
 
-<div class="slip">
-  <div class="ballot__head">
-    <h1 id="q-title">{poll.title || "…"}</h1>
-    {#if poll.question}<p class="question" id="q-text">{poll.question}</p>{/if}
-    {#if poll.description}<p class="lede">{poll.description}</p>{:else if !poll.question}<p class="lede">{m.voter.lede}</p>{/if}
-  </div>
+  {#if paged}
+    <p class="stepno" aria-label={fill(m.voter.stepOf, { n: stepNo, total: stepTotal })}>
+      <span class="dots" aria-hidden="true">{#each Array.from({ length: stepTotal }, (_, i) => i + 1) as n (n)}<i class:on={n <= stepNo}></i>{/each}</span>
+      <span>{fill(m.voter.stepOf, { n: stepNo, total: stepTotal })}</span>
+    </p>
+  {/if}
 
+<div class="slip" data-step={step}>
+  {#if step === "all" || step === "intro"}
+    <div class="ballot__head">
+      {#if step === "intro" && organization}<p class="org-name">{organization}</p>{/if}
+      <h1 id="q-title" tabindex="-1">{poll.title || "…"}</h1>
+      {#if step === "all" && poll.question}<p class="question" id="q-text">{poll.question}</p>{/if}
+      {#if poll.description}<p class="lede">{poll.description}</p>{:else if step === "intro" || !poll.question}<p class="lede">{m.voter.lede}</p>{/if}
+      {#if step === "intro" && poll.closesAt}<p class="when-line">{fill(m.voter.introClose, { date: when(poll.closesAt) })}</p>{/if}
+    </div>
+  {:else if step === "rules"}
+    <div class="ballot__head"><h1 id="q-title" tabindex="-1">{m.voter.rulesTitle}</h1></div>
+  {:else if step === "question"}
+    <div class="ballot__head">
+      <p class="eyebrow">{poll.title}</p>
+      <h1 id="q-title" tabindex="-1">{poll.question || poll.title}</h1>
+    </div>
+  {:else}
+    <div class="ballot__head"><h1 id="q-title" tabindex="-1">{m.voter.confirmTitle}</h1></div>
+  {/if}
+
+  {#if step === "all" || step === "rules"}
   <dl class="facts" aria-label={m.voter.facts}>
     <div>
       <dt>{m.voter.closes}</dt>
@@ -59,7 +117,7 @@
     </div>
     <div>
       <dt>{m.voter.roll}</dt>
-      <dd>{poll.rollCount === null ? "—" : fill(m.voter.rollValue, { n: poll.rollCount })}</dd>
+      <dd>{poll.rollCount === null ? "—" : poll.rollCount === 1 ? m.voter.rollOne : fill(m.voter.rollValue, { n: poll.rollCount })}</dd>
       {#if poll.rollCode}<dd class="note">{fill(m.voter.rollNote, { code: poll.rollCode })}</dd>{/if}
     </div>
     <div>
@@ -79,13 +137,22 @@
       <dd class="note">{m.resultsStatement[poll.timing][poll.audience]}</dd>
     </div>
   </dl>
+  {/if}
 
+  {#if step === "rules" && poll.closesAt && calendarHref}<p class="cal"><a href={calendarHref} data-sveltekit-reload>{m.voter.addToCalendar}</a></p>{/if}
+
+  {#if step === "confirm"}
+    <dl class="facts"><div><dt>{m.voter.confirmChoice}</dt><dd class="picked">{chosenLabel}</dd></div></dl>
+    <p class="notice-final" role="note">{m.voter.confirmFinal}</p>
+  {/if}
+
+  <div hidden={paged && step !== "question"}>
   <fieldset class="choices" data-fill={poll.markFill ? "" : undefined} aria-describedby={failure ? "choice-error" : undefined}>
     <legend class="sr-only">{poll.question || m.voter.legend}</legend>
     {#each poll.options as option, i (option.id)}
       {@const icon = iconOf(option)}
       <div class="choice" data-color={option.color ?? undefined} data-icon={option.icon ? option.icon : undefined}>
-        <input type="radio" name="choice" id="c-{option.id}" value={option.id} disabled={preview} />
+        <input type="radio" name="choice" id="c-{option.id}" value={option.id} bind:group={chosen} disabled={preview} />
         <label for="c-{option.id}">
           <span class="mark" aria-hidden="true">
             <svg viewBox="0 0 16 16" width="14" height="14" focusable="false"><path d={iconPath(icon) ?? check} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -95,8 +162,27 @@
       </div>
     {/each}
   </fieldset>
+  </div>
 
   {#if failure}<p class="error" id="choice-error" role="alert">{m.voter.problem} {errorText(m, failure)}</p>{/if}
 </div>
 
-<div class="castbar"><button class="cast" type={preview ? "button" : "submit"} disabled={preview}>{m.voter.submit}</button></div>
+<div class="castbar" class:steps={paged}>
+  {#if step === "rules"}
+    <label class="agree"><input type="checkbox" bind:checked={agreed} /><span>{m.voter.agree}</span></label>
+  {/if}
+  {#if !paged}
+    <button class="cast" type={preview ? "button" : "submit"} disabled={preview}>{m.voter.submit}</button>
+  {:else if step === "intro"}
+    <a class="cast" href="?view=all" onclick={(e) => { e.preventDefault(); onnext(); }}>{m.voter.start}</a>
+  {:else}
+    <div class="castbar__row">
+    <button class="back" type="button" onclick={onback}>{m.voter.back}</button>
+    {#if sendsHere}
+      <button class="cast" type="submit" disabled={step === "question" && chosen === ""}>{step === "confirm" ? m.voter.confirmSubmit : m.voter.submit}</button>
+    {:else}
+      <button class="cast" type="button" onclick={onnext} disabled={(step === "rules" && !agreed) || (step === "question" && chosen === "")}>{m.voter.next}</button>
+    {/if}
+    </div>
+  {/if}
+</div>

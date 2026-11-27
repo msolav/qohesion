@@ -116,3 +116,22 @@ img,svg{display:block}
 .done__label{margin-top:var(--space-5);font-size:.9rem;font-weight:700}
 .done__code{margin-top:var(--space-2);padding:var(--space-4);font-size:1.5rem;font-weight:800;letter-spacing:.12em;border:2px dashed var(--ink);border-radius:var(--radius)}
 .done__next{margin-top:var(--space-5);font-weight:700}
+
+/* Paged ballot: one page at a time. */
+.stepno{display:flex;align-items:center;gap:var(--space-2);margin:0 var(--space-1) var(--space-3);font-size:.85rem;color:var(--muted,inherit)}
+.stepno .dots{display:inline-flex;gap:.3rem}
+.stepno .dots i{width:.55rem;height:.55rem;border-radius:50%;border:1.5px solid currentColor;opacity:.45}
+.stepno .dots i.on{background:currentColor;opacity:1}
+.org-name{margin:0 0 var(--space-2);font-size:clamp(1.15rem,5vw,1.5rem);font-weight:800;letter-spacing:-.01em}
+.when-line{margin:var(--space-3) 0 0;font-weight:600}
+.eyebrow{margin:0 0 var(--space-1);font-size:.9rem;font-weight:600;opacity:.75}
+.agree{display:flex;gap:var(--space-3);align-items:flex-start;margin:0;padding:var(--space-3);border:1.5px solid currentColor;border-radius:var(--radius);font-weight:600;cursor:pointer}
+.agree input{inline-size:1.4rem;block-size:1.4rem;margin-top:.1rem;flex:none;accent-color:var(--accent)}
+.cal{margin:var(--space-3) 0 0;font-size:.95rem}
+.picked{font-size:1.25rem;font-weight:800}
+.notice-final{margin:var(--space-3) 0 0;padding:var(--space-3);border-left:4px solid var(--accent);font-weight:700}
+.castbar.steps{display:grid;gap:var(--space-3)}
+.castbar__row{display:flex;gap:var(--space-3)}
+.castbar__row .cast{flex:1;width:auto}
+.castbar .back{min-height:3.6rem;padding:var(--space-2) var(--space-4);border:1.5px solid currentColor;border-radius:var(--radius);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
+a.cast{display:flex;align-items:center;justify-content:center;text-decoration:none}

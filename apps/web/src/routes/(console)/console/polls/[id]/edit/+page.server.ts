@@ -33,6 +33,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       autoReminder: poll.autoReminder,
       publishCount: poll.publishCount,
       lockCancel: poll.lockCancel,
+      paged: poll.paged,
       keyThreshold: poll.keyThreshold,
       reminderPermission: poll.autoReminder !== "none",
       translations: poll.translations,

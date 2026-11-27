@@ -38,6 +38,7 @@ export interface ConsoleMessages {
     readonly options: string; readonly optionsHelp: string; readonly optionN: string; readonly addOption: string;
     readonly results: string; readonly resultsHelp: string; readonly timing: string; readonly audience: string; readonly timingNames: Names<ResultsTiming>; readonly audienceNames: Names<ResultsAudience>;
     readonly template: string; readonly templateSeed: string; readonly templateBallot: string;
+    readonly pagedLabel: string; readonly pagedHelp: string;
     readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
     readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "transparent" | "open">; readonly presetCustom: string;
     readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
@@ -82,8 +83,9 @@ export interface ConsoleMessages {
     readonly newKeyTitle: string; readonly newKeyText: string; readonly danger: string; readonly dangerText: string; readonly confirmName: string; readonly deleteSpace: string;
   };
   readonly voter: {
-    readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollNote: string; readonly results: string;
+    readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollOne: string; readonly rollNote: string; readonly results: string;
     readonly cancelledDetail: string; readonly cancelledDetailNone: string; readonly doneChange: string;
+    readonly stepOf: string; readonly start: string; readonly rulesTitle: string; readonly agree: string; readonly next: string; readonly back: string; readonly confirmTitle: string; readonly confirmChoice: string; readonly confirmFinal: string; readonly confirmSubmit: string; readonly showAll: string; readonly pickFirst: string; readonly doneDeadline: string; readonly addToCalendar: string; readonly calendarSummary: string; readonly calendarAlarm: string; readonly calendarNote: string; readonly introClose: string;
     readonly namedValue: string; readonly namedNote: string; readonly namedWho: Readonly<Record<ResultsAudience, string>>; readonly cancelledTitle: string; readonly cancelledText: string;
     readonly yourVote: string; readonly changeAllowed: string; readonly changeFinal: string; readonly opensOn: string; readonly alreadyVotedChange: string; readonly alsoCloses: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleEveryone: string; readonly ruleMajority: string; readonly rulePercent: string; readonly or: string;
     readonly ballotType: string; readonly ballotValue: string; readonly ballotNote: string; readonly submit: string; readonly legend: string; readonly problem: string;
@@ -193,6 +195,8 @@ const en: ConsoleMessages = {
     template: "Ballot template",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    pagedLabel: "Show the ballot one page at a time",
+    pagedHelp: "An introduction, then the rules with an acknowledgement, then the question, then a check before sending. Turn it off to show everything on one page.",
     keyModeTitle: "Who can open the ballots",
     keyOne: "One counting key",
     keyOneText: "One person holds the key and opens the ballots at the close.",
@@ -407,10 +411,29 @@ const en: ConsoleMessages = {
     noClose: "When an administrator closes it",
     roll: "Roll",
     rollValue: "{n} participants",
+    rollOne: "1 participant",
     rollNote: "Identified by the code {code}.",
     results: "Results",
     cancelledDetail: "Cancelled on {date} by {who}. {n} ballots had been cast.",
     cancelledDetailNone: "Cancelled on {date} by {who}. No ballot had been cast.",
+    stepOf: "Step {n} of {total}",
+    start: "Start",
+    rulesTitle: "Before you vote",
+    agree: "I have read these rules and I agree to them.",
+    next: "Continue",
+    back: "Back",
+    confirmTitle: "Check your vote",
+    confirmChoice: "Your choice",
+    confirmFinal: "Once you submit, this vote cannot be changed.",
+    confirmSubmit: "Submit my vote",
+    showAll: "Show everything on one page",
+    pickFirst: "Choose an option to continue.",
+    doneDeadline: "Voting closes on {date}",
+    addToCalendar: "Add the closing time to my calendar, with a reminder 24 hours before",
+    calendarSummary: "Voting closes: {title}",
+    calendarAlarm: "Voting closes in 24 hours.",
+    calendarNote: "{org}. Use your personal voting link to vote before this time.",
+    introClose: "Closes {date}",
     doneChange: "You can change your vote until the poll closes: open your link again.",
     namedValue: "Named",
     namedNote: "Your answer is recorded with your address and shown with it to {who}.",
@@ -669,6 +692,8 @@ const fr: ConsoleMessages = {
     template: "Modèle de bulletin",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    pagedLabel: "Afficher le bulletin une page à la fois",
+    pagedHelp: "Une introduction, puis les règles avec une reconnaissance, puis la question, puis une vérification avant l’envoi. Désactiver pour tout afficher sur une seule page.",
     keyModeTitle: "Qui peut ouvrir les bulletins",
     keyOne: "Une seule clé de dépouillement",
     keyOneText: "Une personne détient la clé et ouvre les bulletins à la fermeture.",
@@ -883,10 +908,29 @@ const fr: ConsoleMessages = {
     noClose: "Quand l’administration le ferme",
     roll: "Liste",
     rollValue: "{n} participants",
+    rollOne: "1 participant",
     rollNote: "Identifiée par le code {code}.",
     results: "Résultats",
     cancelledDetail: "Annulé le {date} par {who}. {n} bulletins avaient été déposés.",
     cancelledDetailNone: "Annulé le {date} par {who}. Aucun bulletin n’avait été déposé.",
+    stepOf: "Étape {n} de {total}",
+    start: "Commencer",
+    rulesTitle: "Avant de voter",
+    agree: "J’ai lu ces règles et je les accepte.",
+    next: "Continuer",
+    back: "Retour",
+    confirmTitle: "Vérifier votre vote",
+    confirmChoice: "Votre choix",
+    confirmFinal: "Une fois envoyé, ce vote ne peut plus être modifié.",
+    confirmSubmit: "Envoyer mon vote",
+    showAll: "Tout afficher sur une seule page",
+    pickFirst: "Choisir une option pour continuer.",
+    doneDeadline: "Le vote se termine le {date}",
+    addToCalendar: "Ajouter la fermeture à mon calendrier, avec un rappel 24 heures avant",
+    calendarSummary: "Fin du vote: {title}",
+    calendarAlarm: "Le vote se termine dans 24 heures.",
+    calendarNote: "{org}. Utiliser son lien personnel pour voter avant cette heure.",
+    introClose: "Fermeture {date}",
     doneChange: "Vous pouvez modifier votre vote jusqu’à la fermeture du scrutin: rouvrir votre lien.",
     namedValue: "Nominatif",
     namedNote: "Votre réponse est enregistrée avec votre adresse et affichée avec elle à {who}.",
