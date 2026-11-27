@@ -54,3 +54,11 @@
 }
 [data-theme="ballot-paper"] .receipt::before{left:-12px}
 [data-theme="ballot-paper"] .receipt::after{right:-12px}
+
+/* Settings: flush rows between thin rules, square corners, as on a printed form */
+[data-theme="ballot-paper"] .props{gap:0}
+[data-theme="ballot-paper"] .prop[data-tone]{padding:var(--space-3) var(--space-5);border:0;border-top:1px solid var(--ink);border-radius:0;background:none}
+[data-theme="ballot-paper"] .prop[data-tone="strict"]{border-top:3px double var(--ink)}
+[data-theme="ballot-paper"] .prop:first-child[data-tone]{border-top:0}
+[data-theme="ballot-paper"] .prop__icon,[data-theme="ballot-paper"] .prop__badge{border-radius:0}
+[data-theme="ballot-paper"] .prop[data-tone="open"] .prop__icon{border-radius:0}

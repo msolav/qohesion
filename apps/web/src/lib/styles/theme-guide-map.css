@@ -86,3 +86,11 @@
 [data-theme="guide-map"] .error{margin-top:var(--space-4);padding:0 var(--space-2)}
 [data-theme="guide-map"] .receipt{padding:0 var(--space-2)}
 [data-theme="guide-map"] .cast{font-size:1.15rem;letter-spacing:-.005em}
+
+/* Settings: flush rows between soft rules, so the disc behind the question is never cut by a card */
+[data-theme="guide-map"] .props{gap:0;padding:0 var(--space-2)}
+[data-theme="guide-map"] .prop[data-tone]{padding:var(--space-3) 0;border:0;border-top:1.5px solid var(--line-soft);border-radius:0;background:none}
+[data-theme="guide-map"] .prop[data-tone="strict"]{border-top:5px double var(--line-soft)}
+[data-theme="guide-map"] .prop:first-child[data-tone]{border-top:0}
+[data-theme="guide-map"] .prop__icon{border-radius:50%}
+[data-theme="guide-map"] .prop__badge{border-radius:1rem}
