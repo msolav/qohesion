@@ -112,6 +112,10 @@
   let discName = $state<NameMode>(start?.disclosure?.name ?? DEFAULT_DISCLOSURE.name);
   let discEmail = $state<EmailMode>(start?.disclosure?.email ?? DEFAULT_DISCLOSURE.email);
   let publishCount = $state(start?.publishCount ?? false);
+  // Email receipts follow the anonymity until the administrator sets them: on for a named poll, off for a secret one.
+  let emailReceipt = $state(start?.emailReceipt ?? (start?.anonymity ?? "secret") === "named");
+  let emailReceiptSet = $state(start?.emailReceipt !== undefined);
+  $effect(() => { if (!emailReceiptSet) emailReceipt = anonymity === "named"; });
   let lockCancel = $state(start?.lockCancel ?? false);
   let paged = $state(start?.paged ?? true);
   let lateRoll = $state(start?.lateRoll ?? false);
@@ -200,6 +204,7 @@
     lateRoll,
     publishCount,
     lockCancel,
+    emailReceipt,
     disclosure: { name: discName, email: discEmail },
     rules: previewRules,
     timeZone: zone,
@@ -222,6 +227,7 @@
       lateRoll,
       publishCount,
       lockCancel,
+      emailReceipt,
       disclosure: { name: discName, email: discEmail },
       rules: previewRules,
       closes: closesAt ? closesAt.replace("T", " ") : null,
@@ -609,6 +615,7 @@
       {/if}
       <fieldset class="cx-field">
         <label class="cx-choice check has-ico"><input type="checkbox" name="publish_count" value="yes" bind:checked={publishCount} /><span><i class="ico"><UiIcon name="eye" /></i><b>{m.form.publishLabel}</b><small>{m.form.publishHelp}</small></span></label>
+        <label class="cx-choice check has-ico"><input type="checkbox" name="email_receipt" value="yes" bind:checked={emailReceipt} onchange={() => (emailReceiptSet = true)} /><span><i class="ico"><UiIcon name="mail" /></i><b>{m.form.emailReceiptLabel}</b><small>{anonymity === "secret" ? m.form.emailReceiptHelpSecret : m.form.emailReceiptHelp}</small></span></label>
         <label class="cx-choice check has-ico"><input type="checkbox" name="lock_cancel" value="yes" bind:checked={lockCancel} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.form.lockCancelLabel}</b><small>{m.form.lockCancelHelp}</small></span></label>
       </fieldset>
     </section>

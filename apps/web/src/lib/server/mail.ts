@@ -7,7 +7,7 @@
  * ADR 0003: 300 a day on the free plan, 50 of them kept for service emails.
  */
 
-import { BrevoTransport, BudgetedTransport, DailyBudget, invitationMessage, type EmailTransport, type InvitationInput } from "@qohesion/email";
+import { BrevoTransport, BudgetedTransport, DailyBudget, invitationMessage, receiptMessage, type EmailTransport, type InvitationInput, type ReceiptInput } from "@qohesion/email";
 import { QOHESION_BREVO_API_KEY, QOHESION_MAIL_FROM } from "$app/env/private";
 
 let transport: EmailTransport | undefined;
@@ -50,4 +50,16 @@ export async function sendInvitations(
     }
   }
   return { sent, failed, firstProblem };
+}
+
+/** Sends the receipt of one ballot to the address that asked for it. */
+export async function sendReceipt(
+  input: ReceiptInput,
+  to: string,
+  send: (message: ReturnType<typeof receiptMessage>) => Promise<{ ok: boolean; reason?: string }> = async (m) => {
+    const t = getTransport();
+    return t ? t.send(m) : { ok: false, reason: "email is not configured" };
+  },
+): Promise<{ ok: boolean; reason?: string }> {
+  return send(receiptMessage(input, { from: { email: QOHESION_MAIL_FROM, name: "Qohesion" }, to: { email: to } }));
 }

@@ -6,6 +6,7 @@
   import { formatMoment } from "#lib/zoned.js";
   import { messages } from "#lib/i18n/messages.js";
   import BallotView from "#lib/components/BallotView.svelte";
+  import ReceiptActions from "#lib/components/ReceiptActions.svelte";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -94,6 +95,7 @@
       {#if questions.length > 1}<p class="done__text">{fill(m.voter.doneMany, { n: questions.length })}</p>{/if}
       <p class="done__label">{m.voter.doneLabel}</p>
       <p class="done__code">{receipt}</p>
+      {#if data.poll}<ReceiptActions locale={data.locale} code={receipt} title={data.poll.title} organization={data.organization ?? ""} pollId={data.poll.id} emailable={data.poll.emailReceipt} ties={data.poll.anonymity === "secret" && data.poll.receiptListed} outcome={form && "receiptMail" in form ? String(form.receiptMail) : null} />{/if}
       {#if data.poll?.allowChange}<p class="receipt">{m.voter.doneChange}</p>{/if}
       {#if data.poll?.closesAt && !closed}
         <p class="receipt">{fill(m.voter.doneDeadline, { date: formatMoment(data.poll.closesAt, data.locale, data.poll.timeZone) })}</p>

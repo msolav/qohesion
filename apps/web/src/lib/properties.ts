@@ -40,6 +40,8 @@ export interface PropertyInput {
   readonly lateRoll: boolean;
   readonly publishCount: boolean;
   readonly lockCancel: boolean;
+  /** Whether a participant can ask for the receipt code by email. */
+  readonly emailReceipt: boolean;
   readonly disclosure: Disclosure | null;
   readonly rules: CloseRules;
   /** The closing moment, already written for the reader, or null when there is none. */
@@ -98,6 +100,9 @@ export function propertiesOf(locale: Locale, p: PropertyInput): Property[] {
   add("seal", p.encrypted ? "lock" : "eye", p.encrypted ? "private" : "open", [p.encrypted ? m.seal.factSealed : m.seal.factPlain], [p.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain], { page: "how", anchor: p.encrypted ? "sealed" : "secret" });
 
   add("change", "pulse", p.allowChange ? "neutral" : "strict", [p.allowChange ? g.props.changeAllowed : g.props.changeFinal], [p.allowChange ? m.voter.changeAllowed : m.voter.changeFinal], null);
+
+  const rm = g.props.receiptMail;
+  add("receipt", "mail", p.emailReceipt ? "open" : "neutral", [p.emailReceipt ? rm.on : rm.off], [p.emailReceipt ? rm.onText : rm.offText, p.emailReceipt && !named && p.publishCount ? rm.tiesText : ""], { page: "how", anchor: "receipt" });
 
   add("results", "eye", "neutral", [m.form.timingNames.title[p.timing], m.form.audienceNames.title[p.audience]], [m.resultsStatement[p.timing][p.audience]], { page: "how", anchor: "receipt" });
 

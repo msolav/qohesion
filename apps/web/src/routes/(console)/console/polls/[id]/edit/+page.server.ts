@@ -39,6 +39,8 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       keyThreshold: poll.keyThreshold,
       reminderPermission: poll.autoReminder !== "none",
       translations: poll.translations,
+      ...(poll.disclosure ? { disclosure: poll.disclosure } : {}),
+      emailReceipt: poll.emailReceipt,
     },
   };
 };

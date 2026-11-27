@@ -1277,3 +1277,60 @@ describe("ledger", () => {
     expect(service.checkReceipt(poll.id, "0000-0000-0000")).toBeNull();
   });
 });
+
+describe("receipt by email", () => {
+  it("is off for a secret poll and on for a named one until an administrator says otherwise", () => {
+    expect(must(service.createPoll(owner, input({ anonymity: "secret" }))).emailReceipt).toBe(false);
+    expect(must(service.createPoll(owner, input({ anonymity: "named", disclosure: { name: "full", email: "full" } }))).emailReceipt).toBe(true);
+    expect(must(service.createPoll(owner, input({ anonymity: "secret", emailReceipt: true }))).emailReceipt).toBe(true);
+    expect(must(service.createPoll(owner, input({ anonymity: "named", emailReceipt: false }))).emailReceipt).toBe(false);
+  });
+
+  it("changes the digest only when the setting differs from the default", () => {
+    const plain = must(service.createPoll(owner, input({ anonymity: "secret" })));
+    const same = must(service.createPoll(owner, input({ anonymity: "secret", emailReceipt: false })));
+    const other = must(service.createPoll(owner, input({ anonymity: "secret", emailReceipt: true })));
+    const digest = (id: string) => service.pollApprovalState(owner, id)?.digest;
+    expect(digest(same.id)).toBe(digest(plain.id));
+    expect(digest(other.id)).not.toBe(digest(plain.id));
+  });
+
+  it("gives the address of the link for a code of the poll, three times at most", () => {
+    const { poll, tokens } = openedPoll({ anonymity: "secret", emailReceipt: true });
+    const code = must(service.castBallot(tokens[0] ?? "", "for")).receipt;
+    for (let i = 0; i < 3; i++) {
+      const target = must(service.receiptMailTarget(tokens[0] ?? "", code.toLowerCase().replace("-", " ")));
+      expect(target).toMatchObject({ address: "a@example.com", code, publishesBallots: false });
+      expect(target.poll.id).toBe(poll.id);
+    }
+    expect(service.receiptMailTarget(tokens[0] ?? "", code)).toEqual({ ok: false, error: "receipt_limit" });
+  });
+
+  it("gives a request back when the message could not be sent", () => {
+    const { tokens } = openedPoll({ anonymity: "secret", emailReceipt: true });
+    const code = must(service.castBallot(tokens[0] ?? "", "for")).receipt;
+    for (let i = 0; i < 5; i++) {
+      must(service.receiptMailTarget(tokens[0] ?? "", code));
+      service.refundReceiptMail(tokens[0] ?? "");
+    }
+    expect(service.receiptMailTarget(tokens[0] ?? "", code).ok).toBe(true);
+  });
+
+  it("refuses a code that is not the poll's, a link that has not voted, an unknown link and a poll that has it off", () => {
+    const { tokens } = openedPoll({ anonymity: "secret", emailReceipt: true });
+    const code = must(service.castBallot(tokens[0] ?? "", "for")).receipt;
+    expect(service.receiptMailTarget(tokens[0] ?? "", "0000-0000-0000")).toEqual({ ok: false, error: "receipt_unknown" });
+    expect(service.receiptMailTarget(tokens[0] ?? "", "nonsense")).toEqual({ ok: false, error: "receipt_unknown" });
+    expect(service.receiptMailTarget(tokens[1] ?? "", code)).toEqual({ ok: false, error: "receipt_not_voted" });
+    expect(service.receiptMailTarget("AAAAAAAAAAAAAAAAAAAAAAAA", code)).toEqual({ ok: false, error: "unknown_link" });
+    const off = openedPoll({ anonymity: "secret" }, "x@example.com");
+    const offCode = must(service.castBallot(off.tokens[0] ?? "", "for")).receipt;
+    expect(service.receiptMailTarget(off.tokens[0] ?? "", offCode)).toEqual({ ok: false, error: "receipt_mail_off" });
+  });
+
+  it("tells the sender when a published secret poll would tie the address to the ballot", () => {
+    const { tokens } = openedPoll({ anonymity: "secret", emailReceipt: true, publishCount: true, timing: "close", audience: "anyone" });
+    const code = must(service.castBallot(tokens[0] ?? "", "for")).receipt;
+    expect(must(service.receiptMailTarget(tokens[0] ?? "", code)).publishesBallots).toBe(true);
+  });
+});

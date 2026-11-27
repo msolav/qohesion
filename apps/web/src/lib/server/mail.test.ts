@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Qohesion contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from "vitest";
-import { sendInvitations } from "./mail.js";
+import { sendInvitations, sendReceipt } from "./mail.js";
 
 const common = {
   locale: "en" as const,
@@ -44,5 +44,25 @@ describe("sending invitations", () => {
     const report = await sendInvitations([{ id: 1, address: "a@example.com", link: "https://vote.example.org/v/AAA" }], common);
     expect(report.sent).toEqual([]);
     expect(report.failed).toBe(1);
+  });
+});
+
+describe("sending a receipt", () => {
+  const input = { locale: "en" as const, organization: "Maple Court", poll: "Budget 2027", code: "K7QM-39XD-82HT", checkLink: "https://vote.example.org/r/abc", linksVoterToBallot: false };
+
+  it("sends one message to the one address, with the code and no voting link", async () => {
+    const seen: { to: string; text: string; tags: readonly string[] | undefined }[] = [];
+    const result = await sendReceipt(input, "a@example.com", async (m) => { seen.push({ to: m.to.email, text: m.text, tags: m.tags }); return { ok: true }; });
+    expect(result.ok).toBe(true);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.to).toBe("a@example.com");
+    expect(seen[0]?.text).toContain("K7QM-39XD-82HT");
+    expect(seen[0]?.text).not.toContain("/v/");
+    expect(seen[0]?.tags).toEqual(["receipt"]);
+  });
+
+  it("reports a failure and sends nothing when email is not configured", async () => {
+    expect((await sendReceipt(input, "a@example.com")).ok).toBe(false);
+    expect((await sendReceipt(input, "a@example.com", async () => ({ ok: false, reason: "daily budget used up" }))).reason).toBe("daily budget used up");
   });
 });

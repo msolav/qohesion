@@ -142,5 +142,6 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     lateRoll: text(data, "late_roll") === "yes",
     keyThreshold: text(data, "key_mode") === "shared" ? whole(text(data, "key_threshold")) : 1,
     disclosure: readDisclosure({ name: text(data, "disclosure_name"), email: text(data, "disclosure_email") }),
+    emailReceipt: text(data, "email_receipt") === "yes",
   };
 }

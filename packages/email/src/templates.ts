@@ -227,6 +227,61 @@ export function invitationMessage(input: InvitationInput, envelope: MessageEnvel
   return { lane: "voting", ...envelope, subject: r.subject, text: r.text, html: r.html, tags: ["invitation"] };
 }
 
+// --- Receipt of a ballot ----------------------------------------------------------------------------------------------
+
+export interface ReceiptInput {
+  readonly locale: EmailLocale;
+  readonly organization: string;
+  readonly poll: string;
+  /** The receipt code as shown after voting. */
+  readonly code: string;
+  /** The public page of the poll, where the code is looked up. It carries no personal link. */
+  readonly checkLink: string;
+  /**
+   * True when the poll is secret and publishes each ballot beside its code: the message then states that this address and
+   * this code are now held together by the mail provider.
+   */
+  readonly linksVoterToBallot: boolean;
+}
+
+export function renderReceipt(input: ReceiptInput): Rendered {
+  const org = cleanLabel(input.organization, 80);
+  const poll = cleanLabel(input.poll, 100);
+  const link = assertLink("checkLink", input.checkLink);
+  const code = cleanLabel(input.code, 40);
+  if (!/^[A-Z0-9-]+$/i.test(code)) throw new Error("The receipt code has an unexpected form");
+
+  if (input.locale === "fr") {
+    const blocks: Block[] = [
+      { h: `Reçu de bulletin: ${poll}` },
+      { p: `Un bulletin a été déposé dans le scrutin «${NBSP}${poll}${NBSP}», tenu par «${NBSP}${org}${NBSP}». Son code de reçu est le suivant.` },
+      { p: `Code de reçu: ${code}` },
+      { p: "Le code est calculé à partir du bulletin tel qu’il est conservé. Il ne révèle pas la réponse. À la fermeture du scrutin, la liste des codes est publiée: le code s’y retrouve." },
+      { link: { label: "Page où vérifier le code, après la fermeture:", url: link } },
+      ...(input.linksVoterToBallot ? [{ p: "Ce scrutin est secret et publie chaque bulletin à côté de son code. Ce message associe donc cette adresse à ce code, chez le fournisseur de courriel et dans la boîte de réception. Le conserver, ou le transférer, permet de retrouver la réponse dans la liste publiée." }] : []),
+      { note: "Ce message automatique a été demandé depuis la page de confirmation du vote. Les réponses ne sont pas lues." },
+    ];
+    return assemble("fr", `Reçu de bulletin: ${poll}`, blocks);
+  }
+
+  const blocks: Block[] = [
+    { h: `Ballot receipt: ${poll}` },
+    { p: `A ballot was recorded in the poll "${poll}", held by "${org}". Its receipt code is below.` },
+    { p: `Receipt code: ${code}` },
+    { p: "The code is computed from the ballot as stored. It does not reveal the answer. When the poll closes, the list of codes is published and the code can be found in it." },
+    { link: { label: "Page where the code can be checked, after the poll closes:", url: link } },
+    ...(input.linksVoterToBallot ? [{ p: "This poll is secret and publishes each ballot beside its code. This message therefore ties this address to this code, at the email provider and in the inbox. Keeping or forwarding it makes the answer findable in the published list." }] : []),
+    { note: "This automated message was requested from the confirmation page of the vote. Replies are not read." },
+  ];
+  return assemble("en", `Ballot receipt: ${poll}`, blocks);
+}
+
+/** The receipt of a ballot, sent to the address of the participant who asked for it, for the voting lane. */
+export function receiptMessage(input: ReceiptInput, envelope: MessageEnvelope): EmailMessage {
+  const r = renderReceipt(input);
+  return { lane: "voting", ...envelope, subject: r.subject, text: r.text, html: r.html, tags: ["receipt"] };
+}
+
 // --- Administrator sign-in ------------------------------------------------------------------------------------------
 
 export interface SignInInput {

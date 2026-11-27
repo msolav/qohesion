@@ -201,6 +201,8 @@ export interface Poll {
   readonly lateRoll: boolean;
   /** How a named poll shows each signatory in its list of answers. Null for a poll made before this was a setting. */
   readonly disclosure: Disclosure | null;
+  /** Participants may ask for their receipt code by email, once, from the confirmation page. Default: on for a named poll, off for a secret one. */
+  readonly emailReceipt: boolean;
   /** How the poll was approved when it was published. Null for a poll published before approvals existed. */
   readonly approval: PollApproval | null;
   /** Set when the poll was cancelled: when, by which key, and how many ballots had been cast. */
@@ -270,6 +272,8 @@ export interface PollInput {
   readonly lateRoll: boolean;
   /** How the list of signatories of a named poll reads. Absent: the default. */
   readonly disclosure?: Disclosure;
+  /** Whether a participant can ask for the receipt by email. Absent: on for a named poll, off for a secret one. */
+  readonly emailReceipt?: boolean;
   /** The administrator confirmed permission to contact the participants, which automatic reminders need. */
   readonly reminderPermission: boolean;
   /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
@@ -409,6 +413,8 @@ export class Service {
     addIfMissing("roll", rollColumns, "first_invited_on", "TEXT");
     addIfMissing("roll", rollColumns, "name", "TEXT");
     addIfMissing("polls", columns, "disclosure", "TEXT");
+    addIfMissing("polls", columns, "receipt_email", "INTEGER");
+    addIfMissing("roll", rollColumns, "receipt_mails", "INTEGER NOT NULL DEFAULT 0");
     // Links sent before the exact moment was kept count as sent, at the latest by the end of that day or now, so that a
     // reminder is not offered too early. Their count is one.
     this.#db.prepare("UPDATE roll SET invited_at = MIN(invited_on || 'T23:59:59.000Z', ?) WHERE invited_on IS NOT NULL AND invited_at IS NULL").run(this.#iso());
@@ -607,6 +613,8 @@ export class Service {
       ...(poll.questions.length > 1 ? { questions: poll.questions } : {}),
       // Likewise, only when set, so that polls made before it keep their digest.
       ...(poll.disclosure ? { disclosure: poll.disclosure } : {}),
+      // Only when it differs from what the anonymity gives by default, so that earlier polls keep their digest.
+      ...(poll.emailReceipt !== (poll.anonymity === "named") ? { emailReceipt: poll.emailReceipt } : {}),
     };
     const rollRows = this.#all("SELECT fingerprint, name FROM roll WHERE poll_id = ? ORDER BY fingerprint", poll.id);
     // Names are shown in the list of signatories, so a change of name is a change of what was approved. Without any name the digest is that of the fingerprints alone.
@@ -944,6 +952,7 @@ export class Service {
       paged: r["paged"] !== 0,
       lateRoll: r["late_roll"] !== 0,
       disclosure: typeof r["disclosure"] === "string" ? readDisclosure(r["disclosure"]) : null,
+      emailReceipt: r["receipt_email"] === 1 ? true : r["receipt_email"] === 0 ? false : r["anonymity"] === "named",
       approval: parseApproval(r["approval_json"]),
       cancelled: r["cancelled_by"] === null || r["cancelled_by"] === undefined ? null : { by: String(r["cancelled_by"]), ballots: Number(r["cancelled_ballots"] ?? 0) },
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
@@ -1085,9 +1094,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, late_roll, disclosure, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), this.#iso(),
+        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, late_roll, disclosure, receipt_email, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), (input.emailReceipt ?? input.anonymity === "named") ? 1 : 0, this.#iso(),
       );
       this.#writeQuestions(id, input);
       this.#log(id, session, "created", "");
@@ -1104,8 +1113,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ?, disclosure = ? WHERE id = ?",
-      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), pollId,
+      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ?, disclosure = ?, receipt_email = ? WHERE id = ?",
+      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), (input.emailReceipt ?? input.anonymity === "named") ? 1 : 0, pollId,
     );
     this.#writeQuestions(pollId, input);
     const next = this.getPoll(pollId);
@@ -1541,6 +1550,34 @@ export class Service {
     if (!r) return null;
     const poll = this.getPoll(String(r["poll_id"]));
     return poll ? { poll, status: String(r["status"]) as MemberStatus } : null;
+  }
+
+  /**
+   * Where the receipt of a ballot goes when its holder asks for it by email: the address on the roll for this link. The
+   * code must be one of the poll's own, the setting must be on, and a link can ask three times at most (a typing mistake
+   * in the inbox, a lost message), so that the form cannot be used to send mail without end. The count is kept on the roll.
+   */
+  receiptMailTarget(token: string, code: string): Result<{ address: string; poll: Poll; code: string; publishesBallots: boolean }> {
+    return this.#transaction((): Result<{ address: string; poll: Poll; code: string; publishesBallots: boolean }> => {
+      const row = this.#one("SELECT id, poll_id, address, status, receipt_mails FROM roll WHERE token_hash = ?", sha256hex(normalizeToken(token)));
+      if (!row) return problem("unknown_link");
+      const poll = this.getPoll(String(row["poll_id"]));
+      if (!poll) return problem("unknown_link");
+      if (!poll.emailReceipt) return problem("receipt_mail_off");
+      if (row["status"] !== "voted") return problem("receipt_not_voted");
+      const given = normalizeReceiptCode(code);
+      if (!given) return problem("receipt_unknown");
+      const own = this.#byLeaf(this.#all("SELECT entry FROM ballots WHERE poll_id = ?", poll.id)).some((b) => b.receipt === given);
+      if (!own) return problem("receipt_unknown");
+      if (Number(row["receipt_mails"]) >= 3) return problem("receipt_limit");
+      this.#db.prepare("UPDATE roll SET receipt_mails = receipt_mails + 1 WHERE id = ?").run(Number(row["id"]));
+      return ok({ address: String(row["address"]), poll, code: given, publishesBallots: poll.publishCount });
+    });
+  }
+
+  /** Gives back one of the three requests when the message could not be sent, so that a failure of the provider costs nothing. */
+  refundReceiptMail(token: string): void {
+    this.#db.prepare("UPDATE roll SET receipt_mails = MAX(receipt_mails - 1, 0) WHERE token_hash = ?").run(sha256hex(normalizeToken(token)));
   }
 
   /** The poll as a form of the engine, so that an answer is checked the same way as every other answer. */

@@ -16,6 +16,7 @@ const base: PropertyInput = {
   lateRoll: false,
   publishCount: false,
   lockCancel: false,
+  emailReceipt: false,
   disclosure: null,
   rules: { afterVotes: null, turnoutPercent: null, threshold: null },
   closes: "Dec. 1, 12:00",
@@ -25,7 +26,7 @@ describe("propertiesOf", () => {
   it("gives every property an icon, a label, a badge and a description, in both languages", () => {
     for (const locale of ["fr", "en"] as const) {
       const rows = propertiesOf(locale, { ...base, anonymity: "named", disclosure: { name: "masked", email: "masked" }, publishCount: true, lockCancel: true, allowChange: true, approval: { badge: "Approved", lines: ["Approved"] } });
-      expect(rows.map((r) => r.id)).toEqual(["method", "closing", "roll", "ballot", "list", "seal", "change", "results", "publication", "cancel", "approval"]);
+      expect(rows.map((r) => r.id)).toEqual(["method", "closing", "roll", "ballot", "list", "seal", "change", "receipt", "results", "publication", "cancel", "approval"]);
       for (const r of rows) {
         expect(r.icon, r.id).not.toBe("");
         expect(r.label, r.id).not.toBe("");
@@ -33,6 +34,17 @@ describe("propertiesOf", () => {
         expect(r.text.length, r.id).toBeGreaterThan(0);
       }
     }
+  });
+  it("says whether the receipt can be emailed, and warns where that ties an address to a published ballot", () => {
+    const off = propertiesOf("en", base).find((r) => r.id === "receipt");
+    expect(off?.badges).toEqual(["Copy or file only"]);
+    expect(off?.tone).toBe("neutral");
+    const on = propertiesOf("en", { ...base, emailReceipt: true }).find((r) => r.id === "receipt");
+    expect(on?.tone).toBe("open");
+    expect(on?.text.join(" ")).not.toContain("ties the address");
+    const ties = propertiesOf("fr", { ...base, emailReceipt: true, publishCount: true }).find((r) => r.id === "receipt");
+    expect(ties?.text.join(" ")).toContain("associe l’adresse au code");
+    expect(propertiesOf("en", { ...base, emailReceipt: true, anonymity: "named", publishCount: true, disclosure: { name: "full", email: "full" } }).find((r) => r.id === "receipt")?.text.join(" ")).not.toContain("ties the address");
   });
   it("marks a secret, encrypted poll as private and a named, plain one as open", () => {
     const secret = propertiesOf("en", base);

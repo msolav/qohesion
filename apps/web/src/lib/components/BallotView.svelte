@@ -39,6 +39,7 @@
     /** What the poll tells about its list of answers, its published count and cancelling. Absent for a poll that says nothing of them. */
     readonly publishCount?: boolean;
     readonly lockCancel?: boolean;
+    readonly emailReceipt?: boolean;
     readonly disclosure?: Disclosure | null;
     /** How the poll was approved when published. Absent in the builder preview and for older polls. */
     readonly approval?: { readonly rule: "none" | "majority" | "all"; readonly approvals: number; readonly eligible: number; readonly at: string; readonly digest: string; readonly confirmed?: number | undefined } | null;
@@ -125,6 +126,7 @@
       lateRoll: poll.lateRoll,
       publishCount: poll.publishCount ?? false,
       lockCancel: poll.lockCancel ?? false,
+      emailReceipt: poll.emailReceipt ?? false,
       disclosure: poll.disclosure ?? null,
       rules: poll.rules,
       closes: poll.closesAt ? when(poll.closesAt) : null,

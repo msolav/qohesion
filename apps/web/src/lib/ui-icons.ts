@@ -15,6 +15,7 @@ export const UI_ICONS: Readonly<Record<string, string>> = {
   users: ICONS["users"]?.d ?? "",
   list: "M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01",
   lock: "M4.5 7V5.5a3.5 3.5 0 0 1 7 0V7M3.5 7h9v6.5h-9zM8 9.6v1.6",
+  mail: "M2 3.5h12v9H2zM2.5 4l5.5 4.6L13.5 4",
   eye: "M1.5 8s2.3-4.5 6.5-4.5S14.5 8 14.5 8s-2.3 4.5-6.5 4.5S1.5 8 1.5 8zM9.8 8a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0z",
   pulse: "M1.5 8h3l2-4.5 3 9 2-4.5h3",
   shield: "M8 1.8l5 1.8v4c0 3-2.1 5.2-5 6.4-2.9-1.2-5-3.4-5-6.4v-4z",

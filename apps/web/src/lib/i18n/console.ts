@@ -42,6 +42,7 @@ export interface ConsoleMessages {
     readonly pagedLabel: string; readonly pagedHelp: string;
     readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
     readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "transparent" | "open">; readonly presetCustom: string;
+    readonly emailReceiptLabel: string; readonly emailReceiptHelp: string; readonly emailReceiptHelpSecret: string;
     readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
     readonly languagesTitle: string; readonly languagesHelp: string; readonly defaultLanguage: string; readonly missingLanguage: string;
@@ -91,6 +92,7 @@ export interface ConsoleMessages {
     readonly yourVote: string; readonly changeAllowed: string; readonly changeFinal: string; readonly opensOn: string; readonly alreadyVotedChange: string; readonly alsoCloses: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleEveryone: string; readonly ruleMajority: string; readonly rulePercent: string; readonly or: string;
     readonly ballotType: string; readonly ballotValue: string; readonly ballotNote: string; readonly submit: string; readonly legend: string; readonly problem: string;
     readonly doneTitle: string; readonly doneText: string; readonly doneLabel: string; readonly doneResults: string;
+    readonly receiptCopy: string; readonly receiptCopied: string; readonly receiptSave: string; readonly receiptMail: string; readonly receiptMailSent: string; readonly receiptMailKept: string; readonly receiptMailSecret: string; readonly receiptFile: string;
     readonly votedTitle: string; readonly votedText: string; readonly closedTitle: string; readonly closedText: string; readonly notOpenTitle: string; readonly notOpenText: string;
     readonly unknownTitle: string; readonly unknownText: string; readonly seeResults: string; readonly publicResults: string;
   };
@@ -241,6 +243,9 @@ const en: ConsoleMessages = {
       },
     },
     presetCustom: "Custom settings",
+    emailReceiptLabel: "Let participants email themselves the receipt",
+    emailReceiptHelp: "After voting, a participant can ask for the receipt code to be sent to the address that received the link. The message holds the code and the page that checks it, and no voting link. Copying and saving the code are always offered.",
+    emailReceiptHelpSecret: "Off by default for a secret poll. The email ties the participant's address to the receipt code, at the email provider and in the inbox. If the poll also publishes each ballot beside its code, whoever reads the email can find the answer.",
     publishLabel: "Publish the count after the poll closes",
     publishHelp: "Everyone who sees the results also sees the list of ballots, each with its receipt code and its choice. For encrypted ballots the counting key is published too. Anyone can then add the lines up and find their own ballot.",
     lockCancelLabel: "Do not allow cancelling once voting has begun",
@@ -495,6 +500,11 @@ const en: ConsoleMessages = {
     doneText: "Your ballot is recorded. Keep the receipt code. After the poll closes, you can use it to find your ballot in the ledger. The code does not show your choice.",
     doneLabel: "Receipt code",
     doneResults: "See the results",
+    receiptCopy: "Copy the code", receiptCopied: "Code copied", receiptSave: "Save as a file", receiptMail: "Email me the receipt",
+    receiptMailSent: "The receipt was sent to the address this link was sent to.",
+    receiptMailKept: "The message holds the code and the page where it can be checked. It holds no voting link.",
+    receiptMailSecret: "This poll is secret and publishes each ballot beside its code. The email ties your address to the code, at the email provider and in your inbox: whoever reads it can find your answer in the published list.",
+    receiptFile: "Receipt of a ballot\n\nPoll: {title}\nOrganization: {org}\nReceipt code: {code}\n\nAfter the poll closes, the code can be looked up here:\n{link}\n",
     votedTitle: "A ballot was already submitted with this link",
     votedText: "Each link counts once. The receipt code was shown once, when the ballot was recorded, and is not shown again. If you kept it, you can look it up in the ledger after the poll closes, to confirm your ballot is in the count.",
     closedTitle: "This poll is closed",
@@ -743,6 +753,12 @@ const en: ConsoleMessages = {
     options_too_many_total: "A poll can have up to 100 options in all.",
     roll_scheduled: "The roll is fixed once the poll is scheduled. Take the scheduling back to change it.",
     roll_locked: "This poll does not allow adding participants after it opens.",
+    receipt_mail_off: "This poll does not send receipts by email.",
+    receipt_not_voted: "No ballot was submitted with this link.",
+    receipt_unknown: "This receipt code is not one of this poll's.",
+    receipt_limit: "The receipt was already sent three times for this link.",
+    receipt_unavailable: "This installation cannot send email.",
+    receipt_failed: "The email could not be sent. The code above is still valid.",
     cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
     not_open: "This poll is not open yet.",
     already_voted: "A ballot was already submitted with this link.",
@@ -867,6 +883,9 @@ const fr: ConsoleMessages = {
       },
     },
     presetCustom: "Paramètres personnalisés",
+    emailReceiptLabel: "Permettre aux participants de s’envoyer le reçu par courriel",
+    emailReceiptHelp: "Après le vote, la personne peut demander que le code de reçu soit envoyé à l’adresse qui a reçu le lien. Le message contient le code et la page qui le vérifie, et aucun lien de vote. La copie et l’enregistrement du code sont toujours offerts.",
+    emailReceiptHelpSecret: "Désactivé par défaut pour un scrutin secret. Le courriel associe l’adresse de la personne au code de reçu, chez le fournisseur de courriel et dans la boîte de réception. Si le scrutin publie aussi chaque bulletin à côté de son code, la personne qui lit le courriel peut retrouver la réponse.",
     publishLabel: "Publier le décompte après la fermeture du scrutin",
     publishHelp: "Toutes les personnes qui voient les résultats voient aussi la liste des bulletins, chacun avec son code de reçu et son choix. Pour des bulletins chiffrés, la clé de dépouillement est publiée aussi. Chacun peut alors additionner les lignes et retrouver son bulletin.",
     lockCancelLabel: "Ne pas permettre l’annulation une fois le vote commencé",
@@ -1121,6 +1140,11 @@ const fr: ConsoleMessages = {
     doneText: "Votre bulletin est enregistré. Conserver le code de reçu. Après la fermeture du scrutin, il permet de retrouver le bulletin dans le registre. Le code ne montre pas votre choix.",
     doneLabel: "Code de reçu",
     doneResults: "Voir les résultats",
+    receiptCopy: "Copier le code", receiptCopied: "Code copié", receiptSave: "Enregistrer dans un fichier", receiptMail: "M’envoyer le reçu par courriel",
+    receiptMailSent: "Le reçu a été envoyé à l’adresse qui a reçu ce lien.",
+    receiptMailKept: "Le message contient le code et la page où le vérifier. Il ne contient aucun lien de vote.",
+    receiptMailSecret: "Ce scrutin est secret et publie chaque bulletin à côté de son code. Le courriel associe l’adresse au code, chez le fournisseur de courriel et dans la boîte de réception: la personne qui le lit peut retrouver la réponse dans la liste publiée.",
+    receiptFile: "Reçu de bulletin\n\nScrutin: {title}\nOrganisation: {org}\nCode de reçu: {code}\n\nÀ la fermeture du scrutin, le code se retrouve ici:\n{link}\n",
     votedTitle: "Un bulletin a déjà été déposé avec ce lien",
     votedText: "Chaque lien compte une seule fois. Le code de reçu a été affiché une seule fois, à l’enregistrement du bulletin, et n’est pas affiché de nouveau. Si le code a été conservé, il permet de retrouver le bulletin dans le registre après la fermeture, pour confirmer qu’il fait partie du décompte.",
     closedTitle: "Ce scrutin est fermé",
@@ -1369,6 +1393,12 @@ const fr: ConsoleMessages = {
     options_too_many_total: "Un scrutin peut avoir jusqu’à 100 options en tout.",
     roll_scheduled: "La liste est fixée une fois le scrutin planifié. Annuler la planification pour la modifier.",
     roll_locked: "Ce scrutin ne permet pas d’ajouter des participants après son ouverture.",
+    receipt_mail_off: "Ce scrutin n’envoie pas de reçu par courriel.",
+    receipt_not_voted: "Aucun bulletin n’a été déposé avec ce lien.",
+    receipt_unknown: "Ce code de reçu n’est pas un code de ce scrutin.",
+    receipt_limit: "Le reçu a déjà été envoyé trois fois pour ce lien.",
+    receipt_unavailable: "Cette installation ne peut pas envoyer de courriel.",
+    receipt_failed: "Le courriel n’a pas pu être envoyé. Le code ci-dessus reste valide.",
     cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",
     not_open: "Ce scrutin n’est pas encore ouvert.",
     already_voted: "Un bulletin a déjà été déposé avec ce lien.",

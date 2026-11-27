@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  assertLink, buildHeaders, cleanLabel, escapeHtml, formatMoment, renderInvitation, invitationMessage, renderSignIn, renderVerification,
+  assertLink, buildHeaders, cleanLabel, escapeHtml, formatMoment, renderInvitation, invitationMessage, renderReceipt, receiptMessage, renderSignIn, renderVerification,
   signInMessage, validateMessage, verificationMessage, type EmailLocale, type Rendered, type VerificationInput,
 } from "../src/index.js";
 
@@ -299,5 +299,35 @@ describe("invitation email", () => {
     const m = invitationMessage({ ...base, locale: "en" }, { from: { email: "noreply@qohesion.app" }, to: { email: "a@example.com" } });
     expect(m.lane).toBe("voting");
     expect(m.tags).toEqual(["invitation"]);
+  });
+});
+
+describe("receipt email", () => {
+  const base = { organization: "Maple Court", poll: "Budget 2027", code: "K7QM-39XD-82HT", checkLink: "https://vote.example.org/r/abc123", linksVoterToBallot: false } as const;
+
+  it("gives the code and the public page that checks it, in both languages, with no personal link", () => {
+    for (const locale of ["en", "fr"] as const) {
+      const r = renderReceipt({ ...base, locale });
+      expect(r.text).toContain("K7QM-39XD-82HT");
+      expect(r.text).toContain("https://vote.example.org/r/abc123");
+      expect(r.html).toContain('href="https://vote.example.org/r/abc123"');
+      expect(r.html).not.toContain("<img");
+      expect(r.text).not.toContain("/v/");
+    }
+    expect(renderReceipt({ ...base, locale: "fr" }).text).not.toMatch(/ [:;!?]/);
+  });
+
+  it("warns that address and code are tied together only where a secret poll publishes its ballots", () => {
+    expect(renderReceipt({ ...base, locale: "en" }).text).not.toContain("ties this address");
+    expect(renderReceipt({ ...base, locale: "en", linksVoterToBallot: true }).text).toContain("ties this address to this code");
+    expect(renderReceipt({ ...base, locale: "fr", linksVoterToBallot: true }).text).toContain("associe donc cette adresse à ce code");
+  });
+
+  it("refuses a code of an unexpected form and a link that is not https, and builds a voting-lane message", () => {
+    expect(() => renderReceipt({ ...base, locale: "en", code: "<b>x</b>" })).toThrow();
+    expect(() => renderReceipt({ ...base, locale: "en", checkLink: "javascript:alert(1)" })).toThrow();
+    const m = receiptMessage({ ...base, locale: "en" }, { from: { email: "noreply@qohesion.app" }, to: { email: "a@example.com" } });
+    expect(m.lane).toBe("voting");
+    expect(m.tags).toEqual(["receipt"]);
   });
 });

@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { accessTo } from "#lib/results-rules.js";
 import { localize } from "#lib/poll-i18n.js";
 import { isTestEdition, service } from "#lib/server/runtime.js";
+import { mailConfigured, sendReceipt } from "#lib/server/mail.js";
 
 export const load: PageServerLoad = ({ params, locals, url }) => {
   if (!isTestEdition()) error(404, "Not found");
@@ -14,7 +15,7 @@ export const load: PageServerLoad = ({ params, locals, url }) => {
   const text = localize(poll, locals.locale);
   const base = {
     organization: poll.organization,
-    poll: { id: poll.id, title: text.title, question: text.question, description: text.description, options: text.options, questions: text.questions, timing: poll.timing, audience: poll.audience, closesAt: poll.closesAt, rollCount: poll.rollCount, rollCode: poll.rollCode, encrypted: poll.encrypted, markFill: poll.markFill, anonymity: poll.anonymity, allowChange: poll.allowChange, lateRoll: poll.lateRoll, publishCount: poll.publishCount, lockCancel: poll.lockCancel, disclosure: poll.disclosure, approval: poll.approval, paged: poll.paged && url.searchParams.get("view") !== "all", rules: poll.rules, cancelled: poll.cancelled, closedAt: poll.closedAt, timeZone: space?.timeZone ?? "America/Toronto", opensAt: poll.opensAt },
+    poll: { id: poll.id, title: text.title, question: text.question, description: text.description, options: text.options, questions: text.questions, timing: poll.timing, audience: poll.audience, closesAt: poll.closesAt, rollCount: poll.rollCount, rollCode: poll.rollCode, encrypted: poll.encrypted, markFill: poll.markFill, anonymity: poll.anonymity, allowChange: poll.allowChange, lateRoll: poll.lateRoll, publishCount: poll.publishCount, lockCancel: poll.lockCancel, disclosure: poll.disclosure, emailReceipt: poll.emailReceipt && mailConfigured(), receiptListed: poll.publishCount, approval: poll.approval, paged: poll.paged && url.searchParams.get("view") !== "all", rules: poll.rules, cancelled: poll.cancelled, closedAt: poll.closedAt, timeZone: space?.timeZone ?? "America/Toronto", opensAt: poll.opensAt },
     canSeeResults: accessTo(poll, "voter").totals || poll.status === "closed",
   };
   if (poll.status === "cancelled") return { state: "cancelled" as const, ...base };
@@ -26,9 +27,11 @@ export const load: PageServerLoad = ({ params, locals, url }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ request, params }) => {
+  // One action, since a page loaded before the receipt form existed posts to it too: a field named intent tells the two apart.
+  default: async ({ request, params, locals, url }) => {
     if (!isTestEdition()) error(404, "Not found");
     const data = await request.formData().catch(() => undefined);
+    if (data?.get("intent") === "receipt") return receiptMail(params.token, String(data.get("receipt") ?? ""), locals.locale, url.origin);
     // One value for each question, in a field named a_<question id>. Several values for one question are refused for it.
     const answers: Record<string, string> = {};
     for (const key of new Set(data ? [...data.keys()] : [])) {
@@ -44,3 +47,17 @@ export const actions: Actions = {
     return { receipt: result.value.receipt };
   },
 };
+
+/** The receipt of a recorded ballot, sent to the address of the link when the poll allows it. */
+async function receiptMail(token: string, code: string, locale: "fr" | "en", origin: string) {
+  if (!mailConfigured()) return fail(400, { receiptMail: "receipt_unavailable", receipt: code });
+  const target = service().receiptMailTarget(token, code);
+  if (!target.ok) return fail(400, { receiptMail: target.error, receipt: code });
+  const { poll } = target.value;
+  const sent = await sendReceipt(
+    { locale, organization: poll.organization, poll: localize(poll, locale).title, code: target.value.code, checkLink: `${origin}/r/${poll.id}`, linksVoterToBallot: poll.anonymity === "secret" && target.value.publishesBallots },
+    target.value.address,
+  );
+  if (!sent.ok) service().refundReceiptMail(token);
+  return sent.ok ? { receiptMail: "sent", receipt: target.value.code } : fail(502, { receiptMail: "receipt_failed", receipt: target.value.code });
+}

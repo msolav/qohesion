@@ -31,13 +31,14 @@ export interface MethodText {
   readonly limits: readonly string[];
 }
 
-export type PropertyId = "method" | "closing" | "roll" | "ballot" | "seal" | "change" | "results" | "list" | "publication" | "cancel" | "approval";
+export type PropertyId = "method" | "closing" | "roll" | "ballot" | "seal" | "change" | "results" | "receipt" | "list" | "publication" | "cancel" | "approval";
 
 export interface GuideMessages {
   readonly props: {
     readonly labels: Readonly<Record<PropertyId, string>>;
     readonly learn: string;
     readonly newTab: string;
+    readonly receiptMail: { readonly on: string; readonly off: string; readonly onText: string; readonly offText: string; readonly tiesText: string };
     readonly method: Readonly<Record<"yes-no" | "single", { readonly badge: string; readonly text: string }>>;
     readonly methodMany: { readonly badge: string; readonly text: string };
     readonly closingPlain: string;
@@ -99,9 +100,16 @@ export interface GuideMessages {
 
 const en: GuideMessages = {
   props: {
-    labels: { method: "Question", closing: "Closing", roll: "Participants", ballot: "Who can tell who voted what", seal: "Encryption", change: "Changing a vote", results: "Results", list: "List of signatories", publication: "Published count", cancel: "Cancelling", approval: "Approval" },
+    labels: { method: "Question", closing: "Closing", roll: "Participants", ballot: "Who can tell who voted what", seal: "Encryption", change: "Changing a vote", results: "Results", receipt: "Receipt", list: "List of signatories", publication: "Published count", cancel: "Cancelling", approval: "Approval" },
     learn: "How this works",
     newTab: "opens in a new tab",
+    receiptMail: {
+      on: "Sent by email on request",
+      off: "Copy or file only",
+      onText: "After voting, a participant can copy the receipt code, save it as a file, or ask for it by email. The message goes to the address that received the link. It holds the code and the page where the code is checked, and no voting link.",
+      offText: "After voting, a participant can copy the receipt code or save it as a file. No email is sent.",
+      tiesText: "On this poll the email ties the address to the code, and the published list shows each ballot beside its code.",
+    },
     method: {
       "yes-no": { badge: "In favour, against, abstention", text: "A proposal to adopt or reject. Each participant gives one of three answers. The answer with the most ballots leads." },
       single: { badge: "One choice among several", text: "Each participant picks one option from a list. The option with the most ballots leads. A majority is not required unless a closing rule sets a threshold." },
@@ -258,6 +266,7 @@ const en: GuideMessages = {
         limits: [
           "The ledger shows that nothing recorded was changed afterwards. It does not show that the answer was recorded as the participant gave it.",
           "A participant sees their own answer next to their code only if the poll publishes its count.",
+          "A receipt sent by email ties the address to the code in the inbox and at the email provider. Where a secret poll publishes each ballot beside its code, that email lets whoever reads it find the answer. The setting is off by default for a secret poll.",
         ],
       },
       publication: {
@@ -433,9 +442,16 @@ const en: GuideMessages = {
 
 const fr: GuideMessages = {
   props: {
-    labels: { method: "Question", closing: "Fermeture", roll: "Participants", ballot: "Qui peut savoir qui a voté quoi", seal: "Chiffrement", change: "Modification du vote", results: "Résultats", list: "Liste des signataires", publication: "Décompte publié", cancel: "Annulation", approval: "Approbation" },
+    labels: { method: "Question", closing: "Fermeture", roll: "Participants", ballot: "Qui peut savoir qui a voté quoi", seal: "Chiffrement", change: "Modification du vote", results: "Résultats", receipt: "Reçu", list: "Liste des signataires", publication: "Décompte publié", cancel: "Annulation", approval: "Approbation" },
     learn: "Comment cela fonctionne",
     newTab: "s’ouvre dans un nouvel onglet",
+    receiptMail: {
+      on: "Envoyé par courriel sur demande",
+      off: "Copie ou fichier seulement",
+      onText: "Après le vote, la personne peut copier le code de reçu, l’enregistrer dans un fichier ou le demander par courriel. Le message est envoyé à l’adresse qui a reçu le lien. Il contient le code et la page où le vérifier, et aucun lien de vote.",
+      offText: "Après le vote, la personne peut copier le code de reçu ou l’enregistrer dans un fichier. Aucun courriel n’est envoyé.",
+      tiesText: "Dans ce scrutin, le courriel associe l’adresse au code, et la liste publiée montre chaque bulletin à côté de son code.",
+    },
     method: {
       "yes-no": { badge: "Pour, contre, abstention", text: "Une proposition à adopter ou à rejeter. Chaque participant donne l’une des trois réponses. La réponse qui a le plus de bulletins est en tête." },
       single: { badge: "Un choix parmi plusieurs", text: "Chaque participant choisit une option dans une liste. L’option qui a le plus de bulletins est en tête. Une majorité n’est pas exigée, sauf si une règle de fermeture fixe un seuil." },
@@ -592,6 +608,7 @@ const fr: GuideMessages = {
         limits: [
           "Le registre montre que rien de ce qui a été enregistré n’a été modifié ensuite. Il ne montre pas que la réponse a été enregistrée telle que le participant l’a donnée.",
           "Un participant ne voit sa propre réponse à côté de son code que si le vote publie son décompte.",
+          "Un reçu envoyé par courriel associe l’adresse au code, dans la boîte de réception et chez le fournisseur de courriel. Lorsqu’un scrutin secret publie chaque bulletin à côté de son code, ce courriel permet à la personne qui le lit de retrouver la réponse. Le réglage est désactivé par défaut pour un scrutin secret.",
         ],
       },
       publication: {
