@@ -125,7 +125,7 @@ test("the home page opens with the brand line, runs the real ballot screen and o
     });
     assert.ok(!frames[0]?.[3]?.includes("lazy"), `${lang}: only the hero frame loads at once`);
     assert.ok(frames.every((f) => (f[2] ?? "").length > 10), `${lang}: a frame has no name`);
-    assert.ok(html.includes('href="https://github.com/msolav/qohesion"') && html.includes('href="https://www.instagram.com/qohesion/"'), `${lang}: source and Instagram links`);
+    assert.ok(html.includes('href="https://github.com/msolav/qohesion"') && html.includes('href="https://www.instagram.com/qohesion/"') && html.includes('href="https://www.facebook.com/qohesion/"'), `${lang}: source, Instagram and Facebook links`);
     assert.equal((html.match(/<section /g) ?? []).length, 7, `${lang}: expected seven sections`);
     assert.ok(html.includes("data-carousel") && html.includes("data-controls hidden") && (html.match(/aria-roledescription="slide"/g) ?? []).length === TEMPLATES.length, `${lang}: the carousel is incomplete`);
     assert.equal((html.match(/<li><svg class="glyph"/g) ?? []).length, 5, `${lang}: the safety diagram has five steps`);

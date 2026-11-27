@@ -57,7 +57,10 @@ export const PAGES = [
 ];
 
 /** Accounts of the project on other sites. Only accounts that exist are listed. */
-export const SOCIAL = [{ id: "instagram", label: "Instagram", href: "https://www.instagram.com/qohesion/" }];
+export const SOCIAL = [
+  { id: "instagram", label: "Instagram", href: "https://www.instagram.com/qohesion/" },
+  { id: "facebook", label: "Facebook", href: "https://www.facebook.com/qohesion/" },
+];
 
 /** The words of the frame around the pages. */
 export const STRINGS = {
