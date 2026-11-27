@@ -2,6 +2,7 @@
   import { enhance } from "$app/forms";
   import ConfirmAction from "#lib/components/ConfirmAction.svelte";
   import CopyButton from "#lib/components/CopyButton.svelte";
+  import RollStrip from "#lib/components/RollStrip.svelte";
   import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
   import { optionLabel } from "#lib/option-labels.js";
   import { liveResultsWarning } from "#lib/results-rules.js";
@@ -29,23 +30,27 @@
 {/if}
 {#if form?.error && !form.step}<p class="cx-notice error" role="alert">{errorText(m, form.error)}</p>{/if}
 
-<p class="cx-notice" class:warn={poll.status === "draft"}>
+{#if poll.status === "draft" || poll.status === "scheduled" || poll.status === "cancelled"}<p class="cx-notice" class:warn={poll.status === "draft"}>
   {poll.status === "draft" ? m.poll.draftNote : poll.status === "cancelled" ? m.poll.cancelledNote : poll.status === "scheduled" ? fill(m.poll.scheduledNote, { date: poll.opensAt ? at(poll.opensAt) : "" }) : poll.status === "open" ? m.poll.openNote2 : m.poll.closedNote}
-</p>
+</p>{/if}
 {#if warn}<p class="cx-notice warn" role="note">{m.form.smallRoll}</p>{/if}
 
 <section class="cx-section" aria-labelledby="facts-h">
   <h2 id="facts-h" class="gap">{m.poll.facts}</h2>
-  <dl class="cx-stats">
-    <div class="cx-stat"><dt>{m.poll.rollCount}</dt><dd>{poll.rollCount ?? data.rollSize}</dd></div>
-    <div class="cx-stat"><dt>{m.poll.voted}</dt><dd>{data.turnout ?? "–"}</dd></div>
-    <div class="cx-stat">
-      <dt>{m.poll.turnout}</dt>
-      <dd>{#if data.turnout !== null && (poll.rollCount ?? 0) > 0}{Math.round((data.turnout / (poll.rollCount ?? 1)) * 100)}<small> %</small>{:else}–{/if}</dd>
+  <div class="cx-progress">
+    <div class="cx-turnout">
+      <p class="figure"><b>{data.turnout ?? 0}</b><span>{m.results.of} {poll.rollCount ?? data.rollSize}</span></p>
+      <p class="cx-help">{m.poll.voted}{#if data.turnout !== null && (poll.rollCount ?? 0) > 0}<span class="sep" aria-hidden="true">·</span>{Math.round((data.turnout / (poll.rollCount ?? 1)) * 100)} %{/if}</p>
+      <RollStrip total={poll.rollCount ?? data.rollSize} voted={data.turnout ?? 0} label={`${data.turnout ?? 0} ${m.results.of} ${poll.rollCount ?? data.rollSize}`} />
     </div>
-    <div class="cx-stat"><dt>{m.poll.rollCode}</dt><dd class="code">{poll.rollCode ?? "–"}</dd></div>
-  </dl>
-  {#if poll.rollCode}<p class="cx-help gap">{m.poll.rollCodeNote}</p>{/if}
+    {#if poll.rollCode}
+      <div class="cx-stub">
+        <p class="cx-help">{m.poll.rollCode}</p>
+        <p class="code">{poll.rollCode}</p>
+        <p class="cx-help">{m.poll.rollCodeNote}</p>
+      </div>
+    {/if}
+  </div>
 </section>
 
 <section class="cx-section" aria-labelledby="settings-h">

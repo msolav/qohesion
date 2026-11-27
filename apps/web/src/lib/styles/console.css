@@ -25,6 +25,9 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 :where(.cx,.cx-embed) :is(ul,ol){list-style:none}
 :is(.cx,.cx-embed) code,:is(.cx,.cx-embed) .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;overflow-wrap:anywhere}
 
+@font-face{font-family:"Outfit";src:url(../assets/fonts/outfit-latin.woff2) format("woff2");font-weight:100 900;font-display:swap}
+:is(.cx,.cx-embed){--display:Outfit,var(--font),system-ui,sans-serif}
+
 /* Test edition notice */
 .cx-edition{background:var(--deep);border-bottom:1px solid var(--rule);color:var(--soft);font-size:.9rem}
 .cx-edition>div{display:flex;gap:var(--space-3);align-items:baseline;max-width:68rem;margin:0 auto;padding:var(--space-2) var(--space-4)}
@@ -450,3 +453,48 @@ dialog.cx-dialog h2{font-size:1.25rem;margin:0 0 var(--space-3);color:#fff}
 dialog.cx-dialog p{margin:0 0 var(--space-5);color:var(--soft)}
 dialog.cx-dialog .cx-actions{justify-content:flex-end}
 @media (prefers-reduced-motion:reduce){dialog.cx-dialog[open]{animation:none}}
+
+/* ---- Personality: the ballot, the roll and the stub, drawn in the console's own terms ---- */
+/* Headings and figures speak in the brand's lettering */
+.cx h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em}
+.cx-stat dd,.cx-turnout .figure,.cx-bar .row .count{font-family:var(--display)}
+
+/* A section starts under a perforation, like a slip torn from a book */
+.cx-section{position:relative;margin-top:var(--space-7);padding-top:var(--space-6)}
+.cx-section::before{content:"";position:absolute;inset:0 0 auto 0;border-top:2px dashed var(--rule)}
+
+/* The roll as seats */
+.roll-strip{display:flex;flex-wrap:wrap;gap:5px;margin:var(--space-3) 0 0;padding:0}
+.roll-strip li{width:.75rem;height:.75rem;border:1.5px solid var(--rule);border-radius:50%;transition:background-color .3s ease-out,border-color .3s ease-out}
+.roll-strip li.on{background:var(--mint);border-color:var(--mint)}
+.roll-strip.wide{gap:3px}
+.roll-strip.wide li{width:.45rem;height:.45rem}
+.cx-item .side{display:grid;justify-items:end;gap:var(--space-2);min-width:0}
+.cx-item .roll-strip{justify-content:flex-end;max-width:22rem;margin:0}
+@media (max-width:43.99rem){.cx-item .side{justify-items:start}.cx-item .roll-strip{justify-content:flex-start}}
+
+.cx-progress{display:grid;gap:var(--space-5);margin-top:var(--space-4);grid-template-columns:minmax(0,1fr)}
+@media (min-width:44rem){.cx-progress{grid-template-columns:minmax(0,1fr) 17rem;align-items:stretch}}
+.cx-turnout .figure{display:flex;align-items:baseline;gap:var(--space-3);margin:0}
+.cx-turnout .figure b{font-size:clamp(2.6rem,7vw,3.6rem);line-height:1;font-weight:700;letter-spacing:-.02em;color:#fff;font-variant-numeric:tabular-nums}
+.cx-turnout .figure span{color:var(--soft);font-size:1.15rem}
+
+/* The roll code as a stub with notches on its torn edge */
+.cx-stub{position:relative;display:grid;align-content:center;gap:var(--space-1);padding:var(--space-4) var(--space-5);background:var(--raised);border:1.5px dashed var(--rule);border-radius:var(--r)}
+.cx-stub .code{margin:0;font-family:var(--display);font-size:1.3rem;font-weight:700;letter-spacing:.05em;white-space:nowrap;color:#fff;overflow-wrap:anywhere}
+.cx-stub::before,.cx-stub::after{content:"";position:absolute;left:-.55rem;width:1.1rem;height:1.1rem;border-radius:50%;background:var(--night);border:1.5px solid var(--rule);clip-path:inset(0 0 0 50%)}
+.cx-stub::before{top:-.55rem;clip-path:inset(50% 0 0 50%)}
+.cx-stub::after{bottom:-.55rem;clip-path:inset(0 0 50% 50%)}
+
+/* The empty state: a ballot box with a slip going in */
+.cx-empty .ballot-box{display:block;margin:0 auto var(--space-5);color:var(--dim)}
+.cx-empty .ballot-box .slip{animation:slip-in 2.8s cubic-bezier(.16,1,.3,1) infinite}
+@keyframes slip-in{0%,100%{transform:translateY(-10px);opacity:0}25%,70%{transform:translateY(0);opacity:1}90%{transform:translateY(12px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.cx-empty .ballot-box .slip{animation:none}}
+
+/* A bar on the results can be read against the half of the roll that makes a majority */
+.cx-bar .track{position:relative}
+.cx-bar .track::after{content:"";position:absolute;top:-3px;bottom:-3px;left:50%;width:1.5px;background:var(--dim);opacity:.65}
+.cx-bar .fill{box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+
+.cx-help .sep{margin:0 var(--space-2)}
