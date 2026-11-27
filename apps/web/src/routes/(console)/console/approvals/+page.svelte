@@ -12,6 +12,7 @@
 
 <h1>{m.approval.title}</h1>
 <p class="cx-help">{m.approval.lede}</p>
+<p><a href="/console/record">{m.record.link}</a></p>
 {#if data.administrators < 2}<p class="cx-notice gap" role="note">{m.approval.onlyOne}</p>{/if}
 {#if form && "error" in form && form.error}<p class="cx-error gap" role="alert">{errorText(m, form.error)}</p>{/if}
 

@@ -67,6 +67,8 @@ export interface ApprovalContext {
   administratorsOf(spaceId: string): { id: string; label: string }[];
   /** Carries out an approved request. False when it cannot be done any more. */
   apply(request: ApprovalRequest): boolean;
+  /** Adds an event to the organization's record. */
+  log(spaceId: string, kind: string, actor: string, detail: Record<string, unknown>): void;
 }
 
 export interface Proposer {
@@ -110,7 +112,11 @@ export class ApprovalStore {
     this.#db
       .prepare("INSERT INTO approval_requests (id, space_id, kind, subject, digest, payload, proposer_id, proposer_label, eligible, eligible_ids, policy, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')")
       .run(id, spaceId, kind, subject, digest, JSON.stringify(payload), who.keyId, who.label, admins.length, JSON.stringify(admins.map((a) => a.id)), JSON.stringify(policy), at.toISOString(), new Date(at.getTime() + policy.delayHours * ONE_HOUR).toISOString());
-    if (admins.some((a) => a.id === who.keyId)) this.#record(id, who, "approve");
+    this.#ctx.log(spaceId, "request_created", who.label, { id, kind, subject, digest, eligible: admins.length });
+    if (admins.some((a) => a.id === who.keyId)) {
+      this.#record(id, who, "approve");
+      this.#ctx.log(spaceId, "request_answered", who.label, { id, answer: "approve" });
+    }
     return this.#evaluate(id);
   }
 
@@ -122,6 +128,7 @@ export class ApprovalStore {
     // Only those who were eligible when the request was made. A key made or revoked since changes nothing.
     if (!request.eligibleIds.includes(who.keyId)) return null;
     this.#record(requestId, who, answer);
+    this.#ctx.log(spaceId, "request_answered", who.label, { id: requestId, answer });
     return this.#evaluate(requestId);
   }
 
@@ -167,7 +174,9 @@ export class ApprovalStore {
 
   /** Marks an approved request as used (a poll was published, a change applied). */
   consume(requestId: string): void {
+    const row = this.#db.prepare("SELECT space_id, kind FROM approval_requests WHERE id = ? AND status = 'approved'").get(requestId);
     this.#db.prepare("UPDATE approval_requests SET status = 'applied' WHERE id = ? AND status = 'approved'").run(requestId);
+    if (row) this.#ctx.log(String(row["space_id"]), "request_used", "system", { id: requestId, kind: String(row["kind"]) });
   }
 
   #record(requestId: string, who: Proposer, answer: Answer): void {
@@ -178,6 +187,8 @@ export class ApprovalStore {
 
   /** Requests past their delay without a decision lapse. */
   #expire(): void {
+    const due = this.#db.prepare("SELECT id, space_id FROM approval_requests WHERE status = 'pending' AND expires_at <= ?").all(this.#now().toISOString());
+    for (const r of due) this.#ctx.log(String(r["space_id"]), "request_lapsed", "system", { id: String(r["id"]) });
     this.#db.prepare("UPDATE approval_requests SET status = 'lapsed', decided_at = expires_at WHERE status = 'pending' AND expires_at <= ?").run(this.#now().toISOString());
   }
 
@@ -189,13 +200,16 @@ export class ApprovalStore {
     const at = this.#now().toISOString();
     if (built.tally.outcome === "approved") {
       this.#db.prepare("UPDATE approval_requests SET status = 'approved', decided_at = ? WHERE id = ?").run(at, requestId);
+      this.#ctx.log(built.spaceId, "request_approved", "system", { id: requestId, kind: built.kind });
       // Changes that need nothing more from anyone are applied now. A poll waits to be opened by an administrator.
       if (APPLIED_ON_APPROVAL.has(built.kind)) {
         const done = this.#ctx.apply({ ...built, status: "approved", decidedAt: at });
         this.#db.prepare("UPDATE approval_requests SET status = ? WHERE id = ?").run(done ? "applied" : "blocked", requestId);
+        this.#ctx.log(built.spaceId, done ? "request_used" : "request_blocked", "system", { id: requestId, kind: built.kind });
       }
     } else if (built.tally.outcome === "rejected") {
       this.#db.prepare("UPDATE approval_requests SET status = 'rejected', decided_at = ? WHERE id = ?").run(at, requestId);
+      this.#ctx.log(built.spaceId, "request_rejected", "system", { id: requestId, kind: built.kind });
     }
     return this.#build(this.#db.prepare("SELECT * FROM approval_requests WHERE id = ?").get(requestId) ?? row);
   }

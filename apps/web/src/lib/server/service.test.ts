@@ -964,6 +964,61 @@ describe("confirming the organization's details", () => {
   });
 });
 
+describe("the record of governance events", () => {
+  const kinds = (record: ReturnType<Service["governanceRecord"]>) => (record?.entries ?? []).map((e) => e.kind).reverse();
+
+  it("records what happens, in order, with a root and a checkpoint", () => {
+    const key = must(service.createKey(owner, { label: "Clerk", owner: false, administrator: true }));
+    expect(key.key).toMatch(/^QK-/);
+    must(service.confirmSetup(owner, service.setupStatus(owner.spaceId)?.digest ?? ""));
+    const record = service.governanceRecord(owner);
+    expect(kinds(record)).toEqual(["space_created", "key_created", "setup_confirmed"]);
+    expect(record).toMatchObject({ size: 3, intact: true, brokenAt: null });
+    expect(record?.root).toMatch(/^[0-9a-f]{64}$/);
+    expect(record?.checkpoint).toBe(`qohesion-record-v1\nspace ${owner.spaceId}\nsize 3\nroot ${record?.root}\n`);
+    // A key's value is never in the record.
+    expect(JSON.stringify(service.governanceDownload(owner))).not.toContain(key.key);
+  });
+
+  it("records requests, answers, decisions and publications", () => {
+    const key = must(service.createKey(owner, { label: "Clerk", owner: false, administrator: true }));
+    const clerk = service.session(service.signIn(key.key) ?? "") as Session;
+    must(service.setApprovalPolicy(owner, { rule: "all", abstention: "neutral", delayHours: 168 }));
+    const poll = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    const asked = must(service.requestPublication(owner, poll.id)).request;
+    must(service.answerApproval(clerk, asked?.id ?? "", "approve", asked?.digest ?? ""));
+    must(service.openPoll(owner, poll.id));
+    const seen = kinds(service.governanceRecord(owner));
+    for (const kind of ["policy_changed", "request_created", "request_answered", "request_approved", "poll_published", "request_used"]) expect(seen).toContain(kind);
+  });
+
+  it("shows the chain broken at the first entry that was changed, and the root changes", () => {
+    const db = new DatabaseSync(":memory:");
+    const secret = new Uint8Array(32).fill(7);
+    const svc = new Service(db, { secret, now: () => now });
+    const created = must(svc.createSpace({ name: "Org", locale: "en" }));
+    const session = svc.session(svc.signIn(created.key) ?? "") as Session;
+    must(svc.createKey(session, { label: "A", owner: false, administrator: true }));
+    must(svc.createKey(session, { label: "B", owner: false, administrator: true }));
+    const before = svc.governanceRecord(session);
+    expect(before?.intact).toBe(true);
+    // Rewriting an earlier entry breaks the link that the next entry holds.
+    const row = db.prepare("SELECT entry FROM governance_log WHERE seq = 1").get();
+    db.prepare("UPDATE governance_log SET entry = ? WHERE seq = 1").run(String(row?.["entry"]).replace('"label":"A"', '"label":"Z"'));
+    const after = svc.governanceRecord(session);
+    expect(after).toMatchObject({ intact: false, brokenAt: 2 });
+    expect(after?.root).not.toBe(before?.root);
+    // Cutting the record from the end changes the size.
+    db.prepare("DELETE FROM governance_log WHERE seq = 2").run();
+    expect(svc.governanceRecord(session)?.size).toBe(2);
+  });
+
+  it("is for administrators and owners only", () => {
+    expect(service.governanceRecord({ ...owner, owner: false, administrator: false })).toBeNull();
+  });
+});
+
 describe("the organization's name", () => {
   const rename = (name: string) => service.updateSpace(owner, { name, locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" });
 

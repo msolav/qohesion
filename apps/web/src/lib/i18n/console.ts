@@ -109,6 +109,11 @@ export interface ConsoleMessages {
     readonly report: string; readonly reportFailed: string; readonly sentOn: string; readonly notYet: string; readonly onlyOpen: string; readonly nothingToSend: string;
   };
   readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
+  readonly record: {
+    readonly title: string; readonly lede: string; readonly checkpoint: string; readonly intact: string; readonly broken: string; readonly download: string;
+    readonly keepHelp: string; readonly entries: string; readonly when: string; readonly what: string; readonly who: string; readonly link: string;
+    readonly kinds: Readonly<Record<string, string>>;
+  };
   readonly approval: {
     readonly title: string; readonly lede: string; readonly empty: string; readonly openTitle: string; readonly recentTitle: string;
     readonly kindPublish: string; readonly kindPolicy: string; readonly kindSettings: string; readonly kindOpenScheduled: string; readonly kindClose: string; readonly kindCancel: string; readonly kindAddRoll: string; readonly kindAddKey: string; readonly kindRevokeKey: string; readonly kindDelete: string;
@@ -567,6 +572,21 @@ const en: ConsoleMessages = {
     nothingToSend: "There is nobody to send to. Everyone has voted or has already received a link.",
   },
   gate: { title: "Private test", lede: "This test is shared with chosen people. Enter the password to continue.", label: "Password", submit: "Continue", invalid: "This password is not correct." },
+  record: {
+    title: "Record of changes",
+    lede: "Every request, answer and change to the organization is added to a record. Each entry holds the hash of the one before it, and the whole record has a root. Keep a checkpoint: a record that is later cut or rewritten no longer matches it.",
+    checkpoint: "Checkpoint",
+    intact: "Every entry follows from the one before it.",
+    broken: "The chain is broken at entry {n}.",
+    download: "Download the record",
+    keepHelp: "Compare a checkpoint kept earlier with this one. The size can only grow, and the root changes with every entry.",
+    entries: "Entries: {n}",
+    when: "When",
+    what: "What",
+    who: "By",
+    link: "Record of changes",
+    kinds: { space_created: "Organization set up", space_updated: "Details changed", policy_changed: "Approval rule changed", key_created: "Key created", key_revoked: "Key revoked", setup_confirmed: "Details confirmed", poll_published: "Poll published", request_created: "Approval asked", request_answered: "Answer given", request_approved: "Request approved", request_rejected: "Request rejected", request_lapsed: "Request lapsed", request_used: "Approval used", request_blocked: "Approval could not be applied" },
+  },
   approval: {
     title: "Approvals",
     lede: "Changes that need the agreement of the other administrators wait here. Each one shows exactly what it covers. If a draft changes after approval was asked, the earlier answers no longer count.",
@@ -1177,6 +1197,21 @@ const fr: ConsoleMessages = {
     nothingToSend: "Personne à qui envoyer. Tous ont voté ou ont déjà reçu un lien.",
   },
   gate: { title: "Test privé", lede: "Ce test est partagé avec des personnes choisies. Saisir le mot de passe pour continuer.", label: "Mot de passe", submit: "Continuer", invalid: "Ce mot de passe n’est pas correct." },
+  record: {
+    title: "Registre des changements",
+    lede: "Chaque demande, chaque réponse et chaque changement de l’organisation s’ajoute à un registre. Chaque entrée contient l’empreinte de la précédente, et l’ensemble a une racine. Conserver un point de contrôle: un registre coupé ou réécrit plus tard ne lui correspond plus.",
+    checkpoint: "Point de contrôle",
+    intact: "Chaque entrée découle de la précédente.",
+    broken: "La chaîne est rompue à l’entrée {n}.",
+    download: "Télécharger le registre",
+    keepHelp: "Comparer un point de contrôle conservé plus tôt avec celui-ci. La taille ne peut que croître, et la racine change à chaque entrée.",
+    entries: "Entrées: {n}",
+    when: "Quand",
+    what: "Quoi",
+    who: "Par",
+    link: "Registre des changements",
+    kinds: { space_created: "Organisation créée", space_updated: "Renseignements modifiés", policy_changed: "Règle d’approbation modifiée", key_created: "Clé créée", key_revoked: "Clé révoquée", setup_confirmed: "Renseignements confirmés", poll_published: "Scrutin publié", request_created: "Approbation demandée", request_answered: "Réponse donnée", request_approved: "Demande approuvée", request_rejected: "Demande refusée", request_lapsed: "Demande expirée", request_used: "Approbation utilisée", request_blocked: "Approbation impossible à appliquer" },
+  },
   approval: {
     title: "Approbations",
     lede: "Les changements qui demandent l’accord des autres administrateurs attendent ici. Chacun indique exactement ce qu’il couvre. Si un brouillon change après la demande, les réponses données avant ne comptent plus.",

@@ -218,6 +218,12 @@ await clerk.send("/console/approvals?/answer", { method: "POST", form: { request
 const closeNow = await admin.send(`/console/polls/${gatedId}?/close`, { method: "POST", form: {} });
 check("the approved close goes through", closeNow.status === 303);
 
+// The record of governance events: a page, a download with a checkpoint, and no key value in it.
+const recordPage = await admin.send("/console/record");
+check("the record of changes page shows an intact chain", recordPage.status === 200 && (recordPage.text.includes("Every entry follows from the one before it") || recordPage.text.includes("Chaque entrée découle de la précédente")));
+const recordFile = await admin.send("/console/record.json");
+check("the record downloads with its checkpoint, and holds no key", recordFile.status === 200 && recordFile.text.includes("qohesion-record-v1") && !recordFile.text.includes(String(clerkKey)) && !recordFile.text.includes(String(key)));
+
 // A request left waiting, and a draft changed after it was asked.
 const waitingPoll = await admin.send("/console/polls/new", { method: "POST", form: { title: "Waiting poll", question: "Adopt the rules?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing } });
 const waitingId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(waitingPoll.location)?.[1];

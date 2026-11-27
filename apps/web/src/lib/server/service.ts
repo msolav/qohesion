@@ -21,6 +21,7 @@ import { NO_RULES, closeReason, parseRules, ruleProblem, type CloseRules } from 
 import { DEFAULT_TIME_ZONE, isTimeZone } from "../zoned.js";
 import { NO_APPROVAL, isDelay, isMeaning, isRule, type Answer, type ApprovalPolicy } from "../approval.js";
 import { APPROVAL_SCHEMA, ApprovalStore, type ApprovalKind, type ApprovalRequest } from "./approvals.js";
+import { GOVERNANCE_SCHEMA, GovernanceLog, type GovernanceRecord } from "./governance.js";
 import { accessTo, isAnonymity, isAudience, isTiming, type Access, type Anonymity, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -346,6 +347,7 @@ export class Service {
   readonly #now: () => Date;
 
   readonly #approvals: ApprovalStore;
+  readonly #governance: GovernanceLog;
   constructor(db: DatabaseSync, options: ServiceOptions) {
     if (options.secret.length < 32) throw new Error("The server secret must be at least 32 bytes");
     this.#db = db;
@@ -354,12 +356,15 @@ export class Service {
     db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
     db.exec(SCHEMA);
     this.#migrate();
+    db.exec(GOVERNANCE_SCHEMA);
+    this.#governance = new GovernanceLog(db, this.#now);
     db.exec(APPROVAL_SCHEMA);
     db.exec("CREATE TABLE IF NOT EXISTS setup_confirmations (space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, key_id TEXT NOT NULL, label TEXT NOT NULL, digest TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (space_id, key_id))");
     this.#approvals = new ApprovalStore(db, this.#now, {
       policyOf: (spaceId) => this.approvalPolicy(spaceId),
       administratorsOf: (spaceId) => this.#administrators(spaceId),
       apply: (request) => this.#applyApproved(request),
+      log: (spaceId, kind, actor, detail) => this.#governance.append(spaceId, kind, actor, detail),
     });
   }
 
@@ -464,6 +469,7 @@ export class Service {
     this.#transaction(() => {
       this.#run("INSERT INTO spaces (id, name, locale, theme, time_zone, created_at) VALUES (?, ?, ?, ?, ?, ?)", space.id, space.name, space.locale, space.theme, space.timeZone, this.#iso());
       this.#insertKey(space.id, "Owner", key, true, true);
+      this.#governance.append(space.id, "space_created", "Owner", { name: space.name, locale: space.locale, timeZone: space.timeZone });
     });
     return ok({ space, key });
   }
@@ -506,7 +512,10 @@ export class Service {
     if (sensitive) {
       const payload = { name, locale: input.locale, timeZone: input.timeZone };
       request = this.#approvals.propose(session.spaceId, { keyId: session.keyId, label: session.label }, "space_settings", "", sha256hex(JSON.stringify(payload)), payload);
-      if (request === null) this.#run("UPDATE spaces SET name = ?, locale = ?, time_zone = ? WHERE id = ?", name, input.locale, input.timeZone, session.spaceId);
+      if (request === null) {
+        this.#run("UPDATE spaces SET name = ?, locale = ?, time_zone = ? WHERE id = ?", name, input.locale, input.timeZone, session.spaceId);
+        this.#governance.append(session.spaceId, "space_updated", session.label, payload);
+      }
     }
     const space = this.getSpace(session.spaceId);
     return space ? ok({ ...space, request }) : problem("not_found");
@@ -554,6 +563,7 @@ export class Service {
 
   #writePolicy(spaceId: string, policy: ApprovalPolicy): void {
     this.#run("UPDATE spaces SET approval_rule = ?, approval_abstention = ?, approval_delay_hours = ? WHERE id = ?", policy.rule, policy.abstention, policy.delayHours, spaceId);
+    this.#governance.append(spaceId, "policy_changed", "system", { rule: policy.rule, abstention: policy.abstention, delayHours: policy.delayHours });
   }
 
   /** Carries out a request that was approved. False when it can no longer be done. */
@@ -567,6 +577,7 @@ export class Service {
       const current = this.getSpace(request.spaceId);
       if (!current || (p["name"] !== current.name && this.nameLocked(request.spaceId))) return false;
       this.#run("UPDATE spaces SET name = ?, locale = ?, time_zone = ? WHERE id = ?", p["name"], p["locale"], p["timeZone"], request.spaceId);
+      this.#governance.append(request.spaceId, "space_updated", "approval", { name: p["name"], locale: p["locale"], timeZone: p["timeZone"] });
       return true;
     }
     return false;
@@ -741,8 +752,19 @@ export class Service {
       "INSERT INTO setup_confirmations (space_id, key_id, label, digest, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (space_id, key_id) DO UPDATE SET digest = excluded.digest, at = excluded.at, label = excluded.label",
       session.spaceId, session.keyId, session.label, status.digest, this.#iso(),
     );
+    this.#governance.append(session.spaceId, "setup_confirmed", session.label, { digest: status.digest });
     const next = this.setupStatus(session.spaceId);
     return next ? ok(next) : problem("not_found");
+  }
+
+  /** The record of governance events of the organization: newest first, with its root, checkpoint and chain check. */
+  governanceRecord(session: Session): GovernanceRecord | null {
+    return session.administrator || session.owner ? this.#governance.record(session.spaceId) : null;
+  }
+
+  /** Every entry as stored, to download. */
+  governanceDownload(session: Session): { checkpoint: string; entries: { seq: number; entry: string }[] } | null {
+    return session.administrator || session.owner ? this.#governance.download(session.spaceId) : null;
   }
 
   /** What a publication needs, and the record of how it was approved. Used when a poll is opened or scheduled. */
@@ -761,6 +783,8 @@ export class Service {
 
   #stamp(pollId: string, gate: { requestId: string | null; approval: PollApproval }): void {
     this.#run("UPDATE polls SET approval_json = ? WHERE id = ?", JSON.stringify(gate.approval), pollId);
+    const spaceId = String(this.#one("SELECT space_id FROM polls WHERE id = ?", pollId)?.["space_id"] ?? "");
+    if (spaceId) this.#governance.append(spaceId, "poll_published", "system", { poll: pollId, digest: gate.approval.digest, approvals: gate.approval.approvals, eligible: gate.approval.eligible });
     if (gate.requestId) this.#approvals.consume(gate.requestId);
   }
 
@@ -792,6 +816,7 @@ export class Service {
     if (!gate.ok) return gate;
     const key = this.#newKeyValue();
     this.#insertKey(session.spaceId, label, key, input.owner, input.administrator);
+    this.#governance.append(session.spaceId, "key_created", session.label, { label, owner: input.owner, administrator: input.administrator });
     this.#use(gate.value);
     return ok({ key });
   }
@@ -811,6 +836,7 @@ export class Service {
       if (!gate.ok) return gate;
       this.#run("UPDATE keys SET revoked_at = ? WHERE id = ?", this.#iso(), keyId);
       this.#run("DELETE FROM sessions WHERE key_id = ?", keyId);
+      this.#governance.append(session.spaceId, "key_revoked", session.label, { label: String(target["label"]) });
       this.#use(gate.value);
       return ok(null);
     });
