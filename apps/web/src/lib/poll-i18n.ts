@@ -18,6 +18,8 @@ export interface Translations {
   readonly description: Readonly<Partial<Record<Lang, string>>>;
   /** The text of each option, by position, in each language. */
   readonly options: readonly Readonly<Partial<Record<Lang, string>>>[];
+  /** The texts of questions 2 to n, by question id (ADR 0010). Absent for a poll of one question. */
+  readonly questions?: Readonly<Record<string, { readonly question: Readonly<Partial<Record<Lang, string>>>; readonly options: readonly Readonly<Partial<Record<Lang, string>>>[] }>>;
 }
 
 export const NO_TRANSLATIONS: Translations = { languages: [], title: {}, question: {}, description: {}, options: [] };
@@ -41,9 +43,14 @@ export function languageFor(t: Translations, wanted: Lang): Lang {
  * Something that is missing in an offered language: "title", or "option 3". Used to refuse a poll that would show a
  * member an empty question or option. Only language 1 of a single-language poll needs nothing here.
  */
-export function missingTexts(t: Translations, optionCount: number): string[] {
+export function missingTexts(t: Translations, optionCount: number, extra: readonly { id: string; optionCount: number }[] = []): string[] {
   const missing: string[] = [];
   for (const lang of t.languages) {
+    for (const q of extra) {
+      const texts = t.questions?.[q.id];
+      if (!(texts?.question[lang] ?? "").trim()) missing.push(`${q.id}.question:${lang}`);
+      for (let i = 0; i < q.optionCount; i++) if (!(texts?.options[i]?.[lang] ?? "").trim()) missing.push(`${q.id}.option${i + 1}:${lang}`);
+    }
     if (!(t.title[lang] ?? "").trim()) missing.push(`title:${lang}`);
     if (!(t.question[lang] ?? "").trim()) missing.push(`question:${lang}`);
     for (let i = 0; i < optionCount; i++) if (!(t.options[i]?.[lang] ?? "").trim()) missing.push(`option${i + 1}:${lang}`);
@@ -57,10 +64,11 @@ export interface Localizable {
   readonly description: string;
   readonly options: readonly { readonly id: string; readonly label: string | null; readonly icon?: string | null; readonly color?: string | null }[];
   readonly translations: Translations;
+  readonly questions?: readonly { readonly id: string; readonly type: string; readonly prompt: string; readonly options: readonly { readonly id: string; readonly label: string | null; readonly icon?: string | null; readonly color?: string | null }[] }[];
 }
 
 /** The poll as a member of one language reads it. Missing texts fall back to the default language, then to what was typed first. */
-export function localize<P extends Localizable>(poll: P, wanted: Lang): { title: string; question: string; description: string; options: P["options"][number][] } {
+export function localize<P extends Localizable>(poll: P, wanted: Lang): { title: string; question: string; description: string; options: P["options"][number][]; questions: LocalizedQuestion[] } {
   const t = poll.translations;
   const lang = languageFor(t, wanted);
   const def = t.languages[0];
@@ -70,5 +78,18 @@ export function localize<P extends Localizable>(poll: P, wanted: Lang): { title:
     question: text(t.question, poll.question),
     description: text(t.description, poll.description),
     options: poll.options.map((o, i) => (o.label === null ? o : { ...o, label: text(t.options[i] ?? {}, o.label) })),
+    // Every question as the member reads it. Question 1 reads from the fields above; the others from `translations.questions`.
+    questions: (poll.questions ?? []).map((q, n) => {
+      if (n === 0) return { id: q.id, type: q.type, prompt: text(t.question, poll.question), options: poll.options.map((o, i) => (o.label === null ? o : { ...o, label: text(t.options[i] ?? {}, o.label) })) };
+      const own = t.questions?.[q.id];
+      return { id: q.id, type: q.type, prompt: text(own?.question ?? {}, q.prompt), options: q.options.map((o, i) => (o.label === null ? o : { ...o, label: text(own?.options[i] ?? {}, o.label) })) };
+    }),
   };
+}
+
+export interface LocalizedQuestion {
+  readonly id: string;
+  readonly type: string;
+  readonly prompt: string;
+  readonly options: { readonly id: string; readonly label: string | null; readonly icon?: string | null; readonly color?: string | null }[];
 }

@@ -115,6 +115,24 @@ export interface KeyInfo {
   readonly revokedAt: string | null;
 }
 
+/** A question of a poll. A poll of one question keeps it in the poll's own fields; with several they sit in `questions` (ADR 0010). */
+export interface PollQuestion {
+  readonly id: string;
+  readonly type: "single" | "yes-no";
+  readonly prompt: string;
+  readonly options: readonly PollOption[];
+}
+
+/** A question after the first, as an administrator enters it. */
+export interface ExtraQuestionInput {
+  readonly type: "single" | "yes-no";
+  readonly prompt: string;
+  readonly options: readonly OptionInput[];
+}
+
+export const MAX_QUESTIONS = 20;
+export const MAX_OPTIONS_TOTAL = 100;
+
 export interface PollOption {
   readonly id: string;
   /** Null for the three fixed options of a yes-no poll, whose labels come from the interface language. */
@@ -137,6 +155,8 @@ export interface Poll {
   readonly description: string;
   readonly kind: PollKind;
   readonly options: readonly PollOption[];
+  /** Every question, in order. Question 1 is also given by `question`, `kind` and `options`. */
+  readonly questions: readonly PollQuestion[];
   readonly status: PollStatus;
   readonly timing: ResultsTiming;
   readonly audience: ResultsAudience;
@@ -208,6 +228,8 @@ export interface PollInput {
   readonly kind: PollKind;
   /** The options of a "choice" poll, in order. Ignored for "yes-no". */
   readonly options: readonly OptionInput[];
+  /** Questions 2 to n. Absent or empty for a poll of one question. */
+  readonly extraQuestions?: readonly ExtraQuestionInput[];
   readonly timing: ResultsTiming;
   readonly audience: ResultsAudience;
   readonly theme: ThemeName;
@@ -233,16 +255,19 @@ export interface PollInput {
   readonly translations: Translations;
 }
 
-export type Problem = { readonly ok: false; readonly error: string };
+export type Problem = { readonly ok: false; readonly error: string; /** The question the error is about, when it is about one. */ readonly question?: string };
 export type Done<T> = { readonly ok: true; readonly value: T };
 export type Result<T> = Done<T> | Problem;
 
 const ok = <T>(value: T): Done<T> => ({ ok: true, value });
-const problem = (error: string): Problem => ({ ok: false, error });
+const problem = (error: string, question?: string): Problem => (question === undefined ? { ok: false, error } : { ok: false, error, question });
 
 export interface Totals {
   readonly turnout: number;
+  /** The counts of question 1. */
   readonly counts: Readonly<Record<string, number>>;
+  /** The counts of every question. */
+  readonly questions: readonly { readonly id: string; readonly counts: Readonly<Record<string, number>> }[];
 }
 
 export interface ResultsView {
@@ -252,9 +277,11 @@ export interface ResultsView {
   readonly access: Access;
   readonly turnout: number | null;
   readonly counts: Readonly<Record<string, number>> | null;
+  /** The counts of every question, to those who see the totals. */
+  readonly questions: readonly { readonly id: string; readonly counts: Readonly<Record<string, number>> }[] | null;
   readonly rollCount: number | null;
   /** For a named poll, who gave which answer, to those who see the totals; null otherwise. */
-  readonly answers: readonly { readonly who: string; readonly choice: string }[] | null;
+  readonly answers: readonly { readonly who: string; readonly choice: string; readonly answers: Readonly<Record<string, string>> }[] | null;
 }
 
 export interface LedgerView {
@@ -344,10 +371,7 @@ export class Service {
     addIfMissing("spaces", names("spaces"), "approval_delay_hours", "INTEGER NOT NULL DEFAULT 168");
     // A poll published before the name was kept keeps the name the organization has now.
     this.#db.exec("UPDATE polls SET org_name = (SELECT name FROM spaces WHERE spaces.id = polls.space_id) WHERE org_name IS NULL AND status != 'draft'");
-    // ADR 0010: a database that holds polls with several questions must not be opened by a build that does not know them.
-    if (columns.includes("questions") && this.#one("SELECT 1 AS x FROM polls WHERE questions IS NOT NULL LIMIT 1")) {
-      throw new Error("This database holds polls with several questions, which this build does not know. Use a newer build.");
-    }
+    addIfMissing("polls", columns, "questions", "TEXT");
     addIfMissing("polls", columns, "published_key", "TEXT");
     addIfMissing("polls", columns, "cancelled_by", "TEXT");
     addIfMissing("polls", columns, "cancelled_ballots", "INTEGER");
@@ -545,6 +569,8 @@ export class Service {
       timing: poll.timing, audience: poll.audience, theme: poll.theme, opensAt: poll.opensAt, closesAt: poll.closesAt, rules: poll.rules,
       allowChange: poll.allowChange, encrypted: poll.encrypted, markFill: poll.markFill, anonymity: poll.anonymity, publishCount: poll.publishCount,
       lockCancel: poll.lockCancel, keyThreshold: poll.keyThreshold, paged: poll.paged, lateRoll: poll.lateRoll, autoReminder: poll.autoReminder,
+      // Added only for several questions, so that the digest of a poll of one question does not change.
+      ...(poll.questions.length > 1 ? { questions: poll.questions } : {}),
     };
     const rollDigest = sha256hex(this.#all("SELECT fingerprint FROM roll WHERE poll_id = ? ORDER BY fingerprint", poll.id).map((r) => String(r["fingerprint"])).join("\n"));
     return { fields, rollDigest, digest: sha256hex(JSON.stringify({ fields, rollDigest })) };
@@ -779,16 +805,32 @@ export class Service {
 
   // ---- Polls ----
 
+  /** The questions of a poll row: the `questions` column when it is set, else the one question of the poll's own fields. */
+  #questionsOf(r: Row): PollQuestion[] {
+    if (typeof r["questions"] === "string") {
+      try {
+        const raw = JSON.parse(r["questions"]) as PollQuestion[];
+        if (Array.isArray(raw) && raw.length > 0) return raw;
+      } catch {
+        // An unreadable list falls back to the poll's own fields.
+      }
+    }
+    return [{ id: "q1", type: r["kind"] === "choice" ? "single" : "yes-no", prompt: String(r["question"] ?? ""), options: JSON.parse(String(r["options"])) as PollOption[] }];
+  }
+
   #poll(r: Row): Poll {
+    const questions = this.#questionsOf(r);
+    const first = questions[0];
     return {
       id: String(r["id"]),
       spaceId: String(r["space_id"]),
       organization: r["org_name"] === null || r["org_name"] === undefined ? (this.getSpace(String(r["space_id"]))?.name ?? "") : String(r["org_name"]),
       title: String(r["title"]),
-      question: String(r["question"] ?? ""),
+      question: first?.prompt ?? "",
       description: String(r["description"]),
-      kind: r["kind"] === "choice" ? "choice" : "yes-no",
-      options: JSON.parse(String(r["options"])) as PollOption[],
+      kind: first?.type === "single" ? "choice" : "yes-no",
+      options: first?.options ?? [],
+      questions,
       status: r["status"] === "open" ? "open" : r["status"] === "closed" ? "closed" : r["status"] === "scheduled" ? "scheduled" : r["status"] === "cancelled" ? "cancelled" : "draft",
       timing: r["timing"] === "live" ? "live" : "close",
       audience: isAudience(r["audience"]) ? r["audience"] : "voters",
@@ -867,7 +909,8 @@ export class Service {
     const languages = cleanLanguages(input.translations.languages);
     if (languages.length > 1 || input.translations.languages.length !== languages.length) {
       const optionCount = input.kind === "choice" ? input.options.filter((o) => o.label.trim().length > 0).length : 0;
-      if (missingTexts({ ...input.translations, languages }, optionCount).length > 0) return "translation_missing";
+      const extra = (input.extraQuestions ?? []).map((q, i) => ({ id: `q${i + 2}`, optionCount: q.type === "single" ? q.options.filter((o) => o.label.trim().length > 0).length : 0 }));
+      if (missingTexts({ ...input.translations, languages }, optionCount, extra).length > 0) return "translation_missing";
     }
     const closes = Date.parse(input.closesAt);
     if (Number.isNaN(closes)) return "closes_required";
@@ -879,22 +922,63 @@ export class Service {
     if (input.allowChange && !input.encrypted) return "change_needs_encryption";
     const rule = ruleProblem(input.rules, input.encrypted);
     if (rule) return rule;
-    if (input.kind === "choice") {
-      const labels = input.options.map((o) => o.label.trim()).filter((o) => o.length > 0);
-      if (labels.length < 2) return "options_too_few";
-      if (labels.length > MAX_OPTIONS) return "options_too_many";
-      if (new Set(labels.map((l) => l.toLowerCase())).size !== labels.length) return "options_duplicate";
-      if (labels.some((l) => l.length > 120)) return "option_too_long";
-      if (input.options.some((o) => (o.icon !== null && !isIconId(o.icon)) || (o.color !== null && !isColorId(o.color)))) return "option_style_invalid";
+    const extras = input.extraQuestions ?? [];
+    // A threshold rule reads the totals of one question. With several, the rule would apply to the first one in silence.
+    if (extras.length > 0 && input.rules.threshold !== null) return "rules_need_one_question";
+    if (1 + extras.length > MAX_QUESTIONS) return "questions_too_many";
+    const first = this.#optionsProblem(input.kind === "choice" ? "single" : "yes-no", input.options);
+    if (first) return first;
+    let total = input.kind === "choice" ? input.options.filter((o) => o.label.trim().length > 0).length : 3;
+    for (const q of extras) {
+      if (q.prompt.trim().length === 0) return "question_required";
+      if (q.prompt.length > 300) return "question_too_long";
+      const problemWith = this.#optionsProblem(q.type, q.options);
+      if (problemWith) return problemWith;
+      total += q.type === "single" ? q.options.filter((o) => o.label.trim().length > 0).length : 3;
     }
+    if (total > MAX_OPTIONS_TOTAL) return "options_too_many_total";
+    return null;
+  }
+
+  /** The checks on the options of one question. A yes-no question has fixed options and nothing to check. */
+  #optionsProblem(type: "single" | "yes-no", options: readonly OptionInput[]): string | null {
+    if (type !== "single") return null;
+    const labels = options.map((o) => o.label.trim()).filter((o) => o.length > 0);
+    if (labels.length < 2) return "options_too_few";
+    if (labels.length > MAX_OPTIONS) return "options_too_many";
+    if (new Set(labels.map((l) => l.toLowerCase())).size !== labels.length) return "options_duplicate";
+    if (labels.some((l) => l.length > 120)) return "option_too_long";
+    if (options.some((o) => (o.icon !== null && !isIconId(o.icon)) || (o.color !== null && !isColorId(o.color)))) return "option_style_invalid";
     return null;
   }
 
   #optionsOf(input: PollInput): PollOption[] {
-    if (input.kind === "yes-no") return [{ id: "for", label: null }, { id: "against", label: null }, { id: "abstain", label: null }];
-    return input.options
+    return this.#buildOptions(input.kind === "choice" ? "single" : "yes-no", input.options);
+  }
+
+  #buildOptions(type: "single" | "yes-no", options: readonly OptionInput[]): PollOption[] {
+    if (type === "yes-no") return [{ id: "for", label: null }, { id: "against", label: null }, { id: "abstain", label: null }];
+    return options
       .filter((o) => o.label.trim().length > 0)
       .map((o, i) => ({ id: `o${i + 1}`, label: o.label.trim(), icon: o.icon, color: o.color }));
+  }
+
+  /**
+   * The one writer of the question data (ADR 0010). With one question the poll's own columns hold it and `questions` stays
+   * empty. With several, `questions` holds them all and the `options` column is left empty, so that a build that does not
+   * know them finds a question with no options and refuses every ballot on it.
+   */
+  #writeQuestions(pollId: string, input: PollInput): void {
+    const extras = input.extraQuestions ?? [];
+    if (extras.length === 0) {
+      this.#run("UPDATE polls SET questions = NULL, options = ? WHERE id = ?", JSON.stringify(this.#optionsOf(input)), pollId);
+      return;
+    }
+    const list: PollQuestion[] = [
+      { id: "q1", type: input.kind === "choice" ? "single" : "yes-no", prompt: input.question.trim(), options: this.#optionsOf(input) },
+      ...extras.map((q, i): PollQuestion => ({ id: `q${i + 2}`, type: q.type, prompt: q.prompt.trim(), options: this.#buildOptions(q.type, q.options) })),
+    ];
+    this.#run("UPDATE polls SET questions = ?, options = '[]' WHERE id = ?", JSON.stringify(list), pollId);
   }
 
   createPoll(session: Session, input: PollInput): Result<Poll> {
@@ -908,6 +992,7 @@ export class Service {
          VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, this.#iso(),
       );
+      this.#writeQuestions(id, input);
       this.#log(id, session, "created", "");
     });
     const poll = this.getPoll(id);
@@ -925,6 +1010,7 @@ export class Service {
       "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ? WHERE id = ?",
       input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, pollId,
     );
+    this.#writeQuestions(pollId, input);
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
   }
@@ -1325,7 +1411,6 @@ export class Service {
     countingKey = keyFromInput(countingKey);
     const row = this.#one("SELECT public_key FROM polls WHERE id = ?", poll.id);
     if (!row || typeof row["public_key"] !== "string" || !keyMatches(countingKey, row["public_key"])) return problem("wrong_counting_key");
-    const valid = new Set(poll.options.map((o) => o.id));
     const updates: { seq: number; choice: string; superseded: boolean }[] = [];
     const lastOf = new Map<string, number>();
     const rows = this.#all("SELECT seq, entry, voter_tag FROM ballots WHERE poll_id = ? ORDER BY seq", poll.id);
@@ -1333,8 +1418,9 @@ export class Service {
     for (const r of rows) if (r["voter_tag"] !== null) lastOf.set(String(r["voter_tag"]), Number(r["seq"]));
     for (const r of rows) {
       const entry = JSON.parse(String(r["entry"])) as { sealed?: string };
-      const choice = entry.sealed ? openSealed(countingKey, entry.sealed) : null;
-      if (choice === null || !valid.has(choice)) return problem("wrong_counting_key");
+      const plain = entry.sealed ? openSealed(countingKey, entry.sealed) : null;
+      const choice = plain === null ? null : this.#readAnswers(poll, plain);
+      if (choice === null) return problem("wrong_counting_key");
       const tag = r["voter_tag"] === null ? null : String(r["voter_tag"]);
       updates.push({ seq: Number(r["seq"]), choice, superseded: tag !== null && lastOf.get(tag) !== Number(r["seq"]) });
     }
@@ -1360,24 +1446,49 @@ export class Service {
     return defineForm({
       id: poll.id,
       title: { en: poll.title },
-      steps: [
-        {
-          id: "q1",
-          title: { en: poll.title },
-          questions: [{ id: "choice", type: "single", required: true, label: { en: poll.question || poll.title }, options: poll.options.map((o) => ({ id: o.id, label: { en: o.label ?? o.id } })) }],
-        },
-      ],
+      // One step for each question, and the question's own id (q1..qn) in the answers.
+      steps: poll.questions.map((q) => ({
+        id: `s_${q.id}`,
+        title: { en: poll.title },
+        questions: [{ id: q.id, type: "single" as const, required: true, label: { en: q.prompt || poll.title }, options: q.options.map((o) => ({ id: o.id, label: { en: o.label ?? o.id } })) }],
+      })),
     });
   }
 
-  castBallot(token: string, choice: string | undefined): Result<{ receipt: string }> {
+  /**
+   * Records a ballot. `given` is the answer of a poll of one question as a bare option id, or a record from question id to
+   * option id: every question must be answered, and a key that is not a question of the poll is refused.
+   */
+  castBallot(token: string, given: string | Readonly<Record<string, string>> | undefined): Result<{ receipt: string }> {
     return this.#transaction((): Result<{ receipt: string }> => {
       const link = this.byToken(token);
       if (!link) return problem("unknown_link");
       const { poll } = link;
       if (poll.status !== "open") return problem(poll.status === "closed" ? "closed" : poll.status === "cancelled" ? "cancelled" : "not_open");
-      const checked = validateForm(Service.form(poll), choice === undefined ? {} : { choice });
-      if (!checked.ok || choice === undefined) return problem(checked.errors["choice"]?.[0]?.code ?? "invalid_type");
+      const ids = poll.questions.map((q) => q.id);
+      // The record that is checked is built from the poll's own question ids, so extra keys cannot enlarge a sealed ballot.
+      let answers: Record<string, string>;
+      if (typeof given === "string") {
+        if (ids.length !== 1) return problem("answers_incomplete");
+        answers = { q1: given };
+      } else {
+        answers = {};
+        for (const key of Object.keys(given ?? {})) {
+          if (!ids.includes(key)) return problem("unknown_question", key);
+          const value = (given as Record<string, unknown>)[key];
+          if (typeof value !== "string") return problem("invalid_type", key);
+          answers[key] = value;
+        }
+      }
+      const checked = validateForm(Service.form(poll), answers);
+      if (!checked.ok) {
+        const failed = ids.find((id) => (checked.errors[id]?.length ?? 0) > 0) ?? ids[0];
+        return problem(checked.errors[failed ?? ""]?.[0]?.code ?? "invalid_type", ids.length > 1 ? failed : undefined);
+      }
+      // What is stored: the bare option id for one question, the answers in question order for several.
+      const choice = ids.length === 1 ? (answers["q1"] ?? "") : JSON.stringify(Object.fromEntries(ids.map((id) => [id, answers[id] ?? ""])));
+      // A sealed ballot is padded to a fixed block; the limits on questions keep every ballot within it.
+      if (poll.encrypted && Buffer.byteLength(choice) > 254) return problem("ballot_too_large");
 
       // A personal link is the member's proof of the address, so opening it registers and confirms the entry (one-step informal poll).
       const row = this.#one("SELECT id, status, fingerprint FROM roll WHERE token_hash = ?", sha256hex(normalizeToken(token)));
@@ -1397,8 +1508,10 @@ export class Service {
       // A sealed ballot is encrypted before it is stored: the table keeps no readable choice until the count.
       const publicKey = poll.encrypted ? String(this.#one("SELECT public_key FROM polls WHERE id = ?", poll.id)?.["public_key"] ?? "") : "";
       const entry = poll.encrypted
-        ? JSON.stringify({ v: 1, poll: poll.id, seq, sealed: seal(publicKey, choice) })
-        : JSON.stringify({ v: 1, poll: poll.id, seq, choice, nonce: randomBytes(12).toString("base64url") });
+        ? JSON.stringify({ v: ids.length === 1 ? 1 : 2, poll: poll.id, seq, sealed: seal(publicKey, choice) })
+        : ids.length === 1
+          ? JSON.stringify({ v: 1, poll: poll.id, seq, choice, nonce: randomBytes(12).toString("base64url") })
+          : JSON.stringify({ v: 2, poll: poll.id, seq, answers: JSON.parse(choice) as Record<string, string>, nonce: randomBytes(12).toString("base64url") });
       // Only a poll that lets members change their vote ties a ballot to a pseudonym of its voter, so that the count can keep
       // the last one. The pseudonym shows who voted, never what, because such a poll is always sealed.
       const tag = poll.allowChange ? base32(createHmac("sha256", this.#secret).update(`tag\n${poll.id}\n${String(row["fingerprint"])}`).digest(), 26) : null;
@@ -1415,7 +1528,8 @@ export class Service {
     if (r.afterVotes === null && r.turnoutPercent === null && r.threshold === null) return;
     const totals = this.#totals(poll);
     const rollSize = Number(this.#one("SELECT COUNT(*) AS n FROM roll WHERE poll_id = ?", poll.id)?.["n"] ?? 0);
-    const reason = closeReason(r, { rollSize, voters: totals.turnout, counts: poll.encrypted ? null : totals.counts });
+    // A threshold reads one question's totals, and a poll of several refuses one (ADR 0010); counts are withheld as a second guard.
+    const reason = closeReason(r, { rollSize, voters: totals.turnout, counts: poll.encrypted || poll.questions.length > 1 ? null : totals.counts });
     if (!reason) return;
     this.#run("UPDATE polls SET status = 'closed', closed_at = ?, counted = ? WHERE id = ?", this.#iso(), poll.encrypted ? 0 : 1, poll.id);
     this.#log(poll.id, who, "closed_auto", reason);
@@ -1423,18 +1537,56 @@ export class Service {
 
   // ---- Results ----
 
+  /**
+   * The stored choice for what a sealed ballot held once opened: a bare option id for a poll of one question, or the
+   * answers as JSON for several. Null when it does not match the poll: the count then fails as a whole.
+   */
+  #readAnswers(poll: Poll, plain: string): string | null {
+    const ids = poll.questions.map((q) => q.id);
+    if (!plain.startsWith("{")) {
+      return ids.length === 1 && poll.options.some((o) => o.id === plain) ? plain : null;
+    }
+    try {
+      const raw = JSON.parse(plain) as Record<string, unknown>;
+      const keys = Object.keys(raw);
+      if (keys.length !== ids.length || !ids.every((id) => keys.includes(id))) return null;
+      for (const q of poll.questions) if (typeof raw[q.id] !== "string" || !q.options.some((o) => o.id === raw[q.id])) return null;
+      return JSON.stringify(Object.fromEntries(ids.map((id) => [id, raw[id]])));
+    } catch {
+      return null;
+    }
+  }
+
+  /** The answers of one stored choice, by question id. */
+  #answersOf(poll: Poll, choice: string): Record<string, string> {
+    if (poll.questions.length === 1) return { q1: choice };
+    try {
+      return JSON.parse(choice) as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }
+
   #totals(poll: Poll): Totals {
     const counts: Record<string, number> = {};
     for (const o of poll.options) counts[o.id] = 0;
+    const perQuestion = new Map<string, Record<string, number>>(poll.questions.map((q) => [q.id, Object.fromEntries(q.options.map((o) => [o.id, 0]))]));
     // Turnout is the number of members who voted: with changes allowed, several ballots can belong to one member.
     const turnout = poll.allowChange
       ? Number(this.#one("SELECT COUNT(DISTINCT voter_tag) AS n FROM ballots WHERE poll_id = ?", poll.id)?.["n"] ?? 0)
       : Number(this.#one("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?", poll.id)?.["n"] ?? 0);
     for (const r of this.#all("SELECT choice, COUNT(*) AS n FROM ballots WHERE poll_id = ? AND superseded = 0 GROUP BY choice", poll.id)) {
       // Sealed ballots have no readable choice until they are counted.
-      if (String(r["choice"]) !== "") counts[String(r["choice"])] = Number(r["n"]);
+      const choice = String(r["choice"]);
+      if (choice === "") continue;
+      for (const [id, option] of Object.entries(this.#answersOf(poll, choice))) {
+        const own = perQuestion.get(id);
+        if (own && option in own) own[option] = (own[option] ?? 0) + Number(r["n"]);
+      }
     }
-    return { turnout, counts };
+    const questions = poll.questions.map((q) => ({ id: q.id, counts: perQuestion.get(q.id) ?? {} }));
+    for (const [id, n] of Object.entries(questions[0]?.counts ?? {})) counts[id] = n;
+    return { turnout, counts, questions };
   }
 
   /** What a viewer may see of a poll's results, and nothing more. Every screen and the JSON address go through here. */
@@ -1451,17 +1603,18 @@ export class Service {
       access,
       turnout: access.turnout && totals ? totals.turnout : null,
       counts: access.totals && totals ? totals.counts : null,
+      questions: access.totals && totals ? totals.questions : null,
       rollCount: poll.rollCount,
       answers: access.totals && poll.anonymity === "named" ? this.#answers(poll, viewer) : null,
     };
   }
 
   /** Who answered what in a named poll. An anonymous viewer sees the addresses partly hidden. */
-  #answers(poll: Poll, viewer: Viewer): { who: string; choice: string }[] {
+  #answers(poll: Poll, viewer: Viewer): { who: string; choice: string; answers: Record<string, string> }[] {
     return this.#all(
       "SELECT r.address AS address, b.choice AS choice FROM ballots b JOIN roll r ON r.id = b.roll_id WHERE b.poll_id = ? AND b.superseded = 0 AND b.choice != '' ORDER BY r.id",
       poll.id,
-    ).map((r) => ({ who: viewer === "anyone" ? maskAddress(String(r["address"])) : String(r["address"]), choice: String(r["choice"]) }));
+    ).map((r) => ({ who: viewer === "anyone" ? maskAddress(String(r["address"])) : String(r["address"]), choice: String(r["choice"]), answers: this.#answersOf(poll, String(r["choice"])) }));
   }
 
   /** Who a member is, for the results page they opened with their link. */
@@ -1474,7 +1627,7 @@ export class Service {
    * What a poll that publishes its count shows after the count: every ballot with its receipt code and its choice, and the
    * counting key of a sealed poll. Only to those who may see the totals, and only once the poll is closed and counted.
    */
-  publication(pollId: string, viewer: Viewer): { countingKey: string | null; root: string; ballots: { receipt: string; choice: string; replaced: boolean }[] } | null {
+  publication(pollId: string, viewer: Viewer): { countingKey: string | null; root: string; ballots: { receipt: string; choice: string; answers: Record<string, string>; replaced: boolean }[] } | null {
     const poll = this.getPoll(pollId);
     if (!poll || poll.status !== "closed" || !poll.counted || !poll.publishCount) return null;
     if (!accessTo(poll, viewer).totals) return null;
@@ -1484,7 +1637,7 @@ export class Service {
     const log = new MerkleLog();
     const ballots = rows.map((r) => {
       log.append(r.bytes);
-      return { receipt: r.receipt, choice: String(r.row["choice"]), replaced: r.row["superseded"] === 1 };
+      return { receipt: r.receipt, choice: String(r.row["choice"]), answers: this.#answersOf(poll, String(r.row["choice"])), replaced: r.row["superseded"] === 1 };
     });
     const key = this.#one("SELECT published_key AS k FROM polls WHERE id = ?", pollId)?.["k"];
     return { countingKey: typeof key === "string" ? key : null, root: log.root(), ballots };
@@ -1587,6 +1740,7 @@ function parseTranslations(json: string | null): Translations {
       question: raw.question && typeof raw.question === "object" ? raw.question : {},
       description: raw.description && typeof raw.description === "object" ? raw.description : {},
       options: Array.isArray(raw.options) ? raw.options : [],
+      ...(raw.questions && typeof raw.questions === "object" ? { questions: raw.questions } : {}),
     };
   } catch {
     return NO_TRANSLATIONS;

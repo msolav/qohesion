@@ -1,6 +1,6 @@
 # ADR 0010: Several questions per poll
 
-- Status: proposed on 2026-11-27. Step 1 of the order of work is built (commit 4028828, with a block of 256 bytes instead of 512); nothing else is.
+- Status: proposed on 2026-11-27. Built: step 1 (padding, with a block of 256 bytes instead of 512), and steps 2 and 3 (the question list, casting, counting, totals, results and publication, through the service, without interface). Not built: the voter flow (step 4), the builder (step 5). The guard of step 1 against an older build opening a database with several questions was dropped, since no build that does not know the question list has been deployed.
 - Date: 2026-11-27
 - Extends: [ADR 0007](0007-test-edition-and-results-visibility.md) (sealed ballots, closing rules, content in several languages), [ADR 0008](0008-verifiable-count-and-paged-voting.md) (section 8, more than one question; section 6, paged flow; section 3, recount), [ADR 0009](0009-organization-governance-and-approvals.md) (content digests)
 

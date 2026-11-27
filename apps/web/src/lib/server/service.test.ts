@@ -416,9 +416,9 @@ describe("cancelling and named answers", () => {
     const { poll, tokens } = openedPoll({ anonymity: "named", timing: "live", audience: "anyone" }, "marie@example.org\njean@example.org");
     must(service.castBallot(tokens[0] ?? "", "for"));
     must(service.castBallot(tokens[1] ?? "", "against"));
-    expect(service.resultsFor(poll.id, "administrator")?.answers).toEqual([{ who: "marie@example.org", choice: "for" }, { who: "jean@example.org", choice: "against" }]);
+    expect(service.resultsFor(poll.id, "administrator")?.answers).toEqual([{ who: "marie@example.org", choice: "for", answers: { q1: "for" } }, { who: "jean@example.org", choice: "against", answers: { q1: "against" } }]);
     expect(service.resultsFor(poll.id, "voter")?.answers?.[0]?.who).toBe("marie@example.org");
-    expect(service.resultsFor(poll.id, "anyone")?.answers).toEqual([{ who: "m***@e***.org", choice: "for" }, { who: "j***@e***.org", choice: "against" }]);
+    expect(service.resultsFor(poll.id, "anyone")?.answers).toEqual([{ who: "m***@e***.org", choice: "for", answers: { q1: "for" } }, { who: "j***@e***.org", choice: "against", answers: { q1: "against" } }]);
   });
 
   it("shows nobody's answer in a secret poll, and keeps no link to the voter", () => {
@@ -442,7 +442,7 @@ describe("cancelling and named answers", () => {
     must(service.castBallot(t ?? "", "against"));
     expect(service.resultsFor(poll.id, "administrator")?.answers).toBeNull();
     must(service.closePoll(owner, poll.id, opened.countingKey ?? ""));
-    expect(service.resultsFor(poll.id, "voter")?.answers).toEqual([{ who: "marie@example.org", choice: "against" }]);
+    expect(service.resultsFor(poll.id, "voter")?.answers).toEqual([{ who: "marie@example.org", choice: "against", answers: { q1: "against" } }]);
   });
 
   it("writes an address with most of it hidden", () => {
@@ -827,19 +827,109 @@ describe("actions that need a permit once approvals apply", () => {
   });
 });
 
-describe("the guard against an older build", () => {
-  it("refuses to start on a database that holds polls with several questions", () => {
-    const db = new DatabaseSync(":memory:");
-    const secret = new Uint8Array(32).fill(7);
-    const first = new Service(db, { secret, now: () => now });
-    const created = must(first.createSpace({ name: "Org", locale: "en" }));
-    const session = first.session(first.signIn(created.key) ?? "") as Session;
-    must(first.createPoll(session, input()));
-    db.exec("ALTER TABLE polls ADD COLUMN questions TEXT");
-    expect(() => new Service(db, { secret, now: () => now })).not.toThrow();
-    db.exec("UPDATE polls SET questions = '[]'");
-    expect(() => new Service(db, { secret, now: () => now })).toThrow(/several questions/);
+describe("several questions in one poll (ADR 0010)", () => {
+  const extra = (prompt: string, labels: string[] = []) => ({ type: labels.length > 0 ? ("single" as const) : ("yes-no" as const), prompt, options: labels.map((label) => ({ label, icon: null, color: null })) });
+  const multi = (over: Partial<PollInput> = {}) =>
+    input({ extraQuestions: [extra("Elect the chair?", ["Ana", "Ben", "Chloe"]), extra("Adopt the by-laws?")], ...over });
+  function open(over: Partial<PollInput> = {}, addresses = "a@example.com\nb@example.com\nc@example.com") {
+    const poll = must(service.createPoll(owner, multi(over)));
+    must(service.addToRoll(owner, poll.id, addresses));
+    const opened = must(service.openPoll(owner, poll.id));
+    return { poll, key: opened.countingKey ?? "", tokens: [...service.voterTokens(owner, poll.id).values()] };
+  }
+
+  it("reads a poll of one question as a list of one, and keeps its own columns", () => {
+    const poll = must(service.createPoll(owner, input()));
+    expect(poll.questions).toHaveLength(1);
+    expect(poll.questions[0]).toMatchObject({ id: "q1", type: "yes-no", prompt: poll.question });
   });
+
+  it("stores several questions with their own options, and question 1 stays the poll's first", () => {
+    const poll = must(service.createPoll(owner, multi()));
+    expect(poll.questions.map((q) => q.id)).toEqual(["q1", "q2", "q3"]);
+    expect(poll.questions[1]?.options.map((o) => o.label)).toEqual(["Ana", "Ben", "Chloe"]);
+    expect(poll.question).toBe("Do you adopt the budget of $12,400 for 2027?");
+    expect(poll.options.map((o) => o.id)).toEqual(["for", "against", "abstain"]);
+  });
+
+  it("can go back to one question, which empties the question list again", () => {
+    const poll = must(service.createPoll(owner, multi()));
+    expect(must(service.updatePoll(owner, poll.id, input())).questions).toHaveLength(1);
+  });
+
+  it("refuses too many questions, too many options in all, a missing question text, and a threshold rule", () => {
+    const many = Array.from({ length: 20 }, (_, i) => extra(`Question ${i + 2}?`));
+    expect(service.createPoll(owner, input({ extraQuestions: many }))).toEqual({ ok: false, error: "questions_too_many" });
+    const wide = Array.from({ length: 12 }, (_, i) => extra(`Q${i + 2}?`, Array.from({ length: 12 }, (_, j) => `Option ${j + 1}`)));
+    expect(service.createPoll(owner, input({ extraQuestions: wide }))).toEqual({ ok: false, error: "options_too_many_total" });
+    expect(service.createPoll(owner, input({ extraQuestions: [extra("  ")] }))).toEqual({ ok: false, error: "question_required" });
+    expect(service.createPoll(owner, multi({ rules: { ...NO_RULES, threshold: "majority" } }))).toEqual({ ok: false, error: "rules_need_one_question" });
+  });
+
+  it("takes a ballot with one answer for every question, and refuses the rest", () => {
+    const { poll, tokens } = open();
+    expect(service.castBallot(tokens[0] ?? "", "for")).toEqual({ ok: false, error: "answers_incomplete" });
+    expect(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o1" })).toMatchObject({ ok: false });
+    expect(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o9", q3: "for" })).toEqual({ ok: false, error: expect.any(String), question: "q2" });
+    expect(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o1", q3: "for", q9: "x" })).toEqual({ ok: false, error: "unknown_question", question: "q9" });
+    must(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o2", q3: "against" }));
+    expect(service.getPoll(poll.id)?.status).toBe("open");
+  });
+
+  it("counts each question on its own, and shows turnout in members", () => {
+    const { poll, tokens } = open({ timing: "live", audience: "voters" });
+    must(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o1", q3: "for" }));
+    must(service.castBallot(tokens[1] ?? "", { q1: "against", q2: "o1", q3: "for" }));
+    const view = service.resultsFor(poll.id, "voter");
+    expect(view?.turnout).toBe(2);
+    expect(view?.questions?.map((q) => q.counts)).toEqual([
+      { for: 1, against: 1, abstain: 0 },
+      { o1: 2, o2: 0, o3: 0 },
+      { for: 2, against: 0, abstain: 0 },
+    ]);
+    expect(view?.counts).toEqual({ for: 1, against: 1, abstain: 0 });
+  });
+
+  it("seals and counts a poll of several questions, with every ciphertext the same length", () => {
+    const { poll, key, tokens } = open({ encrypted: true, publishCount: true });
+    must(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o3", q3: "abstain" }));
+    must(service.castBallot(tokens[1] ?? "", { q1: "against", q2: "o1", q3: "for" }));
+    expect(service.resultsFor(poll.id, "administrator")?.questions).toBeNull();
+    must(service.closePoll(owner, poll.id, key));
+    expect(service.resultsFor(poll.id, "administrator")?.questions?.map((q) => q.counts)).toEqual([
+      { for: 1, against: 1, abstain: 0 },
+      { o1: 1, o2: 0, o3: 1 },
+      { for: 1, against: 0, abstain: 1 },
+    ]);
+    const sizes = new Set((service.ledgerEntries(poll.id, "administrator") ?? []).map((e) => (JSON.parse(e.entry) as { sealed: string }).sealed.length));
+    expect(sizes.size).toBe(1);
+  });
+
+  it("gives a named poll's answers for every question", () => {
+    const { poll, tokens } = open({ anonymity: "named", timing: "live" });
+    must(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o2", q3: "against" }));
+    expect(service.resultsFor(poll.id, "administrator")?.answers?.[0]?.answers).toEqual({ q1: "for", q2: "o2", q3: "against" });
+  });
+
+  it("cancelling erases every answer", () => {
+    const { poll, tokens } = open();
+    must(service.castBallot(tokens[0] ?? "", { q1: "for", q2: "o2", q3: "against" }));
+    must(service.cancelPoll(owner, poll.id));
+    expect(service.resultsFor(poll.id, "administrator")).toBeNull();
+  });
+
+  it("keeps the digest of a poll of one question, and changes it when a later question changes", () => {
+    const one = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, one.id, "a@example.com"));
+    const before = service.pollApprovalState(owner, one.id).digest;
+    const poll = must(service.createPoll(owner, multi()));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    const d1 = service.pollApprovalState(owner, poll.id).digest;
+    must(service.updatePoll(owner, poll.id, multi({ extraQuestions: [extra("Elect the chair?", ["Ana", "Ben", "Dana"]), extra("Adopt the by-laws?")] })));
+    expect(service.pollApprovalState(owner, poll.id).digest).not.toBe(d1);
+    expect(before).toBe(service.pollApprovalState(owner, one.id).digest);
+  });
+
 });
 
 describe("the organization's name", () => {

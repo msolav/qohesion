@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Qohesion contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from "vitest";
+import { createCipheriv, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from "node:crypto";
 import { generateCountingKeyBytes, formatCountingKey, keyFromInput, parseShares, shareSecret, generateCountingKeys, keyMatches, normalizeCountingKey, open, seal } from "./seal.js";
 
 describe("sealed ballots", () => {
@@ -18,6 +19,21 @@ describe("sealed ballots", () => {
     expect(sizes.size).toBe(1);
     expect(open(countingKey, seal(publicKey, "a-much-longer-option-identifier"))).toBe("a-much-longer-option-identifier");
     expect(() => seal(publicKey, "x".repeat(255))).toThrow();
+  });
+
+  it("opens a ballot sealed before padding existed, with the bare text as its plaintext", () => {
+    const { publicKey, countingKey } = generateCountingKeys();
+    // The sealing of the first builds, written out: the plaintext is the option id and nothing else.
+    const recipient = createPublicKey({ key: Buffer.concat([Buffer.from("302a300506032b656e032100", "hex"), Buffer.from(publicKey, "base64url")]), format: "der", type: "spki" });
+    const ephemeral = generateKeyPairSync("x25519");
+    const ephemeralPublic = Buffer.from(ephemeral.publicKey.export({ format: "der", type: "spki" }).subarray(-32));
+    const shared = diffieHellman({ privateKey: ephemeral.privateKey, publicKey: recipient });
+    const key = Buffer.from(hkdfSync("sha256", shared, ephemeralPublic, Buffer.from("qohesion-ballot-v1"), 32));
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", key, iv);
+    const body = Buffer.concat([cipher.update("against", "utf8"), cipher.final()]);
+    const legacy = Buffer.concat([ephemeralPublic, iv, cipher.getAuthTag(), body]).toString("base64url");
+    expect(open(countingKey, legacy)).toBe("against");
   });
 
   it("gives a different ciphertext each time and hides the choice", () => {
