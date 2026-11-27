@@ -552,3 +552,9 @@ button.cx-choice.preset[aria-pressed="true"] .ico{color:var(--mint)}
 .cx-answers{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4);margin:0;padding:0;list-style:none}
 .cx-approvals{display:grid;gap:var(--space-4)}
 .cx-badge{display:inline-block;min-width:1.4rem;margin-left:.35rem;padding:0 .4rem;border-radius:999px;background:var(--mint);color:#0f224c;font-size:.8rem;font-weight:800;text-align:center}
+
+/* Questions after the first, in the builder */
+.bld-extras{display:grid;gap:var(--space-4)}
+.bld-extra{display:grid;gap:var(--space-3);padding:var(--space-4);border:1.5px solid var(--dim);border-radius:var(--radius)}
+.bld-extra-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
+.bld-extra h3{margin:0;font-size:1.05rem}

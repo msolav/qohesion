@@ -20,6 +20,25 @@ describe("poll form", () => {
     expect(input.options).toEqual([{ label: "Garden", icon: "tree", color: "green" }, { label: "Roof", icon: null, color: null }]);
   });
 
+  it("reads questions after the first, in the order given, and drops an empty card", () => {
+    const input = parsePollForm(form([
+      ["languages", "fr"], ["languages", "en"], ["default_language", "fr"],
+      ["title_fr", "T"], ["title_en", "T"], ["question_fr", "Q1"], ["question_en", "Q1"], ["kind", "yes-no"],
+      ["question_order", "5"], ["question_order", "3"], ["question_order", "9"],
+      ["q5_kind", "choice"], ["q5_question_fr", "Qui?"], ["q5_question_en", "Who?"], ["q5_option_fr", "Ana"], ["q5_option_en", "Ana"], ["q5_option_fr", "Ben"], ["q5_option_en", "Ben"], ["q5_option_icon", ""], ["q5_option_color", ""], ["q5_option_icon", ""], ["q5_option_color", ""],
+      ["q3_kind", "yes-no"], ["q3_question_fr", "Adopter?"], ["q3_question_en", "Adopt?"],
+      ["q9_kind", "yes-no"], ["q9_question_fr", ""], ["q9_question_en", ""],
+    ]));
+    expect(input.extraQuestions?.map((q) => [q.type, q.prompt, q.options.map((o) => o.label)])).toEqual([["single", "Qui?", ["Ana", "Ben"]], ["yes-no", "Adopter?", []]]);
+    expect(input.translations.questions?.["q2"]?.question).toEqual({ fr: "Qui?", en: "Who?" });
+    expect(input.translations.questions?.["q2"]?.options).toEqual([{ fr: "Ana", en: "Ana" }, { fr: "Ben", en: "Ben" }]);
+    expect(input.translations.questions?.["q3"]?.question).toEqual({ fr: "Adopter?", en: "Adopt?" });
+  });
+
+  it("has no extra questions without a question order", () => {
+    expect(parsePollForm(form([["title", "x"]])).extraQuestions).toBeUndefined();
+  });
+
   it("falls back to the secret-ballot defaults for unknown values", () => {
     const input = parsePollForm(form([["title", "x"], ["timing", "now"], ["audience", "world"], ["theme", "neon"]]));
     expect(input).toMatchObject({ kind: "yes-no", timing: "close", audience: "voters", theme: "standard", opensAt: null, closesAt: "", encrypted: false });

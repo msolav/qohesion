@@ -20,6 +20,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       description: poll.description,
       kind: poll.kind,
       options: poll.kind === "choice" ? poll.options.map((o) => ({ label: o.label ?? "", icon: o.icon ?? null, color: o.color ?? null })) : [],
+      extraQuestions: poll.questions.slice(1).map((q) => ({ type: q.type, prompt: q.prompt, options: q.type === "single" ? q.options.map((o) => ({ label: o.label ?? "", icon: o.icon ?? null, color: o.color ?? null })) : [] })),
       timing: poll.timing,
       audience: poll.audience,
       theme: poll.theme,

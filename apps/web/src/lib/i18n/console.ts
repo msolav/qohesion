@@ -86,7 +86,7 @@ export interface ConsoleMessages {
   readonly voter: {
     readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollOne: string; readonly rollNote: string; readonly results: string;
     readonly cancelledDetail: string; readonly cancelledDetailNone: string; readonly doneChange: string;
-    readonly rollFixed: string; readonly rollLate: string; readonly stepOf: string; readonly start: string; readonly rulesTitle: string; readonly agree: string; readonly next: string; readonly back: string; readonly confirmTitle: string; readonly confirmChoice: string; readonly confirmFinal: string; readonly confirmSubmit: string; readonly showAll: string; readonly pickFirst: string; readonly doneDeadline: string; readonly addToCalendar: string; readonly calendarSummary: string; readonly calendarAlarm: string; readonly calendarNote: string; readonly introClose: string;
+    readonly questionOf: string; readonly summaryTitle: string; readonly changeAnswer: string; readonly doneMany: string; readonly rollFixed: string; readonly rollLate: string; readonly stepOf: string; readonly start: string; readonly rulesTitle: string; readonly agree: string; readonly next: string; readonly back: string; readonly confirmTitle: string; readonly confirmChoice: string; readonly confirmFinal: string; readonly confirmSubmit: string; readonly showAll: string; readonly pickFirst: string; readonly doneDeadline: string; readonly addToCalendar: string; readonly calendarSummary: string; readonly calendarAlarm: string; readonly calendarNote: string; readonly introClose: string;
     readonly namedValue: string; readonly namedNote: string; readonly namedWho: Readonly<Record<ResultsAudience, string>>; readonly cancelledTitle: string; readonly cancelledText: string;
     readonly yourVote: string; readonly changeAllowed: string; readonly changeFinal: string; readonly opensOn: string; readonly alreadyVotedChange: string; readonly alsoCloses: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleEveryone: string; readonly ruleMajority: string; readonly rulePercent: string; readonly or: string;
     readonly ballotType: string; readonly ballotValue: string; readonly ballotNote: string; readonly submit: string; readonly legend: string; readonly problem: string;
@@ -96,6 +96,7 @@ export interface ConsoleMessages {
   };
   readonly build: {
     readonly needLanguages: string; readonly needOptionLanguages: string;
+    readonly moreQuestions: string; readonly moreQuestionsHelp: string; readonly questionN: string; readonly addQuestion: string; readonly removeQuestion: string; readonly moveQuestionUp: string; readonly moveQuestionDown: string; readonly thresholdOneQuestion: string; readonly moreCount: string;
     readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"question" | "choices" | "results" | "closing" | "review", string>>;
     readonly next: string; readonly back: string; readonly change: string; readonly reviewLead: string;
     readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly fillLabel: string; readonly fillHelp: string; readonly fillOutline: string; readonly fillSolid: string; readonly styleDefault: string;
@@ -437,6 +438,10 @@ const en: ConsoleMessages = {
     results: "Results",
     cancelledDetail: "Cancelled on {date} by {who}. {n} ballots had been cast.",
     cancelledDetailNone: "Cancelled on {date} by {who}. No ballot had been cast.",
+    questionOf: "Question {n} of {total}",
+    summaryTitle: "Review your answers",
+    changeAnswer: "Change",
+    doneMany: "The receipt code identifies the whole ballot, which holds {n} answers. It does not show any of them.",
     rollFixed: "No one can be added after voting opens.",
     rollLate: "Participants can be added while voting is open. They are marked as late and are not in the code above.",
     stepOf: "Step {n} of {total}",
@@ -499,6 +504,15 @@ const en: ConsoleMessages = {
   build: {
     needLanguages: "Write the title and the question in every language offered (missing: {languages}).",
     needOptionLanguages: "Write every option in every language offered.",
+    moreQuestions: "More questions",
+    moreQuestionsHelp: "Each question is answered on its own page and counted on its own. One ballot holds every answer, with one receipt.",
+    questionN: "Question {n}",
+    addQuestion: "Add a question",
+    removeQuestion: "Remove question {n}",
+    moveQuestionUp: "Move question {n} up",
+    moveQuestionDown: "Move question {n} down",
+    thresholdOneQuestion: "A threshold rule needs a poll with one question.",
+    moreCount: "{n} more questions",
     stepsLabel: "Steps",
     step: "Step {n} of {total}",
     stepNames: { question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
@@ -595,7 +609,7 @@ const en: ConsoleMessages = {
     lapsedText: "The request lapsed without a decision.",
     staleTitle: "This draft changed after approval was asked",
     staleText: "Answers given before the change no longer count. Changed: {fields}. Ask again to start over.",
-    fields: { title: "title", question: "question", description: "details", kind: "kind", options: "options", translations: "translations", timing: "results timing", audience: "results audience", theme: "template", opensAt: "opening date", closesAt: "closing date", rules: "closing rules", allowChange: "changing a vote", encrypted: "encryption", markFill: "mark style", anonymity: "anonymity", publishCount: "published count", lockCancel: "cancelling", keyThreshold: "counting key", paged: "pages", lateRoll: "adding participants", autoReminder: "automatic reminders", roll: "participants" },
+    fields: { questions: "questions", title: "title", question: "question", description: "details", kind: "kind", options: "options", translations: "translations", timing: "results timing", audience: "results audience", theme: "template", opensAt: "opening date", closesAt: "closing date", rules: "closing rules", allowChange: "changing a vote", encrypted: "encryption", markFill: "mark style", anonymity: "anonymity", publishCount: "published count", lockCancel: "cancelling", keyThreshold: "counting key", paged: "pages", lateRoll: "adding participants", autoReminder: "automatic reminders", roll: "participants" },
     policyTitle: "Approval between administrators",
     policyText: "Publishing a poll, and changes to the organization, can need the agreement of other administrators. With one administrator nothing is asked. Once a rule is on, changing it needs approval under the rule in force.",
     ruleLabel: "Rule",
@@ -692,6 +706,12 @@ const en: ConsoleMessages = {
     request_closed: "This request is already decided.",
     invalid_policy: "The rule, the meaning of an abstention and the number of hours must be valid.",
     invalid_answer: "Answer with approve, reject or abstain.",
+    unknown_question: "This ballot has a question that the poll does not have. Reload the page.",
+    answers_incomplete: "Every question needs an answer.",
+    ballot_too_large: "This ballot is too large to be sealed.",
+    rules_need_one_question: "A threshold rule needs a poll with one question.",
+    questions_too_many: "A poll can have up to 20 questions.",
+    options_too_many_total: "A poll can have up to 100 options in all.",
     roll_scheduled: "The roll is fixed once the poll is scheduled. Take the scheduling back to change it.",
     roll_locked: "This poll does not allow adding participants after it opens.",
     cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
@@ -1020,6 +1040,10 @@ const fr: ConsoleMessages = {
     results: "Résultats",
     cancelledDetail: "Annulé le {date} par {who}. {n} bulletins avaient été déposés.",
     cancelledDetailNone: "Annulé le {date} par {who}. Aucun bulletin n’avait été déposé.",
+    questionOf: "Question {n} sur {total}",
+    summaryTitle: "Vérifier vos réponses",
+    changeAnswer: "Modifier",
+    doneMany: "Le code de reçu désigne tout le bulletin, qui contient {n} réponses. Il n’en montre aucune.",
     rollFixed: "Personne ne peut être ajouté après l’ouverture du vote.",
     rollLate: "Des participants peuvent être ajoutés pendant le vote. Ils sont marqués comme tardifs et ne figurent pas dans le code ci-dessus.",
     stepOf: "Étape {n} de {total}",
@@ -1082,6 +1106,15 @@ const fr: ConsoleMessages = {
   build: {
     needLanguages: "Rédiger le titre et la question dans chaque langue offerte (manque: {languages}).",
     needOptionLanguages: "Rédiger chaque option dans chaque langue offerte.",
+    moreQuestions: "Autres questions",
+    moreQuestionsHelp: "Chaque question a sa propre page et son propre décompte. Un bulletin contient toutes les réponses, avec un seul reçu.",
+    questionN: "Question {n}",
+    addQuestion: "Ajouter une question",
+    removeQuestion: "Retirer la question {n}",
+    moveQuestionUp: "Monter la question {n}",
+    moveQuestionDown: "Descendre la question {n}",
+    thresholdOneQuestion: "Une règle de seuil demande un scrutin à une seule question.",
+    moreCount: "{n} autres questions",
     stepsLabel: "Étapes",
     step: "Étape {n} de {total}",
     stepNames: { question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
@@ -1178,7 +1211,7 @@ const fr: ConsoleMessages = {
     lapsedText: "La demande a expiré sans décision.",
     staleTitle: "Ce brouillon a changé après la demande d’approbation",
     staleText: "Les réponses données avant le changement ne comptent plus. Modifié: {fields}. Demander de nouveau pour recommencer.",
-    fields: { title: "titre", question: "question", description: "détails", kind: "type", options: "options", translations: "traductions", timing: "moment des résultats", audience: "destinataires des résultats", theme: "modèle", opensAt: "date d’ouverture", closesAt: "date de fermeture", rules: "règles de fermeture", allowChange: "modification du vote", encrypted: "chiffrement", markFill: "style des marques", anonymity: "anonymat", publishCount: "décompte publié", lockCancel: "annulation", keyThreshold: "clé de dépouillement", paged: "pages", lateRoll: "ajout de participants", autoReminder: "rappels automatiques", roll: "participants" },
+    fields: { questions: "questions", title: "titre", question: "question", description: "détails", kind: "type", options: "options", translations: "traductions", timing: "moment des résultats", audience: "destinataires des résultats", theme: "modèle", opensAt: "date d’ouverture", closesAt: "date de fermeture", rules: "règles de fermeture", allowChange: "modification du vote", encrypted: "chiffrement", markFill: "style des marques", anonymity: "anonymat", publishCount: "décompte publié", lockCancel: "annulation", keyThreshold: "clé de dépouillement", paged: "pages", lateRoll: "ajout de participants", autoReminder: "rappels automatiques", roll: "participants" },
     policyTitle: "Approbation entre administrateurs",
     policyText: "La publication d’un scrutin et les changements de l’organisation peuvent demander l’accord d’autres administrateurs. Avec un seul administrateur, rien n’est demandé. Une fois une règle activée, la changer demande une approbation selon la règle en vigueur.",
     ruleLabel: "Règle",
@@ -1275,6 +1308,12 @@ const fr: ConsoleMessages = {
     request_closed: "Cette demande est déjà décidée.",
     invalid_policy: "La règle, le sens d’une abstention et le nombre d’heures doivent être valides.",
     invalid_answer: "Répondre par approuver, refuser ou s’abstenir.",
+    unknown_question: "Ce bulletin contient une question que le scrutin n’a pas. Recharger la page.",
+    answers_incomplete: "Chaque question demande une réponse.",
+    ballot_too_large: "Ce bulletin est trop volumineux pour être scellé.",
+    rules_need_one_question: "Une règle de seuil demande un scrutin à une seule question.",
+    questions_too_many: "Un scrutin peut avoir jusqu’à 20 questions.",
+    options_too_many_total: "Un scrutin peut avoir jusqu’à 100 options en tout.",
     roll_scheduled: "La liste est fixée une fois le scrutin planifié. Annuler la planification pour la modifier.",
     roll_locked: "Ce scrutin ne permet pas d’ajouter des participants après son ouverture.",
     cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",

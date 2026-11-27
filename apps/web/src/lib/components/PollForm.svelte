@@ -53,6 +53,39 @@
   let markFillValue = $state<"outline" | "fill">(start?.markFill ? "fill" : "outline");
   const markFill = $derived(markFillValue === "fill");
   let kind = $state<"yes-no" | "choice">(start?.kind ?? "yes-no");
+  interface Extra {
+    key: number;
+    kind: "yes-no" | "choice";
+    texts: Texts;
+    rows: { key: number; texts: Texts }[];
+  }
+  let extraKey = 100;
+  const newExtraRow = (texts: Partial<Texts> = {}) => ({ key: extraKey++, texts: { ...blank(), ...texts } });
+  // Questions 2 to n of a poll being edited, with their texts in every language offered.
+  let extras = $state<Extra[]>(
+    (start?.extraQuestions ?? []).map((q, n) => {
+      const own = t0?.questions?.[`q${n + 2}`];
+      const plain = !(t0 && t0.languages.length > 0);
+      return {
+        key: extraKey++,
+        kind: q.type === "single" ? ("choice" as const) : ("yes-no" as const),
+        texts: { ...blank(), ...(own?.question ?? {}), ...(plain ? { [ui]: q.prompt } : {}) },
+        rows: (q.type === "single" ? q.options : []).map((o, j) => newExtraRow({ ...(own?.options[j] ?? {}), ...(plain ? { [ui]: o.label } : {}) })),
+      };
+    }),
+  );
+  function addQuestion(): void {
+    if (extras.length >= 19) return;
+    extras.push({ key: extraKey++, kind: "yes-no", texts: blank(), rows: [newExtraRow(), newExtraRow()] });
+  }
+  function removeQuestion(i: number): void {
+    extras.splice(i, 1);
+  }
+  function moveQuestion(from: number, to: number): void {
+    if (to < 0 || to >= extras.length) return;
+    const [item] = extras.splice(from, 1);
+    if (item) extras.splice(to, 0, item);
+  }
   let rows = $state<Row[]>(start && start.options.length > 0 ? start.options.map((o, i) => row({ ...(t0?.options[i] ?? {}), ...(t0 && t0.languages.length > 0 ? {} : { [ui]: o.label ?? "" }) }, o.icon ?? "", o.color ?? "")) : [row(), row(), row()]);
   let timing = $state<ResultsTiming>(start?.timing ?? "close");
   let audience = $state<ResultsAudience>(start?.audience ?? "voters");
@@ -123,7 +156,7 @@
   );
   // A threshold reads the totals, and a changed vote needs a pseudonym: the first needs readable ballots, the second sealed ones.
   $effect(() => {
-    if (encryption === "sealed") ruleThreshold = "none";
+    if (encryption === "sealed" || extras.length > 0) ruleThreshold = "none";
     if (encryption !== "sealed") allowChange = false;
   });
   // A refusal from the server sends the person to the step that holds the problem.
@@ -399,6 +432,57 @@
         <p class="cx-help">{m.build.fixedOptions}</p>
       {/if}
 
+      <fieldset class="cx-field bld-extras">
+        <legend class="cx-label">{m.build.moreQuestions}</legend>
+        <p class="cx-help">{m.build.moreQuestionsHelp}</p>
+        {#each extras as q, qi (q.key)}
+          <div class="bld-extra">
+            <input type="hidden" name="question_order" value={q.key} />
+            <div class="bld-extra-head">
+              <h3>{fill(m.build.questionN, { n: qi + 2 })}</h3>
+              <div class="bld-row-tools">
+                <button type="button" class="bld-tool" aria-label={fill(m.build.moveQuestionUp, { n: qi + 2 })} disabled={qi === 0} onclick={() => moveQuestion(qi, qi - 1)}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+                <button type="button" class="bld-tool" aria-label={fill(m.build.moveQuestionDown, { n: qi + 2 })} disabled={qi === extras.length - 1} onclick={() => moveQuestion(qi, qi + 1)}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+                <button type="button" class="bld-tool" aria-label={fill(m.build.removeQuestion, { n: qi + 2 })} onclick={() => removeQuestion(qi)}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg></button>
+              </div>
+            </div>
+            <div class="cx-choices cols-2" role="radiogroup" aria-label={m.form.kind}>
+              <label class="cx-choice"><input type="radio" name="q{q.key}_kind" value="yes-no" bind:group={q.kind} /><span><b>{m.form.kindYesNo}</b></span></label>
+              <label class="cx-choice"><input type="radio" name="q{q.key}_kind" value="choice" bind:group={q.kind} /><span><b>{m.form.kindChoice}</b></span></label>
+            </div>
+            <div class="cx-field">
+              <label for="q{q.key}-question-{editing}">{m.form.question}</label>
+              {#each languages as lang (lang)}
+                <input id="q{q.key}-question-{lang}" name="q{q.key}_question_{lang}" type="text" lang={lang} maxlength="300" hidden={lang !== editing} bind:value={q.texts[lang]} autocomplete="off" />
+              {/each}
+            </div>
+            {#if q.kind === "choice"}
+              <ul class="bld-options">
+                {#each q.rows as r, j (r.key)}
+                  <li class="bld-option">
+                    <div class="bld-row">
+                      <label class="sr-only" for="q{q.key}-option-{r.key}-{editing}">{fill(m.form.optionN, { n: j + 1 })}</label>
+                      {#each languages as lang (lang)}
+                        <input id="q{q.key}-option-{r.key}-{lang}" name="q{q.key}_option_{lang}" type="text" lang={lang} maxlength="120" hidden={lang !== editing} placeholder={fill(m.form.optionN, { n: j + 1 })} bind:value={r.texts[lang]} autocomplete="off" />
+                      {/each}
+                      <div class="bld-row-tools">
+                        <button type="button" class="bld-tool" aria-label={fill(m.build.removeOption, { n: j + 1 })} disabled={q.rows.length <= 2} onclick={() => q.rows.splice(j, 1)}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg></button>
+                      </div>
+                    </div>
+                    <input type="hidden" name="q{q.key}_option_icon" value="" />
+                    <input type="hidden" name="q{q.key}_option_color" value="" />
+                  </li>
+                {/each}
+              </ul>
+              {#if q.rows.length < 12}<div><button type="button" class="cx-btn ghost small" onclick={() => q.rows.push(newExtraRow())}>{m.form.addOption}</button></div>{/if}
+            {:else}
+              <p class="cx-help">{m.build.fixedOptions}</p>
+            {/if}
+          </div>
+        {/each}
+        {#if extras.length < 19}<div><button type="button" class="cx-btn ghost small" onclick={addQuestion}>{m.build.addQuestion}</button></div>{/if}
+      </fieldset>
+
       <fieldset class="cx-field">
         <legend class="cx-label">{m.build.fillLabel}</legend>
         <p class="cx-help">{m.build.fillHelp}</p>
@@ -511,13 +595,14 @@
         </div>
         <div class="cx-choices cols-3">
           <label class="cx-choice"><input type="radio" name="rule_threshold" value="none" bind:group={ruleThreshold} /><span><b>{m.form.ruleThresholdNone}</b></span></label>
-          <label class="cx-choice"><input type="radio" name="rule_threshold" value="majority" bind:group={ruleThreshold} disabled={encryption === "sealed"} /><span><b>{m.form.ruleThresholdMajority}</b></span></label>
-          <label class="cx-choice"><input type="radio" name="rule_threshold" value="percent" bind:group={ruleThreshold} disabled={encryption === "sealed"} /><span><b>{m.form.ruleThresholdPercent}</b></span></label>
+          <label class="cx-choice"><input type="radio" name="rule_threshold" value="majority" bind:group={ruleThreshold} disabled={encryption === "sealed" || extras.length > 0} /><span><b>{m.form.ruleThresholdMajority}</b></span></label>
+          <label class="cx-choice"><input type="radio" name="rule_threshold" value="percent" bind:group={ruleThreshold} disabled={encryption === "sealed" || extras.length > 0} /><span><b>{m.form.ruleThresholdPercent}</b></span></label>
         </div>
         {#if ruleThreshold === "percent"}
           <div class="bld-rule"><label class="sr-only" for="rule_threshold_p">{m.form.ruleThresholdPercent}</label><input id="rule_threshold_p" name="rule_threshold_p" type="number" min="1" max="100" step="1" inputmode="numeric" bind:value={ruleThresholdP} /><span class="unit">{m.form.percent}</span></div>
         {/if}
         {#if encryption === "sealed"}<p class="cx-help" role="status">{m.form.ruleNeedsReadable}</p>{/if}
+        {#if extras.length > 0}<p class="cx-help" role="status">{m.build.thresholdOneQuestion}</p>{/if}
       </fieldset>
 
       <fieldset class="cx-field">
@@ -564,6 +649,7 @@
       <dl class="bld-review">
         <div><dt>{m.form.pollTitle}</dt><dd>{titles[def] || "–"}<br />{questions[def] || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.options}</dt><dd>{kind === "choice" ? labels.join(" · ") || "–" : m.form.kindYesNo}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>
+        {#if extras.length > 0}<div><dt>{m.build.moreQuestions}</dt><dd>{fill(m.build.moreCount, { n: extras.length })}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>{/if}
         <div><dt>{m.form.results}</dt><dd>{m.resultsStatement[timing][audience]}<br />{encryption === "sealed" ? m.seal.sealed.title : m.seal.none.title}<br />{m.form.anonymityNames.title[anonymity]}</dd><dd><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}</button></dd></div>
         <div><dt>{m.build.stepNames.closing}</dt><dd>{m.form.opening}: {opensMode === "date" && opensAt ? opensAt.replace("T", " ") : m.form.openManual}<br />{m.form.closeAt}: {closesAt ? closesAt.replace("T", " ") : "–"} · {THEME_NAMES[theme][locale]}</dd><dd><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}</button></dd></div>
       </dl>

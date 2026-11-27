@@ -4,7 +4,7 @@
 import { isColorId, isIconId } from "./option-style.js";
 import { isAutoReminder, type AutoReminder } from "./auto-reminder.js";
 import { cleanLanguages, isLang, type Lang, type Translations } from "./poll-i18n.js";
-import type { OptionInput, PollInput } from "./server/service.js";
+import type { ExtraQuestionInput, OptionInput, PollInput } from "./server/service.js";
 import { isAudience, isTiming } from "./results-rules.js";
 import { DEFAULT_THEME, isTheme } from "./theme.js";
 import { DEFAULT_TIME_ZONE, zonedToUtc } from "./zoned.js";
@@ -20,12 +20,12 @@ const text = (data: FormData, name: string): string => {
  * in each language, its icon, its colour) arrive as lists of the same length, so they pair up by position. A row with no text
  * in the default language is dropped, with its other texts; an unknown icon or colour becomes none.
  */
-export function parseOptionRows(data: FormData, languages: readonly Lang[]): { options: OptionInput[]; texts: Partial<Record<Lang, string>>[] } {
+export function parseOptionRows(data: FormData, languages: readonly Lang[], prefix = ""): { options: OptionInput[]; texts: Partial<Record<Lang, string>>[] } {
   const def = languages[0];
-  const names = def ? languages.map((l) => [l, `option_${l}`] as const) : ([["fr", "option"]] as const);
-  const base = data.getAll(def ? `option_${def}` : "option");
-  const icons = data.getAll("option_icon");
-  const colors = data.getAll("option_color");
+  const names = def ? languages.map((l) => [l, `${prefix}option_${l}`] as const) : ([["fr", `${prefix}option`]] as const);
+  const base = data.getAll(def ? `${prefix}option_${def}` : `${prefix}option`);
+  const icons = data.getAll(`${prefix}option_icon`);
+  const colors = data.getAll(`${prefix}option_color`);
   const options: OptionInput[] = [];
   const texts: Partial<Record<Lang, string>>[] = [];
   base.forEach((label, i) => {
@@ -47,6 +47,33 @@ export function parseOptionRows(data: FormData, languages: readonly Lang[]): { o
 /** Kept for forms that carry one language only. */
 export function parseOptions(data: FormData): OptionInput[] {
   return parseOptionRows(data, []).options;
+}
+
+/**
+ * Questions 2 to n (ADR 0010). Each has its fields under a prefix `q<N>_` and `question_order` lists the N in the order
+ * they were arranged. A card with no question text and no option text is an empty one and is left out. The texts in the other
+ * languages are keyed by the position the question will have (q2, q3, ...), as the service names them.
+ */
+export function parseExtraQuestions(data: FormData, languages: readonly Lang[]): { questions: ExtraQuestionInput[]; texts: Record<string, { question: Partial<Record<Lang, string>>; options: Partial<Record<Lang, string>>[] }> } {
+  const def = languages[0];
+  const questions: ExtraQuestionInput[] = [];
+  const texts: Record<string, { question: Partial<Record<Lang, string>>; options: Partial<Record<Lang, string>>[] }> = {};
+  for (const raw of data.getAll("question_order")) {
+    if (typeof raw !== "string" || !/^\d{1,3}$/.test(raw)) continue;
+    const prefix = `q${raw}_`;
+    const type = text(data, `${prefix}kind`) === "choice" ? "single" : "yes-no";
+    const prompt = text(data, def ? `${prefix}question_${def}` : `${prefix}question`);
+    const rows = parseOptionRows(data, languages, prefix);
+    if (prompt.trim() === "" && (type === "yes-no" || rows.options.length === 0)) continue;
+    questions.push({ type, prompt, options: type === "single" ? rows.options : [] });
+    if (def) {
+      texts[`q${questions.length + 1}`] = {
+        question: Object.fromEntries(languages.map((l) => [l, text(data, `${prefix}question_${l}`)])),
+        options: type === "single" ? rows.texts : [],
+      };
+    }
+  }
+  return { questions, texts };
 }
 
 const whole = (value: string): number => (/^\d+$/.test(value.trim()) ? Number(value.trim()) : Number.NaN);
@@ -77,6 +104,7 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
   const pick = (name: string): string => text(data, def ? `${name}_${def}` : name);
   const kind = text(data, "kind") === "choice" ? "choice" : "yes-no";
   const rows = parseOptionRows(data, languages);
+  const extra = parseExtraQuestions(data, languages);
   const translations: Translations = def
     ? {
         languages,
@@ -84,6 +112,7 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
         question: Object.fromEntries(languages.map((l) => [l, text(data, `question_${l}`)])),
         description: Object.fromEntries(languages.map((l) => [l, text(data, `description_${l}`)])),
         options: kind === "choice" ? rows.texts : [],
+        ...(extra.questions.length > 0 ? { questions: extra.texts } : {}),
       }
     : { languages: [], title: {}, question: {}, description: {}, options: [] };
   return {
@@ -92,6 +121,7 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     description: pick("description"),
     kind,
     options: rows.options,
+    ...(extra.questions.length > 0 ? { extraQuestions: extra.questions } : {}),
     translations,
     timing: isTiming(timing) ? timing : "close",
     audience: isAudience(audience) ? audience : "voters",

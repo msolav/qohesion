@@ -140,6 +140,21 @@ const ics = await anonymous.send(`/v/${pagedLinks[0]}/calendar.ics`);
 check("a calendar file gives the closing time with an alarm 24 hours before", ics.status === 200 && ics.text.includes("TRIGGER:-PT24H") && ics.text.includes("BEGIN:VEVENT"));
 check("the calendar file holds no personal link", !ics.text.includes(pagedLinks[0] ?? "?"));
 
+// A poll with several questions: one page of answers each, one ballot, one receipt.
+const manyForm = [["title", "Two questions"], ["question", "Do you agree?"], ["kind", "yes-no"], ["timing", "close"], ["audience", "voters"], ["theme", "ballot-paper"], ["closes_at", closing], ["question_order", "2"], ["q2_kind", "choice"], ["q2_question", "Who chairs?"], ["q2_option", "Ana"], ["q2_option", "Ben"], ["q2_option_icon", ""], ["q2_option_color", ""], ["q2_option_icon", ""], ["q2_option_color", ""]];
+const many = await admin.send("/console/polls/new", { method: "POST", form: manyForm });
+const manyId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(many.location)?.[1];
+check("a poll with two questions is created", Boolean(manyId), many.location);
+await admin.send(`/console/polls/${manyId}/roll?/add`, { method: "POST", form: { addresses: "m1@example.com\nm2@example.com" } });
+const manyTokens = [...new Set([...(await admin.send(`/console/polls/${manyId}/roll`)).text.matchAll(/\/v\/([0-9A-Z]{24})/g)].map((m) => m[1]))];
+await admin.send(`/console/polls/${manyId}?/open`, { method: "POST", form: {} });
+const manyBallot = await anonymous.send(`/v/${manyTokens[0]}?view=all`);
+check("the ballot shows a group of choices for each question", manyBallot.text.includes('name="a_q1"') && manyBallot.text.includes('name="a_q2"') && manyBallot.text.includes("Who chairs?"));
+const partial = await anonymous.send(`/v/${manyTokens[0]}`, { method: "POST", form: { a_q1: "for" } });
+check("a ballot missing an answer is refused", partial.status === 400);
+const manyCast = await anonymous.send(`/v/${manyTokens[0]}`, { method: "POST", form: { a_q1: "for", a_q2: "o2" } });
+check("a ballot with every answer gets one receipt", /[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}/.test(manyCast.text) && manyCast.text.includes("2"));
+
 // A sealed poll: ballots are encrypted, totals stay hidden, and the count needs the counting key.
 const sealed = await admin.send("/console/polls/new", { method: "POST", form: { title: "Sealed poll", question: "Do you agree?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing, encryption: "sealed" } });
 const sealedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(sealed.location)?.[1];

@@ -15,20 +15,49 @@
   const failure = $derived(form && "error" in form ? form.error : null);
   const token = $derived(page.params["token"] ?? "");
 
-  type Step = "all" | "intro" | "rules" | "question" | "confirm";
-  // The paged flow needs the script. Without it, the introduction links to the same ballot on one page.
-  const flow = $derived<readonly Step[]>(data.poll?.paged ? ["intro", "rules", "question", ...(data.poll.allowChange ? [] : (["confirm"] as const))] : ["all"]);
+  type Kind = "all" | "intro" | "rules" | "question" | "summary" | "confirm";
+  interface Page {
+    readonly kind: Kind;
+    readonly qid?: string;
+  }
+  const questions = $derived(data.poll?.questions ?? []);
+  // The pages of ADR 0008: introduction, rules, a page for each question, a summary when there are several questions,
+  // and a check when the vote cannot be changed. The paged flow needs the script. Without it, the introduction links to
+  // the same ballot on one page.
+  const flow = $derived<readonly Page[]>(
+    data.poll?.paged
+      ? [
+          { kind: "intro" },
+          { kind: "rules" },
+          ...questions.map((q): Page => ({ kind: "question", qid: q.id })),
+          ...(questions.length > 1 ? [{ kind: "summary" } as Page] : []),
+          ...(data.poll.allowChange ? [] : [{ kind: "confirm" } as Page]),
+        ]
+      : [{ kind: "all" }],
+  );
   let at = $state(0);
-  let chosen = $state("");
+  let answers = $state<Record<string, string>>({});
   let agreed = $state(false);
-  const step = $derived(flow[Math.min(at, flow.length - 1)] ?? "all");
+  const here = $derived(flow[Math.min(at, flow.length - 1)] ?? { kind: "all" as const });
+  const step = $derived(here.kind);
+  const failureQuestion = $derived(form && "question" in form && typeof form.question === "string" ? form.question : null);
+  // A server error about one question sends the member to that question.
+  $effect(() => {
+    if (!failureQuestion) return;
+    const index = flow.findIndex((p) => p.kind === "question" && p.qid === failureQuestion);
+    if (index >= 0) at = index;
+  });
+  function edit(id: string): void {
+    const index = flow.findIndex((p) => p.kind === "question" && p.qid === id);
+    if (index >= 0) at = index;
+  }
   const closed = $derived(data.poll?.closesAt ? new Date(data.poll.closesAt).getTime() <= Date.now() : false);
 
-  function canLeave(from: Step): boolean {
-    return !((from === "rules" && !agreed) || (from === "question" && chosen === ""));
+  function canLeave(from: Page): boolean {
+    return !((from.kind === "rules" && !agreed) || (from.kind === "question" && (answers[from.qid ?? ""] ?? "") === ""));
   }
   function next(): void {
-    if (at < flow.length - 1 && canLeave(step)) at += 1;
+    if (at < flow.length - 1 && canLeave(here)) at += 1;
   }
   function back(): void {
     if (at > 0) at -= 1;
@@ -62,6 +91,7 @@
       <svg class="done__icon" viewBox="0 0 48 48" width="56" height="56" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="3" /><path d="M14 25l7 7 13-16" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
       <h2 id="done-title" tabindex="-1" bind:this={doneHeading}>{m.voter.doneTitle}</h2>
       <p class="done__text">{m.voter.doneText}</p>
+      {#if questions.length > 1}<p class="done__text">{fill(m.voter.doneMany, { n: questions.length })}</p>{/if}
       <p class="done__label">{m.voter.doneLabel}</p>
       <p class="done__code">{receipt}</p>
       {#if data.poll?.allowChange}<p class="receipt">{m.voter.doneChange}</p>{/if}
@@ -98,8 +128,11 @@
           poll={data.poll}
           {failure}
           {step}
-          bind:chosen
+          qid={here.qid ?? "q1"}
+          bind:answers
           bind:agreed
+          {failureQuestion}
+          onedit={edit}
           organization={data.organization ?? ""}
           calendarHref="/v/{token}/calendar.ics"
           stepNo={at + 1}
