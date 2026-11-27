@@ -52,6 +52,8 @@
 [data-theme="guide-map"] .facts>div+div{border-top:1.5px solid var(--line-soft)}
 
 /* Pills */
+/* The notice of a test build stays above the disc behind the question */
+.edition{position:relative;z-index:1}
 [data-theme="guide-map"] .choices{counter-reset:opt;gap:var(--space-3);margin-top:var(--space-4)}
 [data-theme="guide-map"] .choice{counter-increment:opt}
 [data-theme="guide-map"] .choice label{
@@ -64,6 +66,9 @@
 [data-theme="guide-map"] .choice input[value="for"]+label{--pill:#8ED462;--gl:1}
 [data-theme="guide-map"] .choice input[value="against"]+label{--pill:#FF705D;--gl:1}
 [data-theme="guide-map"] .choice input[value="abstain"]+label{--pill:#F5E211;--gl:1}
+/* Custom options: a chosen colour tints the pill, a chosen icon replaces the number */
+[data-theme="guide-map"] .choice[data-color] input+label{--pill:color-mix(in srgb,var(--c) 28%,#fff);--gl:1}
+[data-theme="guide-map"] .choice[data-icon] input+label{--gl:1}
 [data-theme="guide-map"] .choice:hover label{filter:brightness(.95)}
 [data-theme="guide-map"] .choice input:checked+label{box-shadow:inset 0 0 0 2px var(--ink);background:var(--pill,var(--tint))}
 

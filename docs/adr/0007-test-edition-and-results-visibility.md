@@ -57,6 +57,10 @@ Rules:
 
 Results update by polling a JSON address every few seconds while the page is visible and the poll is open. The address applies the rules of section 2 on every request. It carries no identifier. A push channel replaces polling later if the load calls for it; the rules stay the same.
 
+### 4a. Options can carry an icon and a colour
+
+An option of a poll may have an icon and a colour, chosen from short fixed lists (16 icons, 7 colours) so that every combination stays legible in every template. Both are stored on the option, optional, and refused when not on the list. A poll's `kind` and its `options` are stored as data (not as a form of a fixed shape), so further kinds (multiple choice, ranking, scales, text) can be added later by extending the kind and the option fields, without changing the roll, the ballots or the ledger.
+
 ### 5. Scope of the first test
 
 Included: space creation, keys, poll creation with one single-choice question (in favour, against, abstention, or custom options), the roll with personal links, opening and closing, voting with receipt, optional sealed ballots with a counting key, results with the visibility settings, a ledger page, an optional password in front of the whole edition.

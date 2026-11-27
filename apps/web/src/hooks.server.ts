@@ -6,6 +6,11 @@ import { gateAllows, gateCookieValue, passwordMatches } from "#lib/server/gate.j
 
 const YEAR = 60 * 60 * 24 * 365;
 
+/** The owner and administrator screens wear the console look, not a ballot template: no template rule may reach them. */
+function consoleScreen(pathname: string): boolean {
+  return pathname === "/start" || pathname === "/signin" || pathname === "/gate" || pathname === "/console" || pathname.startsWith("/console/");
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
   const query = event.url.searchParams.get("lang");
   const remembered = event.cookies.get("lang");
@@ -53,6 +58,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   });
 
   return resolve(event, {
-    transformPageChunk: ({ html }) => html.replace("%lang%", event.locals.locale).replace("%theme%", event.locals.theme),
+    transformPageChunk: ({ html }) => html.replace("%lang%", event.locals.locale).replace("%theme%", consoleScreen(event.url.pathname) ? "console" : event.locals.theme),
   });
 };

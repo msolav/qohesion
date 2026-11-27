@@ -13,6 +13,7 @@ import { defineForm, validateForm, type Form } from "@qohesion/engine";
 import { MerkleLog, hashLeaf, receiptCode, toHex, normalizeReceiptCode, verifyInclusion } from "@qohesion/ledger";
 import { addressFingerprint, applyEvent, checkAddress, freezeRoll, type MemberStatus } from "@qohesion/roll";
 import { generateCountingKeys, keyMatches, open as openSealed, seal } from "./seal.js";
+import { isColorId, isIconId } from "../option-style.js";
 import { isTheme, type Theme } from "../theme.js";
 import { accessTo, isAudience, isTiming, type Access, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
 
@@ -68,6 +69,10 @@ export interface PollOption {
   readonly id: string;
   /** Null for the three fixed options of a yes-no poll, whose labels come from the interface language. */
   readonly label: string | null;
+  /** An icon id from option-style.ts, or null for the default mark. */
+  readonly icon?: string | null;
+  /** A colour id from option-style.ts, or null for the default. */
+  readonly color?: string | null;
 }
 
 export interface Poll {
@@ -105,12 +110,18 @@ export interface RollEntry {
   readonly invitedOn: string | null;
 }
 
+export interface OptionInput {
+  readonly label: string;
+  readonly icon: string | null;
+  readonly color: string | null;
+}
+
 export interface PollInput {
   readonly title: string;
   readonly description: string;
   readonly kind: PollKind;
-  /** Labels of the options of a "choice" poll. Ignored for "yes-no". */
-  readonly options: readonly string[];
+  /** The options of a "choice" poll, in order. Ignored for "yes-no". */
+  readonly options: readonly OptionInput[];
   readonly timing: ResultsTiming;
   readonly audience: ResultsAudience;
   readonly theme: ThemeName;
@@ -430,18 +441,21 @@ export class Service {
     if (input.encrypted && input.timing === "live") return "encryption_needs_close";
     if (input.closeAfterHours !== null && (!Number.isInteger(input.closeAfterHours) || input.closeAfterHours < 1 || input.closeAfterHours > 24 * 30)) return "invalid_duration";
     if (input.kind === "choice") {
-      const labels = input.options.map((o) => o.trim()).filter((o) => o.length > 0);
+      const labels = input.options.map((o) => o.label.trim()).filter((o) => o.length > 0);
       if (labels.length < 2) return "options_too_few";
       if (labels.length > MAX_OPTIONS) return "options_too_many";
       if (new Set(labels.map((l) => l.toLowerCase())).size !== labels.length) return "options_duplicate";
       if (labels.some((l) => l.length > 120)) return "option_too_long";
+      if (input.options.some((o) => (o.icon !== null && !isIconId(o.icon)) || (o.color !== null && !isColorId(o.color)))) return "option_style_invalid";
     }
     return null;
   }
 
   #optionsOf(input: PollInput): PollOption[] {
     if (input.kind === "yes-no") return [{ id: "for", label: null }, { id: "against", label: null }, { id: "abstain", label: null }];
-    return input.options.map((o) => o.trim()).filter((o) => o.length > 0).map((label, i) => ({ id: `o${i + 1}`, label }));
+    return input.options
+      .filter((o) => o.label.trim().length > 0)
+      .map((o, i) => ({ id: `o${i + 1}`, label: o.label.trim(), icon: o.icon, color: o.color }));
   }
 
   createPoll(session: Session, input: PollInput): Result<Poll> {

@@ -2,7 +2,8 @@
   import { invalidateAll } from "$app/navigation";
   import { consoleMessages, fill } from "#lib/i18n/console.js";
   import type { Locale } from "#lib/i18n/negotiate.js";
-  import { OPTION_GLYPHS, optionLabel } from "#lib/option-labels.js";
+  import { optionLabel } from "#lib/option-labels.js";
+  import { iconOf, iconPath } from "#lib/option-style.js";
   import type { PollStatus, ResultsAudience, ResultsTiming } from "#lib/results-rules.js";
   import type { ResultsView } from "#lib/server/service.js";
 
@@ -17,7 +18,7 @@
   }: {
     locale: Locale;
     pollId: string;
-    options: readonly { id: string; label: string | null }[];
+    options: readonly { id: string; label: string | null; icon?: string | null; color?: string | null }[];
     timing: ResultsTiming;
     audience: ResultsAudience;
     initial: ResultsView;
@@ -96,8 +97,8 @@
       <ul class="cx-bars gap" aria-label={m.results.share}>
         {#each options as option (option.id)}
           {@const n = view.counts[option.id] ?? 0}
-          {@const glyph = OPTION_GLYPHS[option.id]}
-          <li class="cx-bar {option.id}" class:lead={n === best && best > 0 && leaders === 1}>
+          {@const glyph = iconPath(iconOf(option))}
+          <li class="cx-bar {option.id}" data-color={option.color ?? undefined} class:lead={n === best && best > 0 && leaders === 1}>
             <div class="row">
               {#if glyph}
                 <span class="glyph" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d={glyph} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>

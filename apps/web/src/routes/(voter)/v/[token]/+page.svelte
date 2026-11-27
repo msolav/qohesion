@@ -3,7 +3,7 @@
   import { page } from "$app/state";
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
   import { messages } from "#lib/i18n/messages.js";
-  import { OPTION_GLYPHS, optionLabel } from "#lib/option-labels.js";
+  import BallotView from "#lib/components/BallotView.svelte";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -11,7 +11,6 @@
   const t = $derived(messages[data.locale]);
   const receipt = $derived(form && "receipt" in form ? form.receipt : null);
   const failure = $derived(form && "error" in form ? form.error : null);
-  const fmt = $derived(new Intl.DateTimeFormat(data.locale === "fr" ? "fr-CA" : "en-CA", { dateStyle: "long", timeStyle: "short" }));
   const token = $derived(page.params["token"] ?? "");
 
   let doneHeading: HTMLElement | undefined = $state();
@@ -47,52 +46,7 @@
   {:else if data.poll}
     <section class="ballot-view" aria-labelledby="q-title">
       <form class="ballot" method="POST" novalidate use:enhance>
-        <div class="slip">
-          <div class="ballot__head">
-            <h1 id="q-title">{data.poll.title}</h1>
-            {#if data.poll.description}<p class="lede">{data.poll.description}</p>{:else}<p class="lede">{m.voter.lede}</p>{/if}
-          </div>
-
-          <dl class="facts" aria-label={m.voter.facts}>
-            <div>
-              <dt>{m.voter.closes}</dt>
-              <dd>{data.poll.closesAt ? fmt.format(new Date(data.poll.closesAt)) : m.voter.noClose}</dd>
-            </div>
-            <div>
-              <dt>{m.voter.roll}</dt>
-              <dd>{fill(m.voter.rollValue, { n: data.poll.rollCount ?? 0 })}</dd>
-              <dd class="note">{fill(m.voter.rollNote, { code: data.poll.rollCode ?? "" })}</dd>
-            </div>
-            <div>
-              <dt>{m.voter.ballotType}</dt>
-              <dd>{m.voter.ballotValue}, {data.poll.encrypted ? m.seal.factSealed.toLowerCase() : m.seal.factPlain.toLowerCase()}</dd>
-              <dd class="note">{m.voter.ballotNote} {data.poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
-            </div>
-            <div>
-              <dt>{m.voter.results}</dt>
-              <dd class="note">{m.resultsStatement[data.poll.timing][data.poll.audience]}</dd>
-            </div>
-          </dl>
-
-          <fieldset class="choices" aria-describedby={failure ? "choice-error" : undefined}>
-            <legend class="sr-only">{m.voter.legend}</legend>
-            {#each data.poll.options as option (option.id)}
-              <div class="choice">
-                <input type="radio" name="choice" id="c-{option.id}" value={option.id} />
-                <label for="c-{option.id}">
-                  <span class="mark" aria-hidden="true">
-                    <svg viewBox="0 0 16 16" width="14" height="14" focusable="false"><path d={OPTION_GLYPHS[option.id] ?? OPTION_GLYPHS["for"]} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                  </span>
-                  <span>{optionLabel(data.locale, option)}</span>
-                </label>
-              </div>
-            {/each}
-          </fieldset>
-
-          {#if failure}<p class="error" id="choice-error" role="alert">{m.voter.problem} {errorText(m, failure)}</p>{/if}
-        </div>
-
-        <div class="castbar"><button class="cast" type="submit">{m.voter.submit}</button></div>
+        <BallotView locale={data.locale} poll={data.poll} {failure} />
       </form>
     </section>
   {/if}

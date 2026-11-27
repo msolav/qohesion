@@ -52,7 +52,7 @@ img,svg{display:block}
 .steps li{width:1.9rem;height:1.9rem;border-radius:50%;display:grid;place-items:center;font-size:.9rem;font-weight:700;border:1.5px solid currentColor;padding:2px}
 
 .facts{display:grid;grid-template-columns:minmax(0,1fr)}
-.facts>div{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-4);row-gap:var(--space-1);align-items:baseline}
+.facts>div{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--space-4);row-gap:var(--space-1);align-items:baseline}
 .facts>div+div{border-top:1px solid var(--line-soft)}
 .facts dt{font-size:.9rem;font-weight:700}
 .facts dd{margin:0;font-weight:700;font-size:1rem;line-height:1.25;text-align:right}
@@ -69,6 +69,21 @@ img,svg{display:block}
 .choice input[value="for"]+label{--opt:#1F5C46}
 .choice input[value="against"]+label{--opt:#B3261E}
 .choice input[value="abstain"]+label{--opt:#4C4C47}
+
+
+/* Colours an organization can give to an option (the list is kept in option-style.ts, which tests their contrast).
+   --c is for the ballot templates, --cn for the navy console. */
+[data-color="green"]{--c:#1F5C46;--cn:#7FD1A4}
+[data-color="red"]{--c:#B3261E;--cn:#FF9C93}
+[data-color="grey"]{--c:#4C4C47;--cn:#C9D8F2}
+[data-color="blue"]{--c:#1D4ED8;--cn:#8FB4FF}
+[data-color="teal"]{--c:#0F766E;--cn:#5EEAD4}
+[data-color="amber"]{--c:#8A5A00;--cn:#F2C879}
+[data-color="pink"]{--c:#9D174D;--cn:#F9A8D4}
+/* An option with a colour or an icon shows them, in every template */
+.choice[data-color] input+label{--opt:var(--c)}
+[data-theme] .choice[data-color] .mark{color:var(--c)}
+[data-theme] .choice[data-icon] .mark svg{opacity:1}
 
 .error{margin-top:var(--space-3);font-weight:700;color:var(--danger)}
 .error[hidden]{display:none}

@@ -14,7 +14,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       title: poll.title,
       description: poll.description,
       kind: poll.kind,
-      options: poll.kind === "choice" ? poll.options.map((o) => o.label ?? "") : [],
+      options: poll.kind === "choice" ? poll.options.map((o) => ({ label: o.label ?? "", icon: o.icon ?? null, color: o.color ?? null })) : [],
       timing: poll.timing,
       audience: poll.audience,
       theme: poll.theme,

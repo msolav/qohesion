@@ -21,6 +21,8 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   ...over,
 });
 
+const opts = (...labels: string[]) => labels.map((label) => ({ label, icon: null, color: null }));
+
 function must<T>(r: { ok: true; value: T } | { ok: false; error: string }): T {
   if (!r.ok) throw new Error(`Unexpected problem: ${r.error}`);
   return r.value;
@@ -99,11 +101,23 @@ describe("spaces and keys", () => {
 describe("polls and the roll", () => {
   it("validates a poll", () => {
     expect(service.createPoll(owner, input({ title: " " }))).toEqual({ ok: false, error: "title_required" });
-    expect(service.createPoll(owner, input({ kind: "choice", options: ["Only one"] }))).toEqual({ ok: false, error: "options_too_few" });
-    expect(service.createPoll(owner, input({ kind: "choice", options: ["Red", "red"] }))).toEqual({ ok: false, error: "options_duplicate" });
+    expect(service.createPoll(owner, input({ kind: "choice", options: opts("Only one") }))).toEqual({ ok: false, error: "options_too_few" });
+    expect(service.createPoll(owner, input({ kind: "choice", options: opts("Red", "red") }))).toEqual({ ok: false, error: "options_duplicate" });
     expect(service.createPoll(owner, input({ closeAfterHours: 0 }))).toEqual({ ok: false, error: "invalid_duration" });
-    const poll = must(service.createPoll(owner, input({ kind: "choice", options: ["Red", "Blue", " "] })));
+    const poll = must(service.createPoll(owner, input({ kind: "choice", options: opts("Red", "Blue", " ") })));
     expect(poll.options.map((o) => o.label)).toEqual(["Red", "Blue"]);
+  });
+
+  it("keeps the icon and colour of each option, refuses unknown ones, and does not give a yes-no poll any", () => {
+    const styled = must(service.createPoll(owner, input({ kind: "choice", options: [{ label: "Garden", icon: "tree", color: "green" }, { label: "Roof", icon: null, color: "amber" }, { label: "Neither", icon: "dash", color: null }] })));
+    expect(styled.options).toEqual([
+      { id: "o1", label: "Garden", icon: "tree", color: "green" },
+      { id: "o2", label: "Roof", icon: null, color: "amber" },
+      { id: "o3", label: "Neither", icon: "dash", color: null },
+    ]);
+    expect(service.createPoll(owner, input({ kind: "choice", options: [{ label: "A", icon: "<script>", color: null }, { label: "B", icon: null, color: null }] }))).toEqual({ ok: false, error: "option_style_invalid" });
+    expect(service.createPoll(owner, input({ kind: "choice", options: [{ label: "A", icon: null, color: "#ff0000" }, { label: "B", icon: null, color: null }] }))).toEqual({ ok: false, error: "option_style_invalid" });
+    expect(must(service.createPoll(owner, input({ kind: "yes-no", options: [{ label: "x", icon: "star", color: "red" }] }))).options.every((o) => !o.icon && !o.color)).toBe(true);
   });
 
   it("adds addresses once, reports duplicates and rejects bad ones", () => {

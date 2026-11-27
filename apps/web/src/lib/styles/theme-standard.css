@@ -63,6 +63,10 @@
 [data-theme="standard"] .choice input:checked+label{background:var(--tint);border-color:var(--brand)}
 [data-theme="standard"] .choice input:checked+label .mark{background:var(--opt,var(--brand));border-color:var(--opt,var(--brand))}
 [data-theme="standard"] .choice input:checked+label .mark svg{opacity:1}
+/* Options with an icon or a colour show them before they are chosen; chosen, the glyph turns white on the filled radio */
+[data-theme="standard"] .choice[data-icon] .mark svg{color:var(--opt,#6B7280)}
+[data-theme="standard"] .choice[data-color] .mark{border-color:var(--c)}
+[data-theme="standard"] .choice[data-icon] input:checked+label .mark svg{color:#FFFFFF}
 
 [data-theme="standard"] .error{margin-top:var(--space-4)}
 [data-theme="standard"] .receipt{margin-top:var(--space-4)}

@@ -75,6 +75,13 @@ export interface ConsoleMessages {
     readonly votedTitle: string; readonly votedText: string; readonly closedTitle: string; readonly closedText: string; readonly notOpenTitle: string; readonly notOpenText: string;
     readonly unknownTitle: string; readonly unknownText: string; readonly seeResults: string; readonly publicResults: string;
   };
+  readonly build: {
+    readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"question" | "choices" | "results" | "closing" | "review", string>>;
+    readonly next: string; readonly back: string; readonly change: string; readonly reviewLead: string;
+    readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly styleDefault: string;
+    readonly moveUp: string; readonly moveDown: string; readonly removeOption: string; readonly drag: string; readonly moved: string;
+    readonly previewTitle: string; readonly previewNote: string; readonly needTitle: string; readonly needOptions: string; readonly fixedOptions: string; readonly lookTitle: string;
+  };
   readonly mail: {
     readonly title: string; readonly text: string; readonly notConfigured: string; readonly attest: string; readonly sendNew: string; readonly sendAll: string; readonly sendOne: string;
     readonly report: string; readonly reportFailed: string; readonly sentOn: string; readonly notYet: string; readonly onlyOpen: string; readonly nothingToSend: string;
@@ -327,6 +334,32 @@ const en: ConsoleMessages = {
     seeResults: "Results",
     publicResults: "Results of this poll",
   },
+  build: {
+    stepsLabel: "Steps",
+    step: "Step {n} of {total}",
+    stepNames: { question: "Question", choices: "Choices", results: "Results", closing: "Closing and look", review: "Review" },
+    next: "Continue",
+    back: "Back",
+    change: "Change",
+    reviewLead: "Check the poll before creating it. The options, the results settings and the ballot protection are fixed once the poll is open.",
+    optionsKeys: "Enter adds an option, Backspace on an empty option removes it, Alt with the arrow keys moves it.",
+    styleOpen: "Icon and colour of option {n}",
+    styleTitle: "Icon and colour",
+    iconLabel: "Icon",
+    colorLabel: "Colour",
+    styleDefault: "Default",
+    moveUp: "Move option {n} up",
+    moveDown: "Move option {n} down",
+    removeOption: "Remove option {n}",
+    drag: "Drag to move option {n}",
+    moved: "Option moved to position {n}.",
+    previewTitle: "What members see",
+    previewNote: "The ballot in the chosen template. Nothing here is recorded.",
+    needTitle: "Enter the question to continue.",
+    needOptions: "Write at least two different options to continue.",
+    fixedOptions: "The three choices are fixed: In favour, Against, Abstention. Their marks keep their meaning.",
+    lookTitle: "Look of the ballot",
+  },
   mail: {
     title: "Send the links by email",
     text: "Each member who has not voted receives their own link by email. The message says whether ballots are encrypted and who sees the results. Up to 100 messages are sent each time.",
@@ -397,6 +430,7 @@ const en: ConsoleMessages = {
     options_too_many: "Twelve options at most.",
     options_duplicate: "Two options have the same text.",
     option_too_long: "An option is too long (120 characters at most).",
+    option_style_invalid: "An icon or a colour is not in the list.",
     locked: "This cannot be changed anymore.",
     nothing_entered: "Enter at least one address.",
     too_many_addresses: "The roll holds 200 addresses at most.",
@@ -652,6 +686,32 @@ const fr: ConsoleMessages = {
     seeResults: "Résultats",
     publicResults: "Résultats de ce scrutin",
   },
+  build: {
+    stepsLabel: "Étapes",
+    step: "Étape {n} de {total}",
+    stepNames: { question: "Question", choices: "Choix", results: "Résultats", closing: "Fermeture et apparence", review: "Révision" },
+    next: "Continuer",
+    back: "Retour",
+    change: "Modifier",
+    reviewLead: "Vérifier le scrutin avant de le créer. Les options, les paramètres des résultats et la protection des bulletins sont fixés une fois le scrutin ouvert.",
+    optionsKeys: "Entrée ajoute une option, Retour arrière sur une option vide la retire, Alt avec les flèches la déplace.",
+    styleOpen: "Icône et couleur de l’option {n}",
+    styleTitle: "Icône et couleur",
+    iconLabel: "Icône",
+    colorLabel: "Couleur",
+    styleDefault: "Par défaut",
+    moveUp: "Monter l’option {n}",
+    moveDown: "Descendre l’option {n}",
+    removeOption: "Retirer l’option {n}",
+    drag: "Glisser pour déplacer l’option {n}",
+    moved: "Option déplacée à la position {n}.",
+    previewTitle: "Ce que les membres voient",
+    previewNote: "Le bulletin dans le modèle choisi. Rien n’est enregistré ici.",
+    needTitle: "Saisir la question pour continuer.",
+    needOptions: "Rédiger au moins deux options différentes pour continuer.",
+    fixedOptions: "Les trois choix sont fixes: Pour, Contre, Abstention. Leurs marques gardent leur sens.",
+    lookTitle: "Apparence du bulletin",
+  },
   mail: {
     title: "Envoyer les liens par courriel",
     text: "Chaque membre qui n’a pas voté reçoit son propre lien par courriel. Le message indique si les bulletins sont chiffrés et qui voit les résultats. Jusqu’à 100 messages sont envoyés à chaque fois.",
@@ -722,6 +782,7 @@ const fr: ConsoleMessages = {
     options_too_many: "Douze options au maximum.",
     options_duplicate: "Deux options ont le même texte.",
     option_too_long: "Une option est trop longue (120 caractères au maximum).",
+    option_style_invalid: "Une icône ou une couleur ne figure pas dans la liste.",
     locked: "Cela ne peut plus être modifié.",
     nothing_entered: "Saisir au moins une adresse.",
     too_many_addresses: "La liste compte 200 adresses au maximum.",
