@@ -1,5 +1,6 @@
 <script lang="ts">
   import LedgerPanel from "#lib/components/LedgerPanel.svelte";
+  import PublicationPanel from "#lib/components/PublicationPanel.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
   import { consoleMessages } from "#lib/i18n/console.js";
   import { messages } from "#lib/i18n/messages.js";
@@ -20,6 +21,7 @@
         <ResultsPanel locale={data.locale} pollId={data.poll.id} options={data.poll.options} timing={data.poll.timing} audience={data.poll.audience} markFill={data.poll.markFill} initial={data.results} />
       {/key}
     {/if}
-    {#if data.ledger}<LedgerPanel locale={data.locale} ledger={data.ledger} check={form?.check ?? null} />{/if}
+    {#if data.publication}<PublicationPanel locale={data.locale} publication={data.publication} options={data.poll.options} pollId={data.poll.id} />{/if}
+{#if data.ledger}<LedgerPanel locale={data.locale} ledger={data.ledger} check={form?.check ?? null} />{/if}
   </section>
 </div>

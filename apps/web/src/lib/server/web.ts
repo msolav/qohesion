@@ -34,7 +34,8 @@ export function viewerFor(locals: App.Locals, poll: Poll, memberToken: string | 
 export function resultsPage(locals: App.Locals, poll: Poll, memberToken: string | null) {
   const results = service().resultsFor(poll.id, viewerFor(locals, poll, memberToken));
   const ledger = results?.access.totals && poll.status === "closed" ? service().ledger(poll.id) : null;
-  return { results, ledger };
+  const publication = results?.access.totals ? service().publication(poll.id, viewerFor(locals, poll, memberToken)) : null;
+  return { results, ledger, publication };
 }
 
 /** Checks a receipt code typed in the ledger panel. Only a viewer who may see the ledger gets an answer. */

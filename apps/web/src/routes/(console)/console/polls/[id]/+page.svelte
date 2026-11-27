@@ -16,7 +16,22 @@
   const warn = $derived(liveResultsWarning(poll.timing, data.rollSize));
 </script>
 
-{#if form?.countingKey}
+{#if form && "shares" in form && form.shares && form.shares.length > 0}
+  <div class="cx-card" role="status" aria-labelledby="key-h">
+    <h2 id="key-h">{m.seal.sharesTitle}</h2>
+    <p class="gap">{fill(m.seal.sharesText, { k: form.threshold ?? 2 })}</p>
+    <ul class="cx-shares gap">
+      {#each form.shares as sh (sh.label + sh.share)}
+        <li>
+          <p class="cx-help">{fill(m.seal.shareFor, { label: sh.label })}</p>
+          <code class="cx-key">{sh.share}</code>
+          <CopyButton text={sh.share} label={m.common.copy} done={m.common.copied} small />
+        </li>
+      {/each}
+    </ul>
+    <p class="cx-notice warn gap">{m.seal.keyWarn}</p>
+  </div>
+{:else if form && "countingKey" in form && form.countingKey}
   <div class="cx-card" role="status" aria-labelledby="key-h">
     <h2 id="key-h">{m.seal.keyTitle}</h2>
     <p class="gap">{m.seal.keyText}</p>
@@ -115,7 +130,7 @@
       {#if poll.encrypted}
         <div class="cx-field" class:invalid={form?.step === "close"}>
           <label for="close-key">{m.seal.closeKeyLabel}</label>
-          <input id="close-key" name="countingKey" type="password" class="mono-input" autocomplete="off" spellcheck="false" aria-describedby="close-key-help{form?.step === 'close' ? ' close-key-error' : ''}" required />
+          <textarea id="close-key" name="countingKey" rows={poll.keyThreshold > 1 ? 3 : 1} class="mono-input" autocomplete="off" spellcheck="false" aria-describedby="close-key-help{form?.step === 'close' ? ' close-key-error' : ''}" required></textarea>
           <p class="cx-help" id="close-key-help">{m.seal.closeKeyHelp}</p>
           {#if form?.step === "close"}<p class="cx-error" id="close-key-error" role="alert">{errorText(m, form.error)}</p>{/if}
         </div>
@@ -135,7 +150,7 @@
     <form class="cx-form gap" method="POST" action="?/count" use:enhance>
       <div class="cx-field" class:invalid={form?.step === "count"}>
         <label for="count-key">{m.seal.closeKeyLabel}</label>
-        <input id="count-key" name="countingKey" type="password" class="mono-input" autocomplete="off" spellcheck="false" aria-describedby="{form?.step === 'count' ? 'count-key-error' : undefined}" required />
+        <textarea id="count-key" name="countingKey" rows={poll.keyThreshold > 1 ? 3 : 1} class="mono-input" autocomplete="off" spellcheck="false" aria-describedby="{form?.step === 'count' ? 'count-key-error' : undefined}" required></textarea>
         {#if form?.step === "count"}<p class="cx-error" id="count-key-error" role="alert">{errorText(m, form.error)}</p>{/if}
       </div>
       <div class="cx-actions"><button class="cx-btn" type="submit">{m.seal.countSubmit}</button></div>

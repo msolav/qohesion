@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import LedgerPanel from "#lib/components/LedgerPanel.svelte";
+  import PublicationPanel from "#lib/components/PublicationPanel.svelte";
   import ResultsPanel from "#lib/components/ResultsPanel.svelte";
   import { consoleMessages } from "#lib/i18n/console.js";
   import { messages } from "#lib/i18n/messages.js";
@@ -22,7 +23,8 @@
         <ResultsPanel locale={data.locale} pollId={data.poll.id} options={data.poll.options} timing={data.poll.timing} audience={data.poll.audience} markFill={data.poll.markFill} initial={data.results} {token} />
       {/key}
     {/if}
-    {#if data.ledger}<LedgerPanel locale={data.locale} ledger={data.ledger} check={form?.check ?? null} />{/if}
+    {#if data.publication}<PublicationPanel locale={data.locale} publication={data.publication} options={data.poll.options} pollId={data.poll.id} token={token} />{/if}
+{#if data.ledger}<LedgerPanel locale={data.locale} ledger={data.ledger} check={form?.check ?? null} />{/if}
     <p class="results-back"><a href="/v/{token}">← {m.common.back}</a></p>
   </section>
 </div>

@@ -105,5 +105,8 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     allowChange: text(data, "allow_change") === "yes",
     autoReminder: isAutoReminder(text(data, "auto_reminder")) ? (text(data, "auto_reminder") as AutoReminder) : "none",
     reminderPermission: text(data, "reminder_permission") === "yes",
+    publishCount: text(data, "publish_count") === "yes",
+    lockCancel: text(data, "lock_cancel") === "yes",
+    keyThreshold: text(data, "key_mode") === "shared" ? whole(text(data, "key_threshold")) : 1,
   };
 }

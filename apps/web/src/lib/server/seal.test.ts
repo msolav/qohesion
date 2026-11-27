@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Qohesion contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from "vitest";
-import { generateCountingKeys, keyMatches, normalizeCountingKey, open, seal } from "./seal.js";
+import { generateCountingKeyBytes, formatCountingKey, keyFromInput, parseShares, shareSecret, generateCountingKeys, keyMatches, normalizeCountingKey, open, seal } from "./seal.js";
 
 describe("sealed ballots", () => {
   it("opens with the counting key and with no other", () => {
@@ -41,5 +41,25 @@ describe("sealed ballots", () => {
     const b = generateCountingKeys();
     expect(keyMatches(b.countingKey, a.publicKey)).toBe(false);
     expect(keyMatches("not a key", a.publicKey)).toBe(false);
+  });
+});
+
+describe("a counting key shared between administrators", () => {
+  it("opens the ballots with k shares typed in any layout, and not with fewer", () => {
+    const { publicKey, secret } = generateCountingKeyBytes();
+    const shares = shareSecret(secret, 2, 3);
+    expect(shares[0]).toMatch(/^QS-2-1(-[0-9A-Z]{1,4}){13}$/);
+    const sealedBallot = seal(publicKey, "for");
+    const key = formatCountingKey(secret);
+    expect(open(keyFromInput(`${shares[2]}\n  ${shares[0]!.toLowerCase()}`), sealedBallot)).toBe("for");
+    expect(keyFromInput(`${shares[1]} ${shares[2]}`)).toBe(key);
+    expect(keyMatches(keyFromInput(shares[1]!), publicKey)).toBe(false);
+  });
+
+  it("passes a plain counting key through unchanged and reads shares out of a text", () => {
+    const { countingKey } = generateCountingKeys();
+    expect(keyFromInput(countingKey)).toBe(countingKey);
+    const { secret } = generateCountingKeyBytes();
+    expect(parseShares(shareSecret(secret, 2, 3).join(" and "))).toHaveLength(3);
   });
 });

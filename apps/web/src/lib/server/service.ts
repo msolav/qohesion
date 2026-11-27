@@ -12,7 +12,7 @@ import { DatabaseSync } from "node:sqlite";
 import { defineForm, validateForm, type Form } from "@qohesion/engine";
 import { MerkleLog, hashLeaf, receiptCode, toHex, normalizeReceiptCode, verifyInclusion } from "@qohesion/ledger";
 import { addressFingerprint, applyEvent, checkAddress, freezeRoll, type MemberStatus } from "@qohesion/roll";
-import { generateCountingKeys, keyMatches, open as openSealed, seal } from "./seal.js";
+import { generateCountingKeyBytes, generateCountingKeys, keyFromInput, keyMatches, open as openSealed, seal, shareSecret, formatCountingKey } from "./seal.js";
 import { isColorId, isIconId } from "../option-style.js";
 import { DEFAULT_THEME, isTheme, type Theme } from "../theme.js";
 import { isAutoReminder, mayWrite, reminderDue, writeAgainAt, type AutoReminder } from "../auto-reminder.js";
@@ -108,6 +108,14 @@ export interface Poll {
   readonly anonymity: Anonymity;
   /** Reminders the poll sends by itself to those who have not voted. */
   readonly autoReminder: AutoReminder;
+  /** After the count, the ballot list (and the counting key of a sealed poll) is published so that anyone can recount. */
+  readonly publishCount: boolean;
+  /** 1 when one counting key opens the ballots; k when k administrators must act together (a key cut in shares). */
+  readonly keyThreshold: number;
+  /** Once the first ballot is cast, the poll can no longer be cancelled. */
+  readonly lockCancel: boolean;
+  /** Set when the poll was cancelled: when, by which key, and how many ballots had been cast. */
+  readonly cancelled: { readonly by: string; readonly ballots: number } | null;
   /** The content in the languages offered. The columns title, description and options hold the default language. */
   readonly translations: Translations;
   readonly createdAt: string;
@@ -157,6 +165,9 @@ export interface PollInput {
   readonly markFill: boolean;
   readonly anonymity: Anonymity;
   readonly autoReminder: AutoReminder;
+  readonly publishCount: boolean;
+  readonly keyThreshold: number;
+  readonly lockCancel: boolean;
   /** The administrator confirmed permission to contact the participants, which automatic reminders need. */
   readonly reminderPermission: boolean;
   /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
@@ -210,7 +221,7 @@ CREATE TABLE IF NOT EXISTS polls (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, title TEXT NOT NULL, question TEXT NOT NULL DEFAULT '', description TEXT NOT NULL,
   kind TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL, timing TEXT NOT NULL, audience TEXT NOT NULL, theme TEXT NOT NULL,
   close_after_hours INTEGER, opens_at TEXT, allow_change INTEGER NOT NULL DEFAULT 0, close_rules TEXT, created_at TEXT NOT NULL, opened_at TEXT, closes_at TEXT, closed_at TEXT, roll_code TEXT, roll_count INTEGER,
-  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0, anonymity TEXT NOT NULL DEFAULT 'secret', i18n TEXT, auto_reminder TEXT NOT NULL DEFAULT 'none', auto_reminder_by TEXT, last_auto_reminder_on TEXT);
+  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0, anonymity TEXT NOT NULL DEFAULT 'secret', i18n TEXT, auto_reminder TEXT NOT NULL DEFAULT 'none', auto_reminder_by TEXT, last_auto_reminder_on TEXT, publish_count INTEGER NOT NULL DEFAULT 0, lock_cancel INTEGER NOT NULL DEFAULT 0, published_key TEXT, cancelled_by TEXT, cancelled_ballots INTEGER, key_threshold INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS roll (
   id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, address TEXT NOT NULL,
   fingerprint TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL, late INTEGER NOT NULL, added_at TEXT NOT NULL,
@@ -255,6 +266,12 @@ export class Service {
       if (!existing.includes(column)) this.#db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     };
     const names = (table: string) => (this.#db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+    addIfMissing("polls", columns, "key_threshold", "INTEGER NOT NULL DEFAULT 1");
+    addIfMissing("polls", columns, "publish_count", "INTEGER NOT NULL DEFAULT 0");
+    addIfMissing("polls", columns, "lock_cancel", "INTEGER NOT NULL DEFAULT 0");
+    addIfMissing("polls", columns, "published_key", "TEXT");
+    addIfMissing("polls", columns, "cancelled_by", "TEXT");
+    addIfMissing("polls", columns, "cancelled_ballots", "INTEGER");
     addIfMissing("polls", columns, "auto_reminder", "TEXT NOT NULL DEFAULT 'none'");
     addIfMissing("polls", columns, "auto_reminder_by", "TEXT");
     addIfMissing("polls", columns, "last_auto_reminder_on", "TEXT");
@@ -464,6 +481,10 @@ export class Service {
       markFill: r["mark_fill"] === 1,
       anonymity: isAnonymity(r["anonymity"]) ? r["anonymity"] : "secret",
       autoReminder: isAutoReminder(r["auto_reminder"]) ? r["auto_reminder"] : "none",
+      publishCount: r["publish_count"] === 1,
+      keyThreshold: Number(r["key_threshold"] ?? 1),
+      lockCancel: r["lock_cancel"] === 1,
+      cancelled: r["cancelled_by"] === null || r["cancelled_by"] === undefined ? null : { by: String(r["cancelled_by"]), ballots: Number(r["cancelled_ballots"] ?? 0) },
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
       createdAt: String(r["created_at"]),
       openedAt: r["opened_at"] === null ? null : String(r["opened_at"]),
@@ -518,6 +539,8 @@ export class Service {
     if (!isAnonymity(input.anonymity)) return "invalid_results";
     if (!isAutoReminder(input.autoReminder)) return "invalid_results";
     if (input.autoReminder !== "none" && !input.reminderPermission) return "attestation_required";
+    if (!Number.isInteger(input.keyThreshold) || input.keyThreshold < 1 || input.keyThreshold > 20) return "invalid_threshold";
+    if (input.keyThreshold > 1 && !input.encrypted) return "invalid_threshold";
     const languages = cleanLanguages(input.translations.languages);
     if (languages.length > 1 || input.translations.languages.length !== languages.length) {
       const optionCount = input.kind === "choice" ? input.options.filter((o) => o.label.trim().length > 0).length : 0;
@@ -558,9 +581,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, this.#iso(),
       );
       this.#log(id, session, "created", "");
     });
@@ -576,8 +599,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ? WHERE id = ?",
-      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, pollId,
+      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ? WHERE id = ?",
+      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, pollId,
     );
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -753,6 +776,22 @@ export class Service {
 
   // ---- Opening and closing ----
 
+  /**
+   * The key material of a sealed poll at opening or scheduling: the public key to store, and either one counting key or the
+   * shares of it, one for each administrator, that the person opening hands out. Nothing but the public key is kept.
+   */
+  #newKeys(poll: Poll, session: Session): Result<{ publicKey: string; countingKey: string | null; shares: { label: string; share: string }[] }> {
+    if (poll.keyThreshold <= 1) {
+      const keys = generateCountingKeys();
+      return ok({ publicKey: keys.publicKey, countingKey: keys.countingKey, shares: [] });
+    }
+    const admins = this.#all("SELECT label FROM keys WHERE space_id = ? AND administrator = 1 AND revoked_at IS NULL ORDER BY created_at, id", session.spaceId).map((r) => String(r["label"]));
+    if (admins.length < poll.keyThreshold) return problem("threshold_needs_admins");
+    const keys = generateCountingKeyBytes();
+    const shares = shareSecret(keys.secret, poll.keyThreshold, admins.length);
+    return ok({ publicKey: keys.publicKey, countingKey: null, shares: admins.map((label, i) => ({ label, share: shares[i] ?? "" })) });
+  }
+
   /** Freezes the roll and opens the poll. Used by an administrator opening it and by a scheduled opening. */
   #openNow(poll: Poll, at: string, who: Session | string): Result<null> {
     const fingerprints = this.#all("SELECT fingerprint FROM roll WHERE poll_id = ?", poll.id).map((r) => String(r["fingerprint"]));
@@ -763,32 +802,36 @@ export class Service {
     return ok(null);
   }
 
-  /** Opens a poll now. For a sealed poll that was not scheduled, the counting key is returned here, once, and kept nowhere. */
-  openPoll(session: Session, pollId: string): Result<{ poll: Poll; countingKey: string | null }> {
+  /** Opens a poll now. For a sealed poll that was not scheduled, the counting key (or its shares) is returned here, once, and kept nowhere. */
+  openPoll(session: Session, pollId: string): Result<{ poll: Poll; countingKey: string | null; shares: { label: string; share: string }[] }> {
     let countingKey: string | null = null;
+    let shares: { label: string; share: string }[] = [];
     const result = this.#transaction((): Result<null> => {
       const poll = this.pollFor(session, pollId);
       if (!poll) return problem("not_found");
       if (poll.status !== "draft" && poll.status !== "scheduled") return problem("locked");
       if (poll.closesAt !== null && Date.parse(poll.closesAt) <= this.#now().getTime()) return problem("closes_past");
       if (poll.encrypted && poll.status === "draft") {
-        const keys = generateCountingKeys();
-        countingKey = keys.countingKey;
-        this.#run("UPDATE polls SET public_key = ? WHERE id = ?", keys.publicKey, pollId);
+        const keys = this.#newKeys(poll, session);
+        if (!keys.ok) return keys;
+        countingKey = keys.value.countingKey;
+        shares = keys.value.shares;
+        this.#run("UPDATE polls SET public_key = ? WHERE id = ?", keys.value.publicKey, pollId);
       }
       return this.#openNow(poll, this.#iso(), session);
     });
     if (!result.ok) return result;
     const poll = this.getPoll(pollId);
-    return poll ? ok({ poll, countingKey }) : problem("not_found");
+    return poll ? ok({ poll, countingKey, shares }) : problem("not_found");
   }
 
   /**
    * Plans the opening for the date chosen. A sealed poll gets its key pair now, since nobody will be there at the moment
    * of opening to be shown the counting key: it is returned here, once.
    */
-  schedulePoll(session: Session, pollId: string): Result<{ poll: Poll; countingKey: string | null }> {
+  schedulePoll(session: Session, pollId: string): Result<{ poll: Poll; countingKey: string | null; shares: { label: string; share: string }[] }> {
     let countingKey: string | null = null;
+    let shares: { label: string; share: string }[] = [];
     const result = this.#transaction((): Result<null> => {
       const poll = this.pollFor(session, pollId);
       if (!poll) return problem("not_found");
@@ -798,9 +841,11 @@ export class Service {
       if (Number(this.#one("SELECT COUNT(*) AS n FROM roll WHERE poll_id = ?", pollId)?.["n"] ?? 0) === 0) return problem("roll_empty");
       let publicKey: string | null = null;
       if (poll.encrypted) {
-        const keys = generateCountingKeys();
-        publicKey = keys.publicKey;
-        countingKey = keys.countingKey;
+        const keys = this.#newKeys(poll, session);
+        if (!keys.ok) return keys;
+        publicKey = keys.value.publicKey;
+        countingKey = keys.value.countingKey;
+        shares = keys.value.shares;
       }
       this.#run("UPDATE polls SET status = 'scheduled', public_key = ? WHERE id = ?", publicKey, pollId);
       this.#log(pollId, session, "scheduled", poll.opensAt);
@@ -808,7 +853,7 @@ export class Service {
     });
     if (!result.ok) return result;
     const poll = this.getPoll(pollId);
-    return poll ? ok({ poll, countingKey }) : problem("not_found");
+    return poll ? ok({ poll, countingKey, shares }) : problem("not_found");
   }
 
   /** Takes a poll back from scheduled to draft. The counting key given at scheduling stops being valid. */
@@ -850,8 +895,11 @@ export class Service {
       if (!poll) return problem("not_found");
       const allowed = poll.status === "scheduled" || poll.status === "open" || (poll.status === "closed" && poll.encrypted && !poll.counted);
       if (!allowed) return problem("locked");
+      const cast = Number(this.#one("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?", pollId)?.["n"] ?? 0);
+      // A poll can be set so that voting, once begun, cannot be called off: that is how a result is kept from being buried.
+      if (poll.lockCancel && cast > 0) return problem("cancel_locked");
       this.#run("DELETE FROM ballots WHERE poll_id = ?", pollId);
-      this.#run("UPDATE polls SET status = 'cancelled', closed_at = ?, public_key = NULL WHERE id = ?", this.#iso(), pollId);
+      this.#run("UPDATE polls SET status = 'cancelled', closed_at = ?, public_key = NULL, cancelled_by = ?, cancelled_ballots = ? WHERE id = ?", this.#iso(), session.label, cast, pollId);
       this.#log(pollId, session, "cancelled", "");
       const next = this.getPoll(pollId);
       return next ? ok(next) : problem("not_found");
@@ -877,6 +925,7 @@ export class Service {
    * or a ballot that does not open changes nothing. The ledger entries stay as they were, sealed.
    */
   #count(poll: Poll, countingKey: string): Result<null> {
+    countingKey = keyFromInput(countingKey);
     const row = this.#one("SELECT public_key FROM polls WHERE id = ?", poll.id);
     if (!row || typeof row["public_key"] !== "string" || !keyMatches(countingKey, row["public_key"])) return problem("wrong_counting_key");
     const valid = new Set(poll.options.map((o) => o.id));
@@ -894,6 +943,8 @@ export class Service {
     }
     for (const u of updates) this.#run("UPDATE ballots SET choice = ?, superseded = ? WHERE poll_id = ? AND seq = ?", u.choice, u.superseded ? 1 : 0, poll.id, u.seq);
     this.#run("UPDATE polls SET counted = 1 WHERE id = ?", poll.id);
+    // A poll that publishes its count also publishes the key, so that anyone can open the sealed ballots of the ledger.
+    if (poll.publishCount) this.#run("UPDATE polls SET published_key = ? WHERE id = ?", countingKey.trim(), poll.id);
     return ok(null);
   }
 
@@ -1020,6 +1071,34 @@ export class Service {
   viewerOfToken(token: string): { pollId: string; viewer: Viewer } | null {
     const link = this.byToken(token);
     return link ? { pollId: link.poll.id, viewer: "voter" } : null;
+  }
+
+  /**
+   * What a poll that publishes its count shows after the count: every ballot with its receipt code and its choice, and the
+   * counting key of a sealed poll. Only to those who may see the totals, and only once the poll is closed and counted.
+   */
+  publication(pollId: string, viewer: Viewer): { countingKey: string | null; root: string; ballots: { receipt: string; choice: string; replaced: boolean }[] } | null {
+    const poll = this.getPoll(pollId);
+    if (!poll || poll.status !== "closed" || !poll.counted || !poll.publishCount) return null;
+    if (!accessTo(poll, viewer).totals) return null;
+    const rows = this.#all("SELECT seq, choice, entry, superseded FROM ballots WHERE poll_id = ? ORDER BY seq", pollId);
+    const log = new MerkleLog();
+    const ballots = rows.map((r) => {
+      const bytes = new TextEncoder().encode(String(r["entry"]));
+      log.append(bytes);
+      return { receipt: receiptCode(toHex(hashLeaf(bytes))), choice: String(r["choice"]), replaced: r["superseded"] === 1 };
+    });
+    const key = this.#one("SELECT published_key AS k FROM polls WHERE id = ?", pollId)?.["k"];
+    return { countingKey: typeof key === "string" ? key : null, root: log.root(), ballots };
+  }
+
+  /** The ledger entries themselves (ciphertexts for a sealed poll), for someone who recounts with the published key. */
+  ledgerEntries(pollId: string, viewer: Viewer): { receipt: string; entry: string }[] | null {
+    if (!this.publication(pollId, viewer)) return null;
+    return this.#all("SELECT entry FROM ballots WHERE poll_id = ? ORDER BY seq", pollId).map((r) => {
+      const entry = String(r["entry"]);
+      return { receipt: receiptCode(toHex(hashLeaf(new TextEncoder().encode(entry)))), entry };
+    });
   }
 
   // ---- Ledger ----

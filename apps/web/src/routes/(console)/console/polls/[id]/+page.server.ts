@@ -18,7 +18,7 @@ export const actions: Actions = {
     const result = service().openPoll(needSession(locals), params.id);
     if (!result.ok) return fail(400, { error: result.error });
     // The counting key of a sealed poll exists only in this answer. It is not stored.
-    if (result.value.countingKey) return { countingKey: result.value.countingKey };
+    if (result.value.countingKey || result.value.shares.length > 0) return { countingKey: result.value.countingKey, shares: result.value.shares, threshold: result.value.poll.keyThreshold };
     redirect(303, `/console/polls/${params.id}`);
   },
   close: async ({ request, locals, params }) => {
@@ -39,7 +39,7 @@ export const actions: Actions = {
     const result = service().schedulePoll(needSession(locals), params.id);
     if (!result.ok) return fail(400, { error: result.error });
     // As for opening: the counting key of a sealed poll exists only in this answer.
-    if (result.value.countingKey) return { countingKey: result.value.countingKey };
+    if (result.value.countingKey || result.value.shares.length > 0) return { countingKey: result.value.countingKey, shares: result.value.shares, threshold: result.value.poll.keyThreshold };
     redirect(303, `/console/polls/${params.id}`);
   },
   unschedule: ({ locals, params }) => {

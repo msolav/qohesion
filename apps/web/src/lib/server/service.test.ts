@@ -25,6 +25,9 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   allowChange: false,
   autoReminder: "none",
   reminderPermission: false,
+  publishCount: false,
+  keyThreshold: 1,
+  lockCancel: false,
   encrypted: false,
   markFill: false,
   anonymity: "secret",
@@ -446,6 +449,75 @@ describe("cancelling and named answers", () => {
   });
 });
 
+describe("a count that anyone can check", () => {
+  function transparentPoll(over: Partial<PollInput> = {}) {
+    const poll = must(service.createPoll(owner, input({ encrypted: true, publishCount: true, audience: "anyone", ...over })));
+    must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com\nc@example.com"));
+    const opened = must(service.openPoll(owner, poll.id));
+    return { poll, key: opened.countingKey ?? "", tokens: [...service.voterTokens(owner, poll.id).values()] };
+  }
+
+  it("publishes every ballot with its receipt and its choice, and the counting key, to those who see the results, after the count", () => {
+    const { poll, key, tokens } = transparentPoll();
+    const receipts = [must(service.castBallot(tokens[0] ?? "", "for")).receipt, must(service.castBallot(tokens[1] ?? "", "against")).receipt];
+    expect(service.publication(poll.id, "anyone")).toBeNull(); // open
+    must(service.closePoll(owner, poll.id, key));
+    const pub = service.publication(poll.id, "anyone");
+    expect(pub?.countingKey?.replace(/\W/g, "")).toBe(key.replace(/\W/g, ""));
+    expect(pub?.ballots.map((b) => [b.receipt, b.choice]).sort()).toEqual([[receipts[0], "for"], [receipts[1], "against"]].sort());
+    expect(pub?.root).toBe(service.ledger(poll.id)?.root);
+  });
+
+  it("lets anyone recount: the published key opens the entries of the ledger to the listed choices", async () => {
+    const { open: openSealed } = await import("./seal.js");
+    const { poll, key, tokens } = transparentPoll();
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    must(service.castBallot(tokens[1] ?? "", "abstain"));
+    must(service.closePoll(owner, poll.id, key));
+    const pub = service.publication(poll.id, "anyone");
+    const entries = service.ledgerEntries(poll.id, "anyone") ?? [];
+    const opened = entries.map((e) => ({ receipt: e.receipt, choice: openSealed(pub?.countingKey ?? "", (JSON.parse(e.entry) as { sealed: string }).sealed) }));
+    expect(opened.map((o) => o.choice).sort()).toEqual(["abstain", "for"]);
+    for (const b of pub?.ballots ?? []) expect(opened.find((o) => o.receipt === b.receipt)?.choice).toBe(b.choice);
+  });
+
+  it("publishes nothing when the poll does not publish its count, and nothing to someone who may not see the results", () => {
+    const quiet = transparentPoll({ publishCount: false });
+    must(service.castBallot(quiet.tokens[0] ?? "", "for"));
+    must(service.closePoll(owner, quiet.poll.id, quiet.key));
+    expect(service.publication(quiet.poll.id, "anyone")).toBeNull();
+    const closed = transparentPoll({ audience: "administrators" });
+    must(service.castBallot(closed.tokens[0] ?? "", "for"));
+    must(service.closePoll(owner, closed.poll.id, closed.key));
+    expect(service.publication(closed.poll.id, "anyone")).toBeNull();
+    expect(service.publication(closed.poll.id, "administrator")).not.toBeNull();
+  });
+
+  it("keeps the counting key out of the database unless the poll publishes its count", () => {
+    const db = new DatabaseSync(":memory:");
+    const svc = new Service(db, { secret: new Uint8Array(32).fill(9), now: () => now });
+    const o = svc.session(svc.signIn(must(svc.createSpace({ name: "S", locale: "en" })).key) ?? "") as Session;
+    const p = must(svc.createPoll(o, input({ encrypted: true })));
+    must(svc.addToRoll(o, p.id, "a@example.com"));
+    const opened = must(svc.openPoll(o, p.id));
+    must(svc.closePoll(o, p.id, opened.countingKey ?? ""));
+    expect(db.prepare("SELECT published_key AS k FROM polls").get()).toEqual({ k: null });
+  });
+
+  it("forbids cancelling once voting has begun, when the poll asks for it, and says how many ballots had been cast when it is cancelled", () => {
+    const locked = transparentPoll({ lockCancel: true });
+    expect(service.cancelPoll(owner, locked.poll.id).ok).toBe(true); // no ballot yet
+    const locked2 = transparentPoll({ lockCancel: true });
+    must(service.castBallot(locked2.tokens[0] ?? "", "for"));
+    expect(service.cancelPoll(owner, locked2.poll.id)).toEqual({ ok: false, error: "cancel_locked" });
+    const free = transparentPoll();
+    must(service.castBallot(free.tokens[0] ?? "", "for"));
+    must(service.castBallot(free.tokens[1] ?? "", "against"));
+    const cancelled = must(service.cancelPoll(owner, free.poll.id));
+    expect(cancelled.cancelled).toEqual({ by: "Owner", ballots: 2 });
+  });
+});
+
 describe("reminders", () => {
   it("allows a reminder only a day after the last message, and says when", () => {
     const { poll } = openedPoll();
@@ -566,6 +638,32 @@ describe("sealed ballots", () => {
     must(service.closePoll(owner, poll.id, key.toLowerCase().replaceAll("-", " ")));
     expect(service.resultsFor(poll.id, "voter")).toMatchObject({ pending: false, counts: { for: 2, against: 1, abstain: 0 } });
     expect(service.getPoll(poll.id)).toMatchObject({ status: "closed", counted: true });
+  });
+
+  it("shares the counting key between administrators: enough shares count, too few do not", () => {
+    must(service.createKey(owner, { label: "Clerk", owner: false, administrator: true }));
+    must(service.createKey(owner, { label: "Treasurer", owner: false, administrator: true }));
+    const poll = must(service.createPoll(owner, input({ encrypted: true, keyThreshold: 2 })));
+    must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com"));
+    const opened = must(service.openPoll(owner, poll.id));
+    expect(opened.countingKey).toBeNull();
+    expect(opened.shares).toHaveLength(3);
+    const shares = opened.shares.map((x) => x.share);
+    const tokens = [...service.voterTokens(owner, poll.id).values()];
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    must(service.castBallot(tokens[1] ?? "", "against"));
+    expect(service.closePoll(owner, poll.id, shares[0])).toEqual({ ok: false, error: "wrong_counting_key" });
+    expect(service.getPoll(poll.id)?.status).toBe("open");
+    must(service.closePoll(owner, poll.id, `${shares[2]}\n${shares[0]}`));
+    expect(service.resultsFor(poll.id, "voter")).toMatchObject({ counts: { for: 1, against: 1, abstain: 0 } });
+  });
+
+  it("refuses a shared counting key without enough administrators, or without encryption", () => {
+    expect(service.createPoll(owner, input({ encrypted: false, keyThreshold: 2 }))).toEqual({ ok: false, error: "invalid_threshold" });
+    const poll = must(service.createPoll(owner, input({ encrypted: true, keyThreshold: 2 })));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "threshold_needs_admins" });
+    expect(service.getPoll(poll.id)?.status).toBe("draft");
   });
 
   it("closes by itself without the key and waits for it", () => {

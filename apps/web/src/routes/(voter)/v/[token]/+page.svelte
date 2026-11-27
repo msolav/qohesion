@@ -35,7 +35,7 @@
       <p class="done__text">{m.voter.doneText}</p>
       <p class="done__label">{m.voter.doneLabel}</p>
       <p class="done__code">{receipt}</p>
-      <p class="receipt">{m.voter.doneNote}</p>
+      {#if data.poll?.allowChange}<p class="receipt">{m.voter.doneChange}</p>{/if}
       {#if data.canSeeResults}<p class="done__next"><a href="/v/{token}/results">{m.voter.doneResults}</a></p>{/if}
     </section>
   {:else if data.state === "voted"}
@@ -43,7 +43,7 @@
   {:else if data.state === "closed"}
     <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.closedTitle}</h2><p class="done__text">{m.voter.closedText}</p>{#if data.canSeeResults}<p class="done__next"><a href="/v/{token}/results">{m.voter.seeResults}</a></p>{/if}</section>
   {:else if data.state === "cancelled"}
-    <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.cancelledTitle}</h2><p class="done__text">{m.voter.cancelledText}</p></section>
+    <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.cancelledTitle}</h2><p class="done__text">{m.voter.cancelledText}</p>{#if data.poll?.cancelled && data.poll.closedAt}<p class="receipt">{fill(data.poll.cancelled.ballots === 0 ? m.voter.cancelledDetailNone : m.voter.cancelledDetail, { date: formatMoment(data.poll.closedAt, data.locale, data.poll.timeZone), who: data.poll.cancelled.by, n: data.poll.cancelled.ballots })}</p>{/if}</section>
   {:else if data.state === "not_open"}
     <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.notOpenTitle}</h2><p class="done__text">{data.poll?.opensAt ? fill(m.voter.opensOn, { date: formatMoment(data.poll.opensAt, data.locale, data.poll.timeZone) }) : m.voter.notOpenText}</p></section>
   {:else if data.poll}

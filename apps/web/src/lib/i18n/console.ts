@@ -38,6 +38,9 @@ export interface ConsoleMessages {
     readonly options: string; readonly optionsHelp: string; readonly optionN: string; readonly addOption: string;
     readonly results: string; readonly resultsHelp: string; readonly timing: string; readonly audience: string; readonly timingNames: Names<ResultsTiming>; readonly audienceNames: Names<ResultsAudience>;
     readonly template: string; readonly templateSeed: string; readonly templateBallot: string;
+    readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
+    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "transparent" | "open">; readonly presetCustom: string;
+    readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
     readonly languagesTitle: string; readonly languagesHelp: string; readonly defaultLanguage: string; readonly missingLanguage: string;
     readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string;
@@ -65,6 +68,7 @@ export interface ConsoleMessages {
   readonly results: {
     readonly title: string; readonly live: string; readonly updated: string; readonly updating: string; readonly turnout: string; readonly of: string; readonly votes: string; readonly total: string;
     readonly hiddenTitle: string; readonly hiddenText: string; readonly hiddenAdminText: string; readonly notAllowedTitle: string; readonly notAllowedText: string;
+    readonly publicationTitle: string; readonly publicationText: string; readonly publicationKey: string; readonly publicationKeyText: string; readonly replaced: string; readonly receiptColumn: string; readonly choiceColumn: string; readonly downloadLedger: string;
     readonly answersTitle: string; readonly answersWho: string; readonly answersChoice: string;
     readonly finalTitle: string; readonly ledger: string; readonly ledgerText: string; readonly root: string; readonly size: string; readonly receipts: string;
     readonly check: string; readonly checkHelp: string; readonly checkSubmit: string; readonly checkFound: string; readonly checkNotFound: string; readonly checkPosition: string; readonly checkProof: string;
@@ -79,10 +83,11 @@ export interface ConsoleMessages {
   };
   readonly voter: {
     readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollNote: string; readonly results: string;
+    readonly cancelledDetail: string; readonly cancelledDetailNone: string; readonly doneChange: string;
     readonly namedValue: string; readonly namedNote: string; readonly namedWho: Readonly<Record<ResultsAudience, string>>; readonly cancelledTitle: string; readonly cancelledText: string;
     readonly yourVote: string; readonly changeAllowed: string; readonly changeFinal: string; readonly opensOn: string; readonly alreadyVotedChange: string; readonly alsoCloses: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleEveryone: string; readonly ruleMajority: string; readonly rulePercent: string; readonly or: string;
     readonly ballotType: string; readonly ballotValue: string; readonly ballotNote: string; readonly submit: string; readonly legend: string; readonly problem: string;
-    readonly doneTitle: string; readonly doneText: string; readonly doneLabel: string; readonly doneNote: string; readonly doneResults: string;
+    readonly doneTitle: string; readonly doneText: string; readonly doneLabel: string; readonly doneResults: string;
     readonly votedTitle: string; readonly votedText: string; readonly closedTitle: string; readonly closedText: string; readonly notOpenTitle: string; readonly notOpenText: string;
     readonly unknownTitle: string; readonly unknownText: string; readonly seeResults: string; readonly publicResults: string;
   };
@@ -103,6 +108,7 @@ export interface ConsoleMessages {
   readonly seal: {
     readonly title: string; readonly help: string; readonly sealed: { readonly title: string; readonly text: string }; readonly none: { readonly title: string; readonly text: string }; readonly liveNote: string;
     readonly factSealed: string; readonly factPlain: string; readonly ballotSealed: string; readonly ballotPlain: string;
+    readonly sharesTitle: string; readonly sharesText: string; readonly shareFor: string;
     readonly keyTitle: string; readonly keyText: string; readonly keyWarn: string; readonly keyDone: string;
     readonly closeKeyLabel: string; readonly closeKeyHelp: string; readonly countTitle: string; readonly countText: string; readonly countSubmit: string;
     readonly pendingTitle: string; readonly pendingText: string; readonly protection: string;
@@ -187,6 +193,29 @@ const en: ConsoleMessages = {
     template: "Ballot template",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    keyModeTitle: "Who can open the ballots",
+    keyOne: "One counting key",
+    keyOneText: "One person holds the key and opens the ballots at the close.",
+    keyShared: "Several administrators together",
+    keySharedText: "The counting key is cut into shares, one for each administrator when the poll opens. A set number of them must act together to open the ballots.",
+    keyThresholdLabel: "Shares needed to open the ballots",
+    keyNeedsAdmins: "This needs at least two administrator keys. Add one under Organization.",
+    keyNeedsSealed: "Only encrypted ballots have a counting key.",
+    presetTitle: "Start from a preset",
+    presetHelp: "A preset fills in the settings below. You can change any of them afterwards.",
+    presets: {
+      title: { secret: "Secret ballot", transparent: "Maximum transparency", open: "Open vote" },
+      text: {
+        secret: "Encrypted and anonymous. Participants see the results when the poll closes.",
+        transparent: "Encrypted and anonymous. Everyone sees the results at the close, the ballot list and the counting key are published for a recount, and the poll cannot be cancelled once voting begins.",
+        open: "Readable ballots with names. Participants follow the results live.",
+      },
+    },
+    presetCustom: "Custom settings",
+    publishLabel: "Publish the count after the poll closes",
+    publishHelp: "Everyone who sees the results also sees the list of ballots, each with its receipt code and its choice. For encrypted ballots the counting key is published too. Anyone can then add the lines up and find their own ballot.",
+    lockCancelLabel: "Do not allow cancelling once voting has begun",
+    lockCancelHelp: "After the first ballot, the poll can only run to its end, so a result cannot be buried.",
     reminderTitle: "Automatic reminders",
     reminderHelp: "A reminder goes to each participant who has received a link and has not voted, at most once a day. Reminders need email to be set up on the server, and your confirmation that you may contact these people.",
     reminderNone: "No automatic reminders",
@@ -310,6 +339,14 @@ const en: ConsoleMessages = {
     hiddenAdminText: "Totals appear when the poll closes. The number of ballots cast is shown below.",
     notAllowedTitle: "Results are not available to you",
     notAllowedText: "The organization chose who sees the results of this poll.",
+    publicationTitle: "Ballot list",
+    publicationText: "Every ballot of this poll with its receipt code and its choice. Find yours, and add the lines up to check the totals.",
+    publicationKey: "Counting key",
+    publicationKeyText: "The counting key is published. With it, anyone can open the sealed ballots of the ledger and check that the list matches.",
+    replaced: "replaced by a later ballot",
+    receiptColumn: "Receipt code",
+    choiceColumn: "Choice",
+    downloadLedger: "Download the ledger entries",
     answersTitle: "Who answered what",
     answersWho: "Address",
     answersChoice: "Answer",
@@ -372,6 +409,9 @@ const en: ConsoleMessages = {
     rollValue: "{n} participants",
     rollNote: "Identified by the code {code}.",
     results: "Results",
+    cancelledDetail: "Cancelled on {date} by {who}. {n} ballots had been cast.",
+    cancelledDetailNone: "Cancelled on {date} by {who}. No ballot had been cast.",
+    doneChange: "You can change your vote until the poll closes: open your link again.",
     namedValue: "Named",
     namedNote: "Your answer is recorded with your address and shown with it to {who}.",
     namedWho: { administrators: "the administrators", voters: "the participants on the roll", anyone: "anyone with the results address (the address is partly hidden)" },
@@ -398,7 +438,6 @@ const en: ConsoleMessages = {
     doneTitle: "Ballot recorded",
     doneText: "Your ballot is recorded. Keep the receipt code. After the poll closes, you can use it to find your ballot in the ledger. The code does not show your choice.",
     doneLabel: "Receipt code",
-    doneNote: "Votes cannot be changed after submission.",
     doneResults: "See the results",
     votedTitle: "A ballot was already submitted with this link",
     votedText: "Each link counts once. The receipt code was shown when the ballot was recorded.",
@@ -471,12 +510,15 @@ const en: ConsoleMessages = {
     factPlain: "Not encrypted",
     ballotSealed: "It is encrypted when it is received. It can be read only with the counting key, which an administrator uses when the poll closes.",
     ballotPlain: "It is not encrypted. Choices are stored in readable form, without names, and anyone with access to the database can read them.",
+    sharesTitle: "Shares of the counting key",
+    sharesText: "Give each administrator their own share. Each is shown once and the server keeps none. {k} of them together open the ballots.",
+    shareFor: "Share for {label}",
     keyTitle: "Counting key",
     keyText: "This key opens the sealed ballots when the poll closes. It is shown once and the server does not keep it. Without it the ballots cannot be counted. Store it where only administrators can read it.",
     keyWarn: "Save this key before leaving the page.",
     keyDone: "I have saved the counting key",
-    closeKeyLabel: "Counting key",
-    closeKeyHelp: "Needed to close a sealed poll. The server reads the ballots with it, counts them, and does not keep the key.",
+    closeKeyLabel: "Counting key or shares",
+    closeKeyHelp: "Needed to close a sealed poll. Paste the counting key, or the shares of enough administrators, one per line. The server reads the ballots, counts them, and does not keep the key.",
     countTitle: "Count the ballots",
     countText: "This poll closed by itself. Enter the counting key to read and count the sealed ballots.",
     countSubmit: "Count the ballots",
@@ -526,6 +568,7 @@ const en: ConsoleMessages = {
     unknown_link: "This link is not valid.",
     closed: "This poll is closed.",
     cancelled: "This poll was cancelled.",
+    cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
     not_open: "This poll is not open yet.",
     already_voted: "A ballot was already submitted with this link.",
     not_allowed: "This link cannot vote now.",
@@ -544,6 +587,8 @@ const en: ConsoleMessages = {
     change_needs_encryption: "Changing a vote needs encrypted ballots.",
     invalid_time_zone: "This time zone is not known.",
     encryption_needs_close: "Live results need ballots that are not encrypted. Choose one or the other.",
+    invalid_threshold: "The number of shares must be a whole number from 2 to 20, and needs encrypted ballots.",
+    threshold_needs_admins: "Not enough administrator keys to share the counting key. Add administrator keys, or lower the number of shares needed.",
     wrong_counting_key: "This counting key does not open the ballots of this poll. Check it and try again.",
   },
 };
@@ -624,6 +669,29 @@ const fr: ConsoleMessages = {
     template: "Modèle de bulletin",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    keyModeTitle: "Qui peut ouvrir les bulletins",
+    keyOne: "Une seule clé de dépouillement",
+    keyOneText: "Une personne détient la clé et ouvre les bulletins à la fermeture.",
+    keyShared: "Plusieurs administrateurs ensemble",
+    keySharedText: "La clé de dépouillement est coupée en parts, une pour chaque administrateur à l’ouverture du scrutin. Un nombre fixé d’entre eux doivent agir ensemble pour ouvrir les bulletins.",
+    keyThresholdLabel: "Parts nécessaires pour ouvrir les bulletins",
+    keyNeedsAdmins: "Il faut au moins deux clés d’administration. En ajouter une sous Organisation.",
+    keyNeedsSealed: "Seuls les bulletins chiffrés ont une clé de dépouillement.",
+    presetTitle: "Partir d’un préréglage",
+    presetHelp: "Un préréglage remplit les paramètres ci-dessous. Chacun peut ensuite être modifié.",
+    presets: {
+      title: { secret: "Scrutin secret", transparent: "Transparence maximale", open: "Vote ouvert" },
+      text: {
+        secret: "Chiffré et anonyme. Les participants voient les résultats à la fermeture du scrutin.",
+        transparent: "Chiffré et anonyme. Tout le monde voit les résultats à la fermeture, la liste des bulletins et la clé de dépouillement sont publiées pour un recomptage, et le scrutin ne peut plus être annulé une fois le vote commencé.",
+        open: "Bulletins lisibles avec les noms. Les participants suivent les résultats en direct.",
+      },
+    },
+    presetCustom: "Paramètres personnalisés",
+    publishLabel: "Publier le décompte après la fermeture du scrutin",
+    publishHelp: "Toutes les personnes qui voient les résultats voient aussi la liste des bulletins, chacun avec son code de reçu et son choix. Pour des bulletins chiffrés, la clé de dépouillement est publiée aussi. Chacun peut alors additionner les lignes et retrouver son bulletin.",
+    lockCancelLabel: "Ne pas permettre l’annulation une fois le vote commencé",
+    lockCancelHelp: "Après le premier bulletin, le scrutin ne peut que se rendre à son terme: un résultat ne peut pas être enterré.",
     reminderTitle: "Rappels automatiques",
     reminderHelp: "Un rappel part vers chaque participant qui a reçu un lien et n’a pas voté, au plus une fois par jour. Les rappels exigent que le courriel soit configuré sur le serveur, et votre confirmation que vous pouvez joindre ces personnes.",
     reminderNone: "Aucun rappel automatique",
@@ -747,6 +815,14 @@ const fr: ConsoleMessages = {
     hiddenAdminText: "Les totaux apparaissent à la fermeture du scrutin. Le nombre de bulletins déposés est affiché plus bas.",
     notAllowedTitle: "Les résultats ne sont pas accessibles avec ce lien",
     notAllowedText: "L’organisation a choisi qui voit les résultats de ce scrutin.",
+    publicationTitle: "Liste des bulletins",
+    publicationText: "Chaque bulletin de ce scrutin avec son code de reçu et son choix. Retrouver le sien, et additionner les lignes pour vérifier les totaux.",
+    publicationKey: "Clé de dépouillement",
+    publicationKeyText: "La clé de dépouillement est publiée. Avec elle, toute personne peut ouvrir les bulletins chiffrés du registre et vérifier que la liste correspond.",
+    replaced: "remplacé par un bulletin plus récent",
+    receiptColumn: "Code de reçu",
+    choiceColumn: "Choix",
+    downloadLedger: "Télécharger les entrées du registre",
     answersTitle: "Qui a répondu quoi",
     answersWho: "Adresse",
     answersChoice: "Réponse",
@@ -809,6 +885,9 @@ const fr: ConsoleMessages = {
     rollValue: "{n} participants",
     rollNote: "Identifiée par le code {code}.",
     results: "Résultats",
+    cancelledDetail: "Annulé le {date} par {who}. {n} bulletins avaient été déposés.",
+    cancelledDetailNone: "Annulé le {date} par {who}. Aucun bulletin n’avait été déposé.",
+    doneChange: "Vous pouvez modifier votre vote jusqu’à la fermeture du scrutin: rouvrir votre lien.",
     namedValue: "Nominatif",
     namedNote: "Votre réponse est enregistrée avec votre adresse et affichée avec elle à {who}.",
     namedWho: { administrators: "l’administration", voters: "aux participants de la liste", anyone: "toute personne qui a l’adresse des résultats (l’adresse est en partie masquée)" },
@@ -835,7 +914,6 @@ const fr: ConsoleMessages = {
     doneTitle: "Bulletin enregistré",
     doneText: "Votre bulletin est enregistré. Conserver le code de reçu. Après la fermeture du scrutin, il permet de retrouver le bulletin dans le registre. Le code ne montre pas votre choix.",
     doneLabel: "Code de reçu",
-    doneNote: "Un vote ne peut pas être modifié après le dépôt.",
     doneResults: "Voir les résultats",
     votedTitle: "Un bulletin a déjà été déposé avec ce lien",
     votedText: "Chaque lien compte une seule fois. Le code de reçu a été affiché au moment de l’enregistrement.",
@@ -908,12 +986,15 @@ const fr: ConsoleMessages = {
     factPlain: "Non chiffré",
     ballotSealed: "Il est chiffré dès sa réception. Il ne peut être lu qu’avec la clé de dépouillement, que l’administration utilise à la fermeture du scrutin.",
     ballotPlain: "Il n’est pas chiffré. Les choix sont conservés sous forme lisible, sans nom, et toute personne qui a accès à la base de données peut les lire.",
+    sharesTitle: "Parts de la clé de dépouillement",
+    sharesText: "Remettre à chaque administrateur sa propre part. Chacune est affichée une seule fois et le serveur n’en garde aucune. {k} d’entre eux ouvrent ensemble les bulletins.",
+    shareFor: "Part de {label}",
     keyTitle: "Clé de dépouillement",
     keyText: "Cette clé ouvre les bulletins chiffrés à la fermeture du scrutin. Elle est affichée une seule fois et le serveur ne la conserve pas. Sans elle, les bulletins ne peuvent pas être comptés. La ranger à un endroit que seule l’administration peut lire.",
     keyWarn: "Conserver cette clé avant de quitter la page.",
     keyDone: "La clé de dépouillement est conservée",
-    closeKeyLabel: "Clé de dépouillement",
-    closeKeyHelp: "Nécessaire pour fermer un scrutin chiffré. Le serveur lit les bulletins avec elle, les compte, et ne conserve pas la clé.",
+    closeKeyLabel: "Clé ou parts de dépouillement",
+    closeKeyHelp: "Nécessaire pour fermer un scrutin chiffré. Coller la clé de dépouillement, ou les parts d’assez d’administrateurs, une par ligne. Le serveur lit les bulletins, les compte, et ne conserve pas la clé.",
     countTitle: "Dépouiller les bulletins",
     countText: "Ce scrutin s’est fermé de lui-même. Saisir la clé de dépouillement pour lire et compter les bulletins chiffrés.",
     countSubmit: "Dépouiller les bulletins",
@@ -963,6 +1044,7 @@ const fr: ConsoleMessages = {
     unknown_link: "Ce lien n’est pas valide.",
     closed: "Ce scrutin est fermé.",
     cancelled: "Ce scrutin a été annulé.",
+    cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",
     not_open: "Ce scrutin n’est pas encore ouvert.",
     already_voted: "Un bulletin a déjà été déposé avec ce lien.",
     not_allowed: "Ce lien ne peut pas voter maintenant.",
@@ -981,6 +1063,8 @@ const fr: ConsoleMessages = {
     change_needs_encryption: "Modifier son vote exige des bulletins chiffrés.",
     invalid_time_zone: "Ce fuseau horaire n’est pas connu.",
     encryption_needs_close: "Les résultats en direct exigent des bulletins non chiffrés. Choisir l’un ou l’autre.",
+    invalid_threshold: "Le nombre de parts doit être un entier de 2 à 20, et exige des bulletins chiffrés.",
+    threshold_needs_admins: "Pas assez de clés d’administration pour partager la clé de dépouillement. Ajouter des clés d’administration, ou réduire le nombre de parts nécessaires.",
     wrong_counting_key: "Cette clé de dépouillement n’ouvre pas les bulletins de ce scrutin. La vérifier et réessayer.",
   },
 };

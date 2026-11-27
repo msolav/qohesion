@@ -11,6 +11,7 @@
  * memory. This is not the audited scheme with a threshold key that the final product needs (ADR 0002).
  */
 
+import { combine, split, type Share } from "./shamir.js";
 import { createCipheriv, createDecipheriv, createPrivateKey, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from "node:crypto";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -58,7 +59,7 @@ export function normalizeCountingKey(input: string): string {
   return input.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1").replace(/[^0-9A-Z]/g, "").replace(/^QC/, "");
 }
 
-function formatCountingKey(bytes: Uint8Array): string {
+export function formatCountingKey(bytes: Uint8Array): string {
   const text = toBase32(bytes);
   return `QC-${(text.match(/.{1,4}/g) ?? []).join("-")}`;
 }
@@ -121,4 +122,51 @@ export function open(countingKey: string, sealed: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** A key pair whose private half is kept as raw bytes, so that it can be cut into shares. */
+export function generateCountingKeyBytes(): { publicKey: string; secret: Uint8Array } {
+  const { publicKey, privateKey } = generateKeyPairSync("x25519");
+  return {
+    publicKey: Buffer.from(publicKey.export({ format: "der", type: "spki" }).subarray(-32)).toString("base64url"),
+    secret: Uint8Array.from(privateKey.export({ format: "der", type: "pkcs8" }).subarray(-32)),
+  };
+}
+
+/** One share written for a person to keep: the number needed, its place, and its bytes, as "QS-2-1-XXXX-XXXX-...". */
+export function formatShare(k: number, share: Share): string {
+  const text = toBase32(share.y);
+  return `QS-${k}-${share.x}-${(text.match(/.{1,4}/g) ?? []).join("-")}`;
+}
+
+const SHARE = /QS-(\d{1,2})-(\d{1,3})-([0-9A-Za-z-]+)/gi;
+
+/** The shares found in a text, in any spelling of their letters. */
+export function parseShares(input: string): { k: number; share: Share }[] {
+  const found: { k: number; share: Share }[] = [];
+  for (const m of input.toUpperCase().matchAll(SHARE)) {
+    const bytes = fromBase32(m[3]!.replace(/O/g, "0").replace(/[IL]/g, "1").replace(/[^0-9A-Z]/g, ""), 32);
+    const x = Number(m[2]);
+    if (bytes && x >= 1 && x <= 255) found.push({ k: Number(m[1]), share: { x, y: Uint8Array.from(bytes) } });
+  }
+  return found;
+}
+
+/**
+ * What an administrator typed to open the ballots: a counting key as it is, or shares (one per administrator, in any layout)
+ * that are put together. Fewer shares than needed give a key that does not fit, which the poll then refuses.
+ */
+export function keyFromInput(input: string): string {
+  const shares = parseShares(input);
+  if (shares.length === 0) return input;
+  try {
+    return formatCountingKey(combine(shares.map((s) => s.share)));
+  } catch {
+    return "";
+  }
+}
+
+/** Cuts a counting key into `n` shares of which `k` open the ballots. */
+export function shareSecret(secret: Uint8Array, k: number, n: number): string[] {
+  return split(secret, k, n).map((s) => formatShare(k, s));
 }

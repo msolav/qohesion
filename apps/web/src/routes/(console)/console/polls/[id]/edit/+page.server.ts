@@ -13,6 +13,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
   const timeZone = service().getSpace(session.spaceId)?.timeZone ?? DEFAULT_TIME_ZONE;
   return {
     timeZone,
+    administrators: service().listKeys({ ...session, owner: true }).filter((k) => k.administrator && !k.revokedAt).length,
     input: {
       title: poll.title,
       question: poll.question,
@@ -30,6 +31,9 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       markFill: poll.markFill,
       anonymity: poll.anonymity,
       autoReminder: poll.autoReminder,
+      publishCount: poll.publishCount,
+      lockCancel: poll.lockCancel,
+      keyThreshold: poll.keyThreshold,
       reminderPermission: poll.autoReminder !== "none",
       translations: poll.translations,
     },

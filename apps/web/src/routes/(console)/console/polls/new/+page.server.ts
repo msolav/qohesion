@@ -11,7 +11,7 @@ export const load: PageServerLoad = ({ locals }) => {
   if (!session.administrator) redirect(303, "/console/space");
   const space = service().getSpace(session.spaceId);
   const timeZone = space?.timeZone ?? DEFAULT_TIME_ZONE;
-  return { theme: space?.theme ?? DEFAULT_THEME, timeZone, defaultCloses: suggestedClosing(new Date(), timeZone) };
+  return { administrators: service().listKeys({ ...session, owner: true }).filter((k) => k.administrator && !k.revokedAt).length, theme: space?.theme ?? DEFAULT_THEME, timeZone, defaultCloses: suggestedClosing(new Date(), timeZone) };
 };
 
 export const actions: Actions = {

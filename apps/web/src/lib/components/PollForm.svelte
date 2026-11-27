@@ -19,7 +19,8 @@
     defaultTheme,
     timeZone = DEFAULT_TIME_ZONE,
     defaultCloses = "",
-  }: { locale: Locale; submit: string; initial: PollInput | null; error: string | null; defaultTheme: Theme; timeZone?: string; defaultCloses?: string } = $props();
+    administrators = 1,
+  }: { locale: Locale; submit: string; initial: PollInput | null; error: string | null; defaultTheme: Theme; timeZone?: string; defaultCloses?: string; administrators?: number } = $props();
 
   const m = $derived(consoleMessages[locale]);
   const start = (() => initial)();
@@ -68,6 +69,10 @@
   let ruleThreshold = $state<"none" | "majority" | "percent">(start?.rules.threshold == null ? "none" : start.rules.threshold === "majority" ? "majority" : "percent");
   let ruleThresholdP = $state(String(typeof start?.rules.threshold === "number" ? start.rules.threshold : 60));
   let allowChange = $state(start?.allowChange ?? false);
+  let keyMode = $state<"one" | "shared">((start?.keyThreshold ?? 1) > 1 ? "shared" : "one");
+  let keyThreshold = $state(String(Math.max(2, start?.keyThreshold ?? 2)));
+  let publishCount = $state(start?.publishCount ?? false);
+  let lockCancel = $state(start?.lockCancel ?? false);
   let autoReminder = $state<"none" | "daily" | "before_close">(start?.autoReminder ?? "none");
   let reminderPermission = $state(start?.reminderPermission ?? false);
   let theme = $state<Theme>(start?.theme ?? (() => defaultTheme)());
@@ -92,6 +97,27 @@
   $effect(() => {
     if (timing === "live") encryption = "none";
   });
+  type Preset = "secret" | "transparent" | "open";
+  /** A preset fills in the results settings in one choice. Each setting can still be changed afterwards. */
+  function applyPreset(id: Preset): void {
+    if (id === "open") {
+      timing = "live"; audience = "voters"; anonymity = "named"; encryption = "none"; publishCount = false; lockCancel = false;
+    } else {
+      timing = "close"; anonymity = "secret"; encryption = "sealed";
+      audience = id === "transparent" ? "anyone" : "voters";
+      publishCount = id === "transparent"; lockCancel = id === "transparent";
+    }
+  }
+  /** The preset that the current settings match exactly, or null when they are custom. */
+  const matchedPreset = $derived<Preset | null>(
+    timing === "close" && anonymity === "secret" && encryption === "sealed" && audience === "voters" && !publishCount && !lockCancel
+      ? "secret"
+      : timing === "close" && anonymity === "secret" && encryption === "sealed" && audience === "anyone" && publishCount && lockCancel
+        ? "transparent"
+        : timing === "live" && anonymity === "named" && encryption === "none" && audience === "voters" && !publishCount && !lockCancel
+          ? "open"
+          : null,
+  );
   // A threshold reads the totals, and a changed vote needs a pseudonym: the first needs readable ballots, the second sealed ones.
   $effect(() => {
     if (encryption === "sealed") ruleThreshold = "none";
@@ -384,6 +410,16 @@
       <h2 id="h-2">{stepLabel("results")}</h2>
       <p class="cx-help">{m.form.resultsHelp}</p>
       <fieldset class="cx-field">
+        <legend class="cx-label">{m.form.presetTitle}</legend>
+        <p class="cx-help">{m.form.presetHelp}</p>
+        <div class="cx-choices cols-3">
+          {#each ["secret", "transparent", "open"] as const as id (id)}
+            <button type="button" class="cx-choice preset" aria-pressed={matchedPreset === id} onclick={() => applyPreset(id)}><span><i class="ico"><UiIcon name={id === "secret" ? "lock" : id === "transparent" ? "eye" : "users"} /></i><b>{m.form.presets.title[id]}</b><small>{m.form.presets.text[id]}</small></span></button>
+          {/each}
+        </div>
+        {#if matchedPreset === null}<p class="cx-help" role="status">{m.form.presetCustom}</p>{/if}
+      </fieldset>
+      <fieldset class="cx-field">
         <legend class="cx-label">{m.form.timing}</legend>
         <div class="cx-choices cols-2">
           {#each TIMINGS as value, i (value)}
@@ -415,6 +451,23 @@
           <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><i class="ico"><UiIcon name="eye" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
         </div>
         {#if timing === "live"}<p class="cx-help" role="status">{m.seal.liveNote}</p>{/if}
+      </fieldset>
+      {#if encryption === "sealed"}
+        <fieldset class="cx-field">
+          <legend class="cx-label">{m.form.keyModeTitle}</legend>
+          <div class="cx-choices cols-2">
+            <label class="cx-choice has-ico"><input type="radio" name="key_mode" value="one" bind:group={keyMode} /><span><i class="ico"><UiIcon name="key" /></i><b>{m.form.keyOne}</b><small>{m.form.keyOneText}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="key_mode" value="shared" bind:group={keyMode} disabled={administrators < 2} /><span><i class="ico"><UiIcon name="users" /></i><b>{m.form.keyShared}</b><small>{m.form.keySharedText}</small></span></label>
+          </div>
+          {#if administrators < 2}<p class="cx-help" role="status">{m.form.keyNeedsAdmins}</p>{/if}
+          {#if keyMode === "shared"}
+            <div class="bld-rule"><label for="key_threshold">{m.form.keyThresholdLabel}</label><input id="key_threshold" name="key_threshold" type="number" min="2" max={Math.max(2, administrators)} step="1" inputmode="numeric" bind:value={keyThreshold} /><span class="unit">/ {administrators}</span></div>
+          {/if}
+        </fieldset>
+      {/if}
+      <fieldset class="cx-field">
+        <label class="cx-choice check has-ico"><input type="checkbox" name="publish_count" value="yes" bind:checked={publishCount} /><span><i class="ico"><UiIcon name="eye" /></i><b>{m.form.publishLabel}</b><small>{m.form.publishHelp}</small></span></label>
+        <label class="cx-choice check has-ico"><input type="checkbox" name="lock_cancel" value="yes" bind:checked={lockCancel} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.form.lockCancelLabel}</b><small>{m.form.lockCancelHelp}</small></span></label>
       </fieldset>
     </section>
 
