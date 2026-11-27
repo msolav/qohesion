@@ -41,7 +41,7 @@ export interface ConsoleMessages {
     readonly lateRollLabel: string; readonly lateRollHelp: string;
     readonly pagedLabel: string; readonly pagedHelp: string;
     readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
-    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "transparent" | "open">; readonly presetCustom: string;
+    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "verifiable" | "open">; readonly presetCustom: string;
     readonly emailReceiptLabel: string; readonly emailReceiptHelp: string; readonly emailReceiptHelpSecret: string;
     readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
@@ -99,7 +99,7 @@ export interface ConsoleMessages {
   readonly build: {
     readonly needLanguages: string; readonly needOptionLanguages: string;
     readonly moreQuestions: string; readonly moreQuestionsHelp: string; readonly questionN: string; readonly addQuestion: string; readonly removeQuestion: string; readonly moveQuestionUp: string; readonly moveQuestionDown: string; readonly thresholdOneQuestion: string; readonly moreCount: string;
-    readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"question" | "choices" | "results" | "closing" | "review", string>>; readonly settingsTitle: string;
+    readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"template" | "question" | "choices" | "results" | "closing" | "review", string>>; readonly settingsTitle: string;
     readonly next: string; readonly back: string; readonly change: string; readonly reviewLead: string;
     readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly fillLabel: string; readonly fillHelp: string; readonly fillOutline: string; readonly fillSolid: string; readonly styleDefault: string;
     readonly moveUp: string; readonly moveDown: string; readonly removeOption: string; readonly drag: string; readonly moved: string;
@@ -137,6 +137,7 @@ export interface ConsoleMessages {
     readonly factSealed: string; readonly factPlain: string; readonly ballotSealed: string; readonly ballotPlain: string;
     readonly sharesTitle: string; readonly sharesText: string; readonly shareFor: string;
     readonly keyTitle: string; readonly keyText: string; readonly keyWarn: string; readonly keyDone: string;
+    readonly riskTitle: string; readonly riskText: string;
     readonly closeKeyLabel: string; readonly closeKeyHelp: string; readonly countTitle: string; readonly countText: string; readonly countSubmit: string;
     readonly pendingTitle: string; readonly pendingText: string; readonly protection: string;
   };
@@ -233,12 +234,12 @@ const en: ConsoleMessages = {
     keyNeedsAdmins: "This needs at least two administrator keys. Add one under Organization.",
     keyNeedsSealed: "Only encrypted ballots have a counting key.",
     presetTitle: "Start from a preset",
-    presetHelp: "A preset fills in the settings below. You can change any of them afterwards.",
+    presetHelp: "Choose the kind of poll. It fills in the settings of the Results step, and each of them can be changed there afterwards.",
     presets: {
-      title: { secret: "Secret ballot", transparent: "Maximum transparency", open: "Open vote" },
+      title: { secret: "Secret ballot", verifiable: "Verifiable ballot", open: "Open vote" },
       text: {
         secret: "Encrypted and anonymous. Participants see the results when the poll closes.",
-        transparent: "Encrypted and anonymous. Everyone sees the results at the close, the ballot list and the counting key are published for a recount, and the poll cannot be cancelled once voting begins.",
+        verifiable: "Encrypted and anonymous ballots, with every ballot and the counting key published after the close so that anyone can recount. Everyone sees the results, and the poll cannot be cancelled once voting begins.",
         open: "Readable ballots with names. Participants follow the results live.",
       },
     },
@@ -257,8 +258,8 @@ const en: ConsoleMessages = {
     reminderBefore: "Once, 24 hours before the poll closes",
     reminderNeedsMail: "Email is not set up on this server, so reminders cannot be sent.",
     languagesTitle: "Languages of the poll",
-    languagesHelp: "Participants read the poll in their language when it is offered, and in the default language otherwise. Each language needs the question and every option.",
-    defaultLanguage: "Default",
+    languagesHelp: "Participants read the poll in the language of their browser when it is offered. The fallback language is used when the browser language is not offered or cannot be detected. Each language needs the question and every option.",
+    defaultLanguage: "Fallback",
     missingLanguage: "Something is missing in this language",
     opening: "Opening",
     openManual: "Administrators open the poll",
@@ -530,7 +531,7 @@ const en: ConsoleMessages = {
     moreCount: "{n} more questions",
     stepsLabel: "Steps",
     step: "Step {n} of {total}",
-    stepNames: { question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
+    stepNames: { template: "Kind of poll", question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
     settingsTitle: "Settings participants are shown",
     next: "Continue",
     back: "Back",
@@ -686,6 +687,8 @@ const en: ConsoleMessages = {
     keyTitle: "Counting key",
     keyText: "This key opens the sealed ballots when the poll closes. It is shown once and the server does not keep it. Without it the ballots cannot be counted. Store it where only administrators can read it.",
     keyWarn: "Save this key before leaving the page.",
+    riskTitle: "Risk of encryption",
+    riskText: "The counting key is the only way to read encrypted ballots. It is shown once, when the poll opens, and the service does not keep it. If the key is lost, or if fewer than the required number of shares remain, the ballots can never be counted and the poll has no result. No one, including the service, can recover it. The key must be kept where it survives the loss of a device, and by more than one person when shares are used. Encryption also does not protect a ballot while it is being received: the server sees the answer at that moment, then encrypts it.",
     keyDone: "I have saved the counting key",
     closeKeyLabel: "Counting key or shares",
     closeKeyHelp: "Needed to close a sealed poll. Paste the counting key, or the shares of enough administrators, one per line. The server reads the ballots, counts them, and does not keep the key.",
@@ -873,12 +876,12 @@ const fr: ConsoleMessages = {
     keyNeedsAdmins: "Il faut au moins deux clés d’administration. En ajouter une sous Organisation.",
     keyNeedsSealed: "Seuls les bulletins chiffrés ont une clé de dépouillement.",
     presetTitle: "Partir d’un préréglage",
-    presetHelp: "Un préréglage remplit les paramètres ci-dessous. Chacun peut ensuite être modifié.",
+    presetHelp: "Choisir le type de scrutin. Ce choix remplit les paramètres de l’étape Résultats, où chacun peut ensuite être modifié.",
     presets: {
-      title: { secret: "Scrutin secret", transparent: "Transparence maximale", open: "Vote ouvert" },
+      title: { secret: "Scrutin secret", verifiable: "Scrutin vérifiable", open: "Vote ouvert" },
       text: {
         secret: "Chiffré et anonyme. Les participants voient les résultats à la fermeture du scrutin.",
-        transparent: "Chiffré et anonyme. Tout le monde voit les résultats à la fermeture, la liste des bulletins et la clé de dépouillement sont publiées pour un recomptage, et le scrutin ne peut plus être annulé une fois le vote commencé.",
+        verifiable: "Bulletins chiffrés et anonymes, dont chacun est publié avec la clé de dépouillement après la fermeture, de sorte que toute personne peut recompter. Tout le monde voit les résultats, et le scrutin ne peut plus être annulé une fois le vote commencé.",
         open: "Bulletins lisibles avec les noms. Les participants suivent les résultats en direct.",
       },
     },
@@ -897,8 +900,8 @@ const fr: ConsoleMessages = {
     reminderBefore: "Une fois, 24 heures avant la fermeture du scrutin",
     reminderNeedsMail: "Le courriel n’est pas configuré sur ce serveur: les rappels ne peuvent pas être envoyés.",
     languagesTitle: "Langues du scrutin",
-    languagesHelp: "Les participants lisent le scrutin dans leur langue quand elle est offerte, et dans la langue par défaut sinon. Chaque langue exige la question et chaque option.",
-    defaultLanguage: "Par défaut",
+    languagesHelp: "Les participants lisent le scrutin dans la langue de leur navigateur quand elle est offerte. La langue de repli sert quand la langue du navigateur n’est pas offerte ou ne peut pas être détectée. Chaque langue exige la question et chaque option.",
+    defaultLanguage: "Langue de repli",
     missingLanguage: "Il manque quelque chose dans cette langue",
     opening: "Ouverture",
     openManual: "L’administration ouvre le scrutin",
@@ -1114,8 +1117,8 @@ const fr: ConsoleMessages = {
     introClose: "Fermeture {date}",
     doneChange: "Vous pouvez modifier votre vote jusqu’à la fermeture du scrutin: rouvrir votre lien.",
     namedValue: "Nominatif",
-    namedNote: "Votre réponse est enregistrée avec votre adresse et affichée avec elle à {who}.",
-    namedWho: { administrators: "l’administration", voters: "aux participants de la liste", anyone: "toute personne qui a l’adresse des résultats (l’adresse est en partie masquée)" },
+    namedNote: "Votre réponse est enregistrée avec votre adresse et affichée avec elle {who}.",
+    namedWho: { administrators: "à l’administration", voters: "aux participants de la liste", anyone: "à toute personne qui a l’adresse des résultats (l’adresse est en partie masquée)" },
     cancelledTitle: "Ce scrutin a été annulé",
     cancelledText: "Aucun résultat ne sera publié.",
     yourVote: "Votre vote",
@@ -1170,7 +1173,7 @@ const fr: ConsoleMessages = {
     moreCount: "{n} autres questions",
     stepsLabel: "Étapes",
     step: "Étape {n} de {total}",
-    stepNames: { question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
+    stepNames: { template: "Type de scrutin", question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
     settingsTitle: "Réglages présentés aux participants",
     next: "Continuer",
     back: "Retour",
@@ -1326,6 +1329,8 @@ const fr: ConsoleMessages = {
     keyTitle: "Clé de dépouillement",
     keyText: "Cette clé ouvre les bulletins chiffrés à la fermeture du scrutin. Elle est affichée une seule fois et le serveur ne la conserve pas. Sans elle, les bulletins ne peuvent pas être comptés. La ranger à un endroit que seule l’administration peut lire.",
     keyWarn: "Conserver cette clé avant de quitter la page.",
+    riskTitle: "Risque du chiffrement",
+    riskText: "La clé de dépouillement est le seul moyen de lire les bulletins chiffrés. Elle est affichée une seule fois, à l’ouverture du vote, et le service ne la conserve pas. Si la clé est perdue, ou si le nombre de parts requis n’est plus réuni, les bulletins ne pourront jamais être comptés et le scrutin n’aura aucun résultat. Personne, y compris le service, ne peut la récupérer. La clé doit être conservée là où elle survit à la perte d’un appareil, et par plus d’une personne lorsque des parts sont utilisées. Le chiffrement ne protège pas non plus un bulletin pendant sa réception: le serveur voit la réponse à ce moment, puis la chiffre.",
     keyDone: "La clé de dépouillement est conservée",
     closeKeyLabel: "Clé ou parts de dépouillement",
     closeKeyHelp: "Nécessaire pour fermer un scrutin chiffré. Coller la clé de dépouillement, ou les parts d’assez d’administrateurs, une par ligne. Le serveur lit les bulletins, les compte, et ne conserve pas la clé.",

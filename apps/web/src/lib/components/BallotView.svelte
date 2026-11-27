@@ -201,7 +201,7 @@
         {#each q.options as option, i (option.id)}
           {@const icon = iconOf(option)}
           <div class="choice" data-color={option.color ?? undefined} data-icon={option.icon ? option.icon : undefined}>
-            <input type="radio" name="a_{q.id}" id="a_{q.id}_{option.id}" value={option.id} bind:group={answers[q.id]} disabled={preview} />
+            <input type="radio" name="a_{q.id}" id="a_{q.id}_{option.id}" value={option.id} bind:group={answers[q.id]} form={preview ? "preview-detached" : undefined} />
             <label for="a_{q.id}_{option.id}">
               <span class="mark" aria-hidden="true">
                 <svg viewBox="0 0 16 16" width="14" height="14" focusable="false"><path d={iconPath(icon) ?? check} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>

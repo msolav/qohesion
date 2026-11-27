@@ -1,5 +1,5 @@
 import type { Handle } from "@sveltejs/kit/hooks";
-import { isLocale, negotiateLocale } from "#lib/i18n/negotiate.js";
+import { isLocale, negotiateLocale, pollLocale } from "#lib/i18n/negotiate.js";
 import { themeFrom, isTheme } from "#lib/theme.js";
 import { isTestEdition, service, gatePassword, serverSecret } from "#lib/server/runtime.js";
 import { gateAllows, gateCookieValue, passwordMatches } from "#lib/server/gate.js";
@@ -41,10 +41,10 @@ export const handle: Handle = async ({ event, resolve }) => {
     const named = event.url.searchParams.get("theme");
     const voter = /^\/v\/([^/]+)/.exec(event.url.pathname);
     const results = /^\/r\/([^/]+)/.exec(event.url.pathname);
-    if (!isTheme(named)) {
-      const poll = voter?.[1] ? service().byToken(voter[1])?.poll : results?.[1] ? service().getPoll(results[1]) : undefined;
-      if (poll) event.locals.theme = poll.theme;
-    }
+    const poll = voter?.[1] ? service().byToken(voter[1])?.poll : results?.[1] ? service().getPoll(results[1]) : undefined;
+    if (poll && !isTheme(named)) event.locals.theme = poll.theme;
+    // The screens of a poll are in the language of the browser when the poll offers it, else in the poll's fallback language.
+    if (poll) event.locals.locale = pollLocale(poll.translations.languages, { query, cookie: remembered, acceptLanguage: event.request.headers.get("accept-language") }) ?? event.locals.locale;
   }
 
   event.setHeaders({

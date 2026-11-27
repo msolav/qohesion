@@ -46,6 +46,17 @@ describe("propertiesOf", () => {
     expect(ties?.text.join(" ")).toContain("associe l’adresse au code");
     expect(propertiesOf("en", { ...base, emailReceipt: true, anonymity: "named", publishCount: true, disclosure: { name: "full", email: "full" } }).find((r) => r.id === "receipt")?.text.join(" ")).not.toContain("ties the address");
   });
+  it("opens no description with a pronoun that points back to the badge, in any setting", () => {
+    const pronoun = /^(It|They|This|These|Il|Elle|Ils|Elles|Ce|Cela|Ceci)\b/;
+    for (const locale of ["fr", "en"] as const) {
+      for (const anonymity of ["secret", "named"] as const) {
+        for (const flag of [true, false]) {
+          const rows = propertiesOf(locale, { ...base, anonymity, encrypted: flag, allowChange: flag, lateRoll: flag, publishCount: flag, lockCancel: flag, emailReceipt: flag, disclosure: { name: "masked", email: "masked" }, closes: flag ? "Dec. 1" : null, roll: { count: 3, code: "ABCD-1234" } });
+          for (const row of rows) for (const line of row.text) expect(pronoun.test(line), `${locale} ${row.id}: ${line}`).toBe(false);
+        }
+      }
+    }
+  });
   it("marks a secret, encrypted poll as private and a named, plain one as open", () => {
     const secret = propertiesOf("en", base);
     expect(secret.find((r) => r.id === "ballot")?.tone).toBe("private");

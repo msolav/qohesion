@@ -46,3 +46,19 @@ export function negotiateLocale(input: NegotiationInput): Locale {
   }
   return DEFAULT_LOCALE;
 }
+
+/**
+ * The language of a poll's screens: what the visitor chose or the browser asks for, when the poll offers it; the poll's
+ * fallback language (the first one offered) when none of those is offered or nothing was detected. Null when the poll
+ * lists no language, and the ordinary choice stands.
+ */
+export function pollLocale(offered: readonly string[], input: NegotiationInput): Locale | null {
+  const known = offered.filter(isLocale);
+  if (known.length === 0) return null;
+  const wanted: string[] = [];
+  if (isLocale(input.query)) wanted.push(input.query);
+  if (isLocale(input.cookie)) wanted.push(input.cookie);
+  for (const tag of parseAcceptLanguage(input.acceptLanguage)) wanted.push(tag.split("-")[0] ?? "");
+  const found = wanted.find((w): w is Locale => isLocale(w) && known.includes(w));
+  return found ?? known[0] ?? null;
+}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from "svelte";
   import BallotView from "#lib/components/BallotView.svelte";
+  import GuideLink from "#lib/components/GuideLink.svelte";
   import PropertyList from "#lib/components/PropertyList.svelte";
   import UiIcon from "#lib/components/UiIcon.svelte";
   import { DEFAULT_DISCLOSURE, EMAIL_MODES, NAME_MODES, maskEmail, maskName, type EmailMode, type NameMode } from "#lib/disclosure.js";
@@ -128,7 +129,7 @@
   let armed = $state<number | null>(null);
   let dragFrom = $state<number | null>(null);
 
-  const STEPS = ["question", "choices", "results", "closing", "review"] as const;
+  const STEPS = ["template", "question", "choices", "results", "closing", "review"] as const;
   const last = STEPS.length - 1;
 
   $effect(() => {
@@ -143,7 +144,7 @@
   $effect(() => {
     if (timing === "live") encryption = "none";
   });
-  type Preset = "secret" | "transparent" | "open";
+  type Preset = "secret" | "verifiable" | "open";
   /** A preset fills in the results settings in one choice. Each setting can still be changed afterwards. */
   function applyPreset(id: Preset): void {
     if (id === "open") {
@@ -152,8 +153,8 @@
     } else {
       lateRoll = false;
       timing = "close"; anonymity = "secret"; encryption = "sealed";
-      audience = id === "transparent" ? "anyone" : "voters";
-      publishCount = id === "transparent"; lockCancel = id === "transparent";
+      audience = id === "verifiable" ? "anyone" : "voters";
+      publishCount = id === "verifiable"; lockCancel = id === "verifiable";
     }
   }
   /** The preset that the current settings match exactly, or null when they are custom. */
@@ -161,7 +162,7 @@
     timing === "close" && anonymity === "secret" && encryption === "sealed" && audience === "voters" && !publishCount && !lockCancel
       ? "secret"
       : timing === "close" && anonymity === "secret" && encryption === "sealed" && audience === "anyone" && publishCount && lockCancel
-        ? "transparent"
+        ? "verifiable"
         : timing === "live" && anonymity === "named" && encryption === "none" && audience === "voters" && !publishCount && !lockCancel
           ? "open"
           : null,
@@ -174,7 +175,7 @@
   // A refusal from the server sends the person to the step that holds the problem.
   $effect(() => {
     if (!error) return;
-    step = error.startsWith("title") || error === "translation_missing" || error === "description_too_long" ? 0 : error.startsWith("option") ? 1 : ["closes_required", "closes_past", "dates_order", "opens_past", "invalid_rule", "rules_need_readable", "change_needs_encryption", "attestation_required"].includes(error) ? 3 : 2;
+    step = error.startsWith("title") || error === "translation_missing" || error === "description_too_long" ? 1 : error.startsWith("option") ? 2 : ["closes_required", "closes_past", "dates_order", "opens_past", "invalid_rule", "rules_need_readable", "change_needs_encryption", "attestation_required"].includes(error) ? 4 : 3;
   });
 
   const labels = $derived(rows.map((r) => r.texts[def].trim()).filter((l) => l.length > 0));
@@ -243,7 +244,7 @@
 
   /** Whether the step can be left. A step with a missing answer says what is missing and keeps the person on it. */
   function check(at: number): boolean {
-    if (at === 0) {
+    if (at === 1) {
       const empty = languages.filter((l) => titles[l].trim() === "" || questions[l].trim() === "");
       if (empty.length > 0) {
         problem = languages.length === 1 ? m.build.needTitle : fill(m.build.needLanguages, { languages: empty.map(langName).join(", ") });
@@ -252,7 +253,7 @@
         return false;
       }
     }
-    if (at === 1 && kind === "choice") {
+    if (at === 2 && kind === "choice") {
       const lower = labels.map((l) => l.toLowerCase());
       const untranslated = languages.some((l) => rows.some((r) => r.texts[def].trim() !== "" && r.texts[l].trim() === ""));
       if (untranslated) {
@@ -348,8 +349,25 @@
     {#if serverError}<p class="cx-notice error" role="alert">{serverError}</p>{/if}
 
     <!-- 1. Question -->
+    <!-- 1. The kind of poll: a starting point for the settings of step 4 -->
     <section class="bld-step" id="step-0" hidden={enhanced && step !== 0} aria-labelledby="h-0">
-      <h2 id="h-0">{stepLabel("question")}</h2>
+      <h2 id="h-0">{stepLabel("template")}</h2>
+      <p class="cx-help">{m.form.presetHelp}</p>
+      <div class="tpl-grid" role="group" aria-label={m.build.stepNames.template}>
+        {#each ["secret", "verifiable", "open"] as const as id, i (id)}
+          <button type="button" class="tpl" aria-pressed={matchedPreset === id} data-first={i === 0 ? "" : undefined} onclick={() => applyPreset(id)}>
+            <span class="tpl__ico" aria-hidden="true"><UiIcon name={id === "secret" ? "lock" : id === "verifiable" ? "hash" : "users"} size={44} /></span>
+            <b class="tpl__title">{m.form.presets.title[id]}</b>
+            <small class="tpl__text">{m.form.presets.text[id]}</small>
+            <span class="tpl__check" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          </button>
+        {/each}
+      </div>
+      {#if matchedPreset === null}<p class="cx-help" role="status">{m.form.presetCustom}</p>{/if}
+    </section>
+
+    <section class="bld-step" id="step-1" hidden={enhanced && step !== 1} aria-labelledby="h-1">
+      <h2 id="h-1">{stepLabel("question")}</h2>
       <fieldset class="cx-field">
         <legend class="cx-label">{m.form.languagesTitle}</legend>
         <p class="cx-help">{m.form.languagesHelp}</p>
@@ -375,14 +393,14 @@
         </div>
       {/if}
 
-      <div class="cx-field" class:invalid={problem && step === 0}>
+      <div class="cx-field" class:invalid={problem && step === 1}>
         <label for="title-{editing}">{m.form.pollTitle}</label>
         {#each languages as lang (lang)}
-          <input id="title-{lang}" name="title_{lang}" type="text" class="big" lang={lang} maxlength="140" hidden={lang !== editing} data-first={lang === editing ? "" : undefined} bind:value={titles[lang]} autocomplete="off" aria-describedby="title-help{problem && step === 0 ? ' step-problem' : ''}" required />
+          <input id="title-{lang}" name="title_{lang}" type="text" class="big" lang={lang} maxlength="140" hidden={lang !== editing} data-first={lang === editing ? "" : undefined} bind:value={titles[lang]} autocomplete="off" aria-describedby="title-help{problem && step === 1 ? ' step-problem' : ''}" required />
         {/each}
         <p class="cx-help" id="title-help">{m.form.pollTitleHelp}</p>
       </div>
-      <div class="cx-field" class:invalid={problem && step === 0}>
+      <div class="cx-field" class:invalid={problem && step === 1}>
         <label for="question-{editing}">{m.form.question}</label>
         {#each languages as lang (lang)}
           <input id="question-{lang}" name="question_{lang}" type="text" class="big" lang={lang} maxlength="300" hidden={lang !== editing} bind:value={questions[lang]} onkeydown={onTitleKey} autocomplete="off" aria-describedby="question-help" required />
@@ -396,14 +414,14 @@
         {/each}
         <p class="cx-help" id="description-help">{m.form.detailsHelp}</p>
       </div>
-      {#if problem && step === 0}<p class="cx-error" id="step-problem" role="alert">{problem}</p>{/if}
+      {#if problem && step === 1}<p class="cx-error" id="step-problem" role="alert">{problem}</p>{/if}
     </section>
 
     <!-- 2. Choices -->
-    <section class="bld-step" id="step-1" hidden={enhanced && step !== 1} aria-labelledby="h-1">
-      <h2 id="h-1">{stepLabel("choices")}</h2>
+    <section class="bld-step" id="step-2" hidden={enhanced && step !== 2} aria-labelledby="h-2">
+      <h2 id="h-2">{stepLabel("choices")}</h2>
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.form.kind} <a class="cx-info" href={infoLink("methods", "single")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.methods.title}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
+        <legend class="cx-label">{m.form.kind} <GuideLink {locale} page="methods" anchor={"single"} label={g.methods.title} /></legend>
         <div class="cx-choices cols-2">
           <label class="cx-choice has-ico"><input type="radio" name="kind" value="yes-no" bind:group={kind} data-first /><span><i class="ico"><UiIcon name="check" /></i><b>{m.form.kindYesNo}</b><small>{m.form.kindYesNoText}</small></span></label>
           <label class="cx-choice has-ico"><input type="radio" name="kind" value="choice" bind:group={kind} /><span><i class="ico"><UiIcon name="list" /></i><b>{m.form.kindChoice}</b><small>{m.form.kindChoiceText}</small></span></label>
@@ -411,7 +429,7 @@
       </fieldset>
 
       {#if kind === "choice"}
-        <fieldset class="cx-field" class:invalid={problem && step === 1}>
+        <fieldset class="cx-field" class:invalid={problem && step === 2}>
           <legend class="cx-label">{m.form.options}</legend>
           <p class="cx-help">{m.form.optionsHelp} <span class="bld-keys">{m.build.optionsKeys}</span></p>
           <ul class="bld-options">
@@ -462,7 +480,7 @@
             {/each}
           </ul>
           <p class="sr-only" aria-live="polite">{announce}</p>
-          {#if problem && step === 1}<p class="cx-error" role="alert">{problem}</p>{/if}
+          {#if problem && step === 2}<p class="cx-error" role="alert">{problem}</p>{/if}
           {#if rows.length < 12}<div><button type="button" class="cx-btn ghost small" onclick={() => addAfter(rows.length - 1)}>{m.form.addOption}</button></div>{/if}
         </fieldset>
       {:else}
@@ -524,26 +542,16 @@
         <legend class="cx-label">{m.build.fillLabel}</legend>
         <p class="cx-help">{m.build.fillHelp}</p>
         <div class="bld-fill">
-          <label class="bld-pick"><input type="radio" name="marks" value="outline" bind:group={markFillValue} /><span class="mode"><span class="sample" data-color="green" aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillOutline}</span></label>
-          <label class="bld-pick"><input type="radio" name="marks" value="fill" bind:group={markFillValue} /><span class="mode"><span class="sample" data-color="green" data-fill aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillSolid}</span></label>
+          <label class="bld-pick"><input type="radio" name="marks" value="outline" bind:group={markFillValue} /><span class="mode"><span class="mk-sample" data-color="green" aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillOutline}</span></label>
+          <label class="bld-pick"><input type="radio" name="marks" value="fill" bind:group={markFillValue} /><span class="mode"><span class="mk-sample" data-color="green" data-fill aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillSolid}</span></label>
         </div>
       </fieldset>
     </section>
 
     <!-- 3. Results -->
-    <section class="bld-step" id="step-2" hidden={enhanced && step !== 2} aria-labelledby="h-2">
-      <h2 id="h-2">{stepLabel("results")}</h2>
+    <section class="bld-step" id="step-3" hidden={enhanced && step !== 3} aria-labelledby="h-3">
+      <h2 id="h-3">{stepLabel("results")}</h2>
       <p class="cx-help">{m.form.resultsHelp}</p>
-      <fieldset class="cx-field">
-        <legend class="cx-label">{m.form.presetTitle}</legend>
-        <p class="cx-help">{m.form.presetHelp}</p>
-        <div class="cx-choices cols-3">
-          {#each ["secret", "transparent", "open"] as const as id (id)}
-            <button type="button" class="cx-choice preset" aria-pressed={matchedPreset === id} onclick={() => applyPreset(id)}><span><i class="ico"><UiIcon name={id === "secret" ? "lock" : id === "transparent" ? "eye" : "users"} /></i><b>{m.form.presets.title[id]}</b><small>{m.form.presets.text[id]}</small></span></button>
-          {/each}
-        </div>
-        {#if matchedPreset === null}<p class="cx-help" role="status">{m.form.presetCustom}</p>{/if}
-      </fieldset>
       <fieldset class="cx-field">
         <legend class="cx-label">{m.form.timing}</legend>
         <div class="cx-choices cols-2">
@@ -561,7 +569,7 @@
         </div>
       </fieldset>
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.form.anonymityTitle} <a class="cx-info" href={infoLink("how", anonymity === "named" ? "named" : "secret")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.props.learn}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
+        <legend class="cx-label">{m.form.anonymityTitle} <GuideLink {locale} page="how" anchor={anonymity === "named" ? "named" : "secret"} label={g.props.learn} /></legend>
         <div class="cx-choices cols-2">
           {#each ["secret", "named"] as const as value (value)}
             <label class="cx-choice has-ico"><input type="radio" name="anonymity" {value} bind:group={anonymity} /><span><i class="ico"><UiIcon name={value === "secret" ? "lock" : "users"} /></i><b>{m.form.anonymityNames.title[value]}</b><small>{m.form.anonymityNames.text[value]}</small></span></label>
@@ -570,7 +578,7 @@
       </fieldset>
       {#if anonymity === "named"}
         <fieldset class="cx-field disclosure">
-          <legend class="cx-label">{g.disclosure.title} <a class="cx-info" href={infoLink("how", "list")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.props.learn}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
+          <legend class="cx-label">{g.disclosure.title} <GuideLink {locale} page="how" anchor={"list"} label={g.props.learn} /></legend>
           <p class="cx-help">{g.disclosure.help}</p>
           <div class="disc-grid">
             <div role="radiogroup" aria-label={g.disclosure.nameTitle}>
@@ -592,13 +600,14 @@
         </fieldset>
       {/if}
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.seal.title} <a class="cx-info" href={infoLink("how", "sealed")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.props.learn}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
+        <legend class="cx-label">{m.seal.title} <GuideLink {locale} page="how" anchor={"sealed"} label={g.props.learn} /></legend>
         <p class="cx-help">{m.seal.help}</p>
         <div class="cx-choices cols-2">
           <label class="cx-choice has-ico"><input type="radio" name="encryption" value="sealed" bind:group={encryption} disabled={timing === "live"} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
           <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><i class="ico"><UiIcon name="eye" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
         </div>
         {#if timing === "live"}<p class="cx-help" role="status">{m.seal.liveNote}</p>{/if}
+        {#if encryption === "sealed"}<div class="cx-notice warn gap" role="note"><b>{m.seal.riskTitle}.</b> {m.seal.riskText} <GuideLink {locale} page="how" anchor="counting-key" label={g.props.learn} /></div>{/if}
       </fieldset>
       {#if encryption === "sealed"}
         <fieldset class="cx-field">
@@ -621,8 +630,8 @@
     </section>
 
     <!-- 4. Dates and look -->
-    <section class="bld-step" id="step-3" hidden={enhanced && step !== 3} aria-labelledby="h-3">
-      <h2 id="h-3">{stepLabel("closing")}</h2>
+    <section class="bld-step" id="step-4" hidden={enhanced && step !== 4} aria-labelledby="h-4">
+      <h2 id="h-4">{stepLabel("closing")}</h2>
       <fieldset class="cx-field">
         <legend class="cx-label">{m.form.opening}</legend>
         <div class="cx-choices cols-2">
@@ -704,8 +713,8 @@
     </section>
 
     <!-- 5. Review -->
-    <section class="bld-step" id="step-4" hidden={enhanced && step !== 4} aria-labelledby="h-4">
-      <h2 id="h-4">{stepLabel("review")}</h2>
+    <section class="bld-step" id="step-5" hidden={enhanced && step !== 5} aria-labelledby="h-5">
+      <h2 id="h-5">{stepLabel("review")}</h2>
       <p class="cx-help">{m.build.reviewLead}</p>
       <dl class="bld-review">
         <div><dt>{m.form.pollTitle}</dt><dd>{titles[def] || "–"}<br />{questions[def] || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
@@ -731,9 +740,9 @@
     <h2 id="preview-h">{m.build.previewTitle}</h2>
     <p class="cx-help">{m.build.previewNote}</p>
     <div class="bld-phone">
-      <!-- The surface scrolls; only the ballot inside it is inert, so that nothing can be chosen but the preview can be read. -->
+      <!-- The surface scrolls. A choice can be made in the preview to see how a chosen option looks, but it belongs to no form, so nothing is sent or recorded. -->
       <div class="preview-surface" data-theme={theme}>
-        <div class="voter" lang={editing} inert><div class="ballot"><BallotView locale={editing} poll={preview} preview /></div></div>
+        <div class="voter" lang={editing}><div class="ballot"><BallotView locale={editing} poll={preview} preview /></div></div>
       </div>
     </div>
   </aside>

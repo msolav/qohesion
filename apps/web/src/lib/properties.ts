@@ -81,13 +81,13 @@ export function propertiesOf(locale: Locale, p: PropertyInput): Property[] {
     add("method", first === "yes-no" ? "check" : "flag", "neutral", [g.props.method[first].badge], [g.props.method[first].text], { page: "methods", anchor: methodOfProperty(first) });
   }
 
-  add("closing", "clock", "neutral", [p.closes ?? m.voter.noClose], [rulesSentence(m, p.rules) || g.props.closingPlain], null);
+  add("closing", "clock", "neutral", [p.closes ?? m.voter.noClose], [p.closes === null ? g.props.texts.closingNone : g.props.closingPlain, rulesSentence(m, p.rules)], null);
 
   const roll = p.roll;
   const rollBadge = roll === undefined || roll.count === null ? g.props[p.lateRoll ? "rollLate" : "rollFixed"] : roll.count === 1 ? m.voter.rollOne : fill(m.voter.rollValue, { n: roll.count });
-  add("roll", "users", p.lateRoll ? "open" : "neutral", [rollBadge], [roll?.code ? fill(m.voter.rollNote, { code: roll.code }) : "", p.lateRoll ? m.voter.rollLate : m.voter.rollFixed], null);
+  add("roll", "users", p.lateRoll ? "open" : "neutral", [rollBadge], [roll?.code ? fill(g.props.texts.roll.note, { code: roll.code }) : "", p.lateRoll ? g.props.texts.roll.late : g.props.texts.roll.fixed], null);
 
-  add("ballot", named ? "users" : "shield", named ? "open" : "private", [named ? m.voter.namedValue : m.voter.ballotValue], [named ? fill(m.voter.namedNote, { who: m.voter.namedWho[p.audience] }) : m.voter.ballotNote], { page: "how", anchor: named ? "named" : "secret" });
+  add("ballot", named ? "users" : "shield", named ? "open" : "private", [named ? m.voter.namedValue : m.voter.ballotValue], [named ? fill(g.props.texts.named, { who: m.voter.namedWho[p.audience] }) : g.props.texts.secret], { page: "how", anchor: named ? "named" : "secret" });
 
   if (named && p.disclosure) {
     const d = p.disclosure;
@@ -97,14 +97,14 @@ export function propertiesOf(locale: Locale, p: PropertyInput): Property[] {
     add("list", "list", "open", [badge], [showsNobody(d) ? g.props.listNothing : fill(g.props.listText, { what })], { page: "how", anchor: "list" });
   }
 
-  add("seal", p.encrypted ? "lock" : "eye", p.encrypted ? "private" : "open", [p.encrypted ? m.seal.factSealed : m.seal.factPlain], [p.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain], { page: "how", anchor: p.encrypted ? "sealed" : "secret" });
+  add("seal", p.encrypted ? "lock" : "eye", p.encrypted ? "private" : "open", [p.encrypted ? m.seal.factSealed : m.seal.factPlain], [p.encrypted ? g.props.texts.seal.sealed : named ? g.props.texts.seal.plainNamed : g.props.texts.seal.plainSecret], { page: "how", anchor: p.encrypted ? "sealed" : "secret" });
 
-  add("change", "pulse", p.allowChange ? "neutral" : "strict", [p.allowChange ? g.props.changeAllowed : g.props.changeFinal], [p.allowChange ? m.voter.changeAllowed : m.voter.changeFinal], null);
+  add("change", "pulse", p.allowChange ? "neutral" : "strict", [p.allowChange ? g.props.changeAllowed : g.props.changeFinal], [p.allowChange ? g.props.texts.change.allowed : g.props.texts.change.final], null);
 
   const rm = g.props.receiptMail;
   add("receipt", "mail", p.emailReceipt ? "open" : "neutral", [p.emailReceipt ? rm.on : rm.off], [p.emailReceipt ? rm.onText : rm.offText, p.emailReceipt && !named && p.publishCount ? rm.tiesText : ""], { page: "how", anchor: "receipt" });
 
-  add("results", "eye", "neutral", [m.form.timingNames.title[p.timing], m.form.audienceNames.title[p.audience]], [m.resultsStatement[p.timing][p.audience]], { page: "how", anchor: "receipt" });
+  add("results", "eye", "neutral", [m.form.timingNames.title[p.timing], m.form.audienceNames.title[p.audience]], [g.props.texts.results[p.timing][p.audience]], { page: "how", anchor: "receipt" });
 
   if (p.publishCount) add("publication", "hash", "open", [g.props.publication.badge], [g.props.publication.text], { page: "how", anchor: "publication" });
   if (p.lockCancel) add("cancel", "flag", "strict", [g.props.cancel.badge], [g.props.cancel.text], null);

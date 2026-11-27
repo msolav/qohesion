@@ -38,10 +38,22 @@ export interface GuideMessages {
     readonly labels: Readonly<Record<PropertyId, string>>;
     readonly learn: string;
     readonly newTab: string;
+    readonly openPage: string;
+    readonly close: string;
     readonly receiptMail: { readonly on: string; readonly off: string; readonly onText: string; readonly offText: string; readonly tiesText: string };
     readonly method: Readonly<Record<"yes-no" | "single", { readonly badge: string; readonly text: string }>>;
     readonly methodMany: { readonly badge: string; readonly text: string };
     readonly closingPlain: string;
+    /** Descriptions written to stand alone: each names its subject and never opens with a pronoun that points back to a badge. */
+    readonly texts: {
+      readonly closingNone: string;
+      readonly change: { readonly allowed: string; readonly final: string };
+      readonly seal: { readonly sealed: string; readonly plainSecret: string; readonly plainNamed: string };
+      readonly roll: { readonly note: string; readonly fixed: string; readonly late: string };
+      readonly named: string;
+      readonly secret: string;
+      readonly results: Readonly<Record<"close" | "live", Readonly<Record<"administrators" | "voters" | "anyone", string>>>>;
+    };
     readonly approvalBadge: string;
     readonly approvalNone: string;
     readonly rollFixed: string;
@@ -103,10 +115,12 @@ const en: GuideMessages = {
     labels: { method: "Question", closing: "Closing", roll: "Participants", ballot: "Who can tell who voted what", seal: "Encryption", change: "Changing a vote", results: "Results", receipt: "Receipt", list: "List of signatories", publication: "Published count", cancel: "Cancelling", approval: "Approval" },
     learn: "How this works",
     newTab: "opens in a new tab",
+    openPage: "Open as a page",
+    close: "Close",
     receiptMail: {
       on: "Sent by email on request",
       off: "Copy or file only",
-      onText: "After voting, a participant can copy the receipt code, save it as a file, or ask for it by email. The message goes to the address that received the link. It holds the code and the page where the code is checked, and no voting link.",
+      onText: "After voting, a participant can copy the receipt code, save it as a file, or ask for it by email. The message goes to the address that received the link. The message holds the code and the page where the code is checked, and no voting link.",
       offText: "After voting, a participant can copy the receipt code or save it as a file. No email is sent.",
       tiesText: "On this poll the email ties the address to the code, and the published list shows each ballot beside its code.",
     },
@@ -115,7 +129,38 @@ const en: GuideMessages = {
       single: { badge: "One choice among several", text: "Each participant picks one option from a list. The option with the most ballots leads. A majority is not required unless a closing rule sets a threshold." },
     },
     methodMany: { badge: "{n} questions", text: "The ballot has {n} questions, with one answer to each. Each question is counted on its own." },
-    closingPlain: "An administrator can close the poll before this time.",
+    closingPlain: "The poll closes at the time shown. An administrator can also close it earlier.",
+    texts: {
+      closingNone: "The poll has no closing time. An administrator closes it.",
+      change: {
+        allowed: "A participant can change the vote until the poll closes. Only the last ballot submitted with the personal link is counted.",
+        final: "A vote cannot be changed once the ballot is submitted. Each personal link accepts a single ballot, and a submitted ballot can be neither withdrawn nor replaced.",
+      },
+      seal: {
+        sealed: "Each ballot is encrypted by the server as soon as it is received, and can be read only with the counting key, which an administrator uses when the poll closes. The server handles the ballot in readable form for the instant before it is encrypted.",
+        plainSecret: "Ballots are stored in readable form, without names. Anyone with access to the database can read the choices but cannot tie them to a participant.",
+        plainNamed: "Ballots are stored in readable form, with the address of the participant who cast each one. Anyone with access to the database can read each participant's answer.",
+      },
+      roll: {
+        note: "The list of participants is identified by the code {code}.",
+        fixed: "The list of participants is fixed when voting opens. No one can be added afterwards.",
+        late: "Administrators can add participants while voting is open. Participants added after the opening are marked as late and are not covered by the code of the list.",
+      },
+      named: "Each answer is recorded with the address of the participant who gave it, and shown with that address to {who}.",
+      secret: "Each ballot is recorded without the name of the participant. The record holds no reference from a ballot to a participant, nor from a participant to a ballot.",
+      results: {
+        close: {
+          administrators: "The results are shown to the administrators once the poll has closed.",
+          voters: "The results are shown to the participants on the roll once the poll has closed.",
+          anyone: "The results are public once the poll has closed.",
+        },
+        live: {
+          administrators: "The results are shown to the administrators as ballots arrive.",
+          voters: "The totals are shown to the participants on the roll and change as ballots arrive.",
+          anyone: "The results are public and update as ballots arrive.",
+        },
+      },
+    },
     approvalBadge: "Approved by {a} of {n} administrators",
     approvalNone: "No approval step",
     rollFixed: "List fixed at opening",
@@ -127,7 +172,7 @@ const en: GuideMessages = {
     listNothing: "The list of answers is not shown to participants. Only the totals are. Administrators see the full entry.",
     listAdmins: "Administrators see the full entry.",
     publication: { badge: "Count published", text: "After the close, everyone who sees the results also sees each ballot with its receipt code and its answer, so that the total can be checked." },
-    cancel: { badge: "No cancelling after the first ballot", text: "Once a ballot is cast, the poll runs to its end. It cannot be cancelled, so a result cannot be withdrawn." },
+    cancel: { badge: "No cancelling after the first ballot", text: "Once a ballot has been cast, the poll runs to its end. The poll cannot be cancelled, so a result cannot be withdrawn." },
   },
   disclosure: {
     title: "How the list of signatories reads",
@@ -232,6 +277,7 @@ const en: GuideMessages = {
         limits: [
           "The server encrypts the ballot after receiving it, so it sees the answer at that moment. Encryption protects what is stored, not what is sent.",
           "At the count, the key is given to the server, which reads the ballots in memory.",
+          "If the counting key is lost, or too few shares remain, the ballots can never be read and the poll has no result. No one, including the service, can recover the key.",
           "This is not yet the audited scheme with a threshold key and a proof of correct decryption. That scheme is planned.",
           "Ballots cast before padding was added are not padded.",
         ],
@@ -445,10 +491,12 @@ const fr: GuideMessages = {
     labels: { method: "Question", closing: "Fermeture", roll: "Participants", ballot: "Qui peut savoir qui a voté quoi", seal: "Chiffrement", change: "Modification du vote", results: "Résultats", receipt: "Reçu", list: "Liste des signataires", publication: "Décompte publié", cancel: "Annulation", approval: "Approbation" },
     learn: "Comment cela fonctionne",
     newTab: "s’ouvre dans un nouvel onglet",
+    openPage: "Ouvrir dans une page",
+    close: "Fermer",
     receiptMail: {
       on: "Envoyé par courriel sur demande",
       off: "Copie ou fichier seulement",
-      onText: "Après le vote, la personne peut copier le code de reçu, l’enregistrer dans un fichier ou le demander par courriel. Le message est envoyé à l’adresse qui a reçu le lien. Il contient le code et la page où le vérifier, et aucun lien de vote.",
+      onText: "Après le vote, la personne peut copier le code de reçu, l’enregistrer dans un fichier ou le demander par courriel. Le message est envoyé à l’adresse qui a reçu le lien. Le message contient le code et la page où le vérifier, et aucun lien de vote.",
       offText: "Après le vote, la personne peut copier le code de reçu ou l’enregistrer dans un fichier. Aucun courriel n’est envoyé.",
       tiesText: "Dans ce scrutin, le courriel associe l’adresse au code, et la liste publiée montre chaque bulletin à côté de son code.",
     },
@@ -457,7 +505,38 @@ const fr: GuideMessages = {
       single: { badge: "Un choix parmi plusieurs", text: "Chaque participant choisit une option dans une liste. L’option qui a le plus de bulletins est en tête. Une majorité n’est pas exigée, sauf si une règle de fermeture fixe un seuil." },
     },
     methodMany: { badge: "{n} questions", text: "Le bulletin compte {n} questions, avec une réponse à chacune. Chaque question est comptée séparément." },
-    closingPlain: "Un administrateur peut fermer le vote avant cette heure.",
+    closingPlain: "Le scrutin ferme à l’heure indiquée. L’administration peut aussi le fermer plus tôt.",
+    texts: {
+      closingNone: "Le scrutin n’a pas d’heure de fermeture. L’administration le ferme.",
+      change: {
+        allowed: "Une personne participante peut modifier son vote jusqu’à la fermeture du scrutin. Seul le dernier bulletin déposé avec le lien personnel est compté.",
+        final: "Un vote ne peut plus être modifié une fois le bulletin déposé. Chaque lien personnel accepte un seul bulletin, et un bulletin déposé ne peut être ni retiré ni remplacé.",
+      },
+      seal: {
+        sealed: "Chaque bulletin est chiffré par le serveur dès sa réception et ne peut être lu qu’avec la clé de dépouillement, que l’administration utilise à la fermeture du scrutin. Le serveur traite le bulletin sous forme lisible durant l’instant qui précède le chiffrement.",
+        plainSecret: "Les bulletins sont conservés sous forme lisible, sans nom. Toute personne qui a accès à la base de données peut lire les choix, mais ne peut pas les associer à une personne participante.",
+        plainNamed: "Les bulletins sont conservés sous forme lisible, avec l’adresse de la personne participante qui a déposé chacun. Toute personne qui a accès à la base de données peut lire la réponse de chaque participant.",
+      },
+      roll: {
+        note: "La liste des participants est identifiée par le code {code}.",
+        fixed: "La liste des participants est arrêtée à l’ouverture du vote. Personne ne peut être ajouté par la suite.",
+        late: "L’administration peut ajouter des participants pendant le vote. Les participants ajoutés après l’ouverture sont marqués comme tardifs et ne sont pas couverts par le code de la liste.",
+      },
+      named: "Chaque réponse est enregistrée avec l’adresse de la personne participante qui l’a donnée, et affichée avec cette adresse {who}.",
+      secret: "Chaque bulletin est enregistré sans le nom de la personne participante. Le registre ne contient aucune référence d’un bulletin à un participant, ni d’un participant à un bulletin.",
+      results: {
+        close: {
+          administrators: "Les résultats sont présentés à l’administration une fois le scrutin fermé.",
+          voters: "Les résultats sont présentés aux participants de la liste une fois le scrutin fermé.",
+          anyone: "Les résultats sont publics une fois le scrutin fermé.",
+        },
+        live: {
+          administrators: "Les résultats sont présentés à l’administration à mesure que les bulletins arrivent.",
+          voters: "Les totaux sont présentés aux participants de la liste et changent à mesure que les bulletins arrivent.",
+          anyone: "Les résultats sont publics et se mettent à jour à mesure que les bulletins arrivent.",
+        },
+      },
+    },
     approvalBadge: "Approuvé par {a} administrateurs sur {n}",
     approvalNone: "Sans étape d’approbation",
     rollFixed: "Liste fixée à l’ouverture",
@@ -469,7 +548,7 @@ const fr: GuideMessages = {
     listNothing: "La liste des réponses n’est pas affichée aux participants, seulement les totaux. Les administrateurs voient l’entrée complète.",
     listAdmins: "Les administrateurs voient l’entrée complète.",
     publication: { badge: "Décompte publié", text: "Après la fermeture, tous ceux qui voient les résultats voient aussi chaque bulletin avec son code de reçu et sa réponse, ce qui permet de vérifier le total." },
-    cancel: { badge: "Aucune annulation après le premier bulletin", text: "Dès qu’un bulletin est déposé, le vote va à son terme. Il ne peut pas être annulé, de sorte qu’un résultat ne peut pas être retiré." },
+    cancel: { badge: "Aucune annulation après le premier bulletin", text: "Dès qu’un bulletin a été déposé, le vote va à son terme. Le scrutin ne peut pas être annulé, de sorte qu’un résultat ne peut pas être retiré." },
   },
   disclosure: {
     title: "Présentation de la liste des signataires",
@@ -574,6 +653,7 @@ const fr: GuideMessages = {
         limits: [
           "Le serveur chiffre le bulletin après l’avoir reçu et voit donc la réponse à ce moment. Le chiffrement protège ce qui est conservé, non ce qui est transmis.",
           "Au dépouillement, la clé est remise au serveur, qui lit les bulletins en mémoire.",
+          "Si la clé de dépouillement est perdue, ou si le nombre de parts requis n’est plus réuni, les bulletins ne pourront jamais être lus et le scrutin n’aura aucun résultat. Personne, y compris le service, ne peut récupérer la clé.",
           "Ce n’est pas encore le schéma audité, avec une clé à seuil et une preuve de déchiffrement correct. Ce schéma est prévu.",
           "Les bulletins déposés avant l’ajout du remplissage ne sont pas complétés.",
         ],

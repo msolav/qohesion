@@ -7,11 +7,10 @@
 .prop{display:grid;grid-template-columns:2.75rem minmax(0,1fr);column-gap:.9rem;align-items:start;margin:0;padding:.9rem 1rem;border:1.5px solid color-mix(in srgb,currentColor 26%,transparent);border-radius:min(var(--radius,12px),14px)}
 .prop__icon{display:grid;place-items:center;inline-size:2.75rem;block-size:2.75rem;border:1.5px solid currentColor;border-radius:min(var(--radius,12px),12px);background:color-mix(in srgb,currentColor 10%,transparent)}
 .prop__body{min-inline-size:0}
-.prop__head{display:grid;justify-items:start;gap:.1rem;margin:0}
-.prop__label{display:flex;align-items:center;min-block-size:2.75rem;font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.78}
-.prop__badges{display:flex;flex-wrap:wrap;gap:.4rem;margin:0}
-.prop__badge{display:inline-block;padding:.2rem .65rem;border:1.5px solid currentColor;border-radius:min(var(--radius,12px),.6rem);font-size:.92rem;font-weight:700;line-height:1.35;text-align:left}
-.prop__text{margin:.55rem 0 0;font-size:.95rem;font-weight:400;line-height:1.45}
+.prop__badges{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:0;min-block-size:2.75rem}
+.prop__label{margin:.55rem 0 0;font-size:.78rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.78}
+.prop__badge{display:inline-flex;align-items:center;box-sizing:border-box;min-block-size:2.75rem;padding:.2rem .85rem;border:1.5px solid currentColor;border-radius:min(var(--radius,12px),.6rem);font-size:.92rem;font-weight:700;line-height:1.35;text-align:left}
+.prop__text{margin:.15rem 0 0;font-size:.95rem;font-weight:400;line-height:1.45}
 .prop__text+.prop__text{margin-top:.35rem}
 .prop__more{display:inline-block;margin-top:.45rem;font-size:.9rem;font-weight:700;color:inherit;text-underline-offset:.2em}
 
@@ -26,5 +25,6 @@
 @media (max-width:30rem){
   .prop{grid-template-columns:2.25rem minmax(0,1fr);column-gap:.7rem;padding:.8rem}
   .prop__icon{inline-size:2.25rem;block-size:2.25rem}
-  .prop__label{min-block-size:2.25rem}
+  .prop__badges{min-block-size:2.25rem}
+  .prop__badge{min-block-size:2.25rem}
 }
