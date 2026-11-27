@@ -1014,6 +1014,17 @@ describe("the record of governance events", () => {
     expect(svc.governanceRecord(session)?.size).toBe(2);
   });
 
+  it("reads an organization that has no entries yet, as one made before the record existed", () => {
+    const db = new DatabaseSync(":memory:");
+    const svc = new Service(db, { secret: new Uint8Array(32).fill(7), now: () => now });
+    const created = must(svc.createSpace({ name: "Old", locale: "en" }));
+    const session = svc.session(svc.signIn(created.key) ?? "") as Session;
+    db.prepare("DELETE FROM governance_log").run();
+    expect(svc.governanceRecord(session)).toMatchObject({ size: 0, intact: true, entries: [] });
+    must(svc.createKey(session, { label: "A", owner: false, administrator: true }));
+    expect(svc.governanceRecord(session)).toMatchObject({ size: 1, intact: true });
+  });
+
   it("is for administrators and owners only", () => {
     expect(service.governanceRecord({ ...owner, owner: false, administrator: false })).toBeNull();
   });
