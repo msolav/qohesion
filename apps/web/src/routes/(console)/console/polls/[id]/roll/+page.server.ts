@@ -5,6 +5,7 @@ import { consoleMessages } from "#lib/i18n/console.js";
 import { mailConfigured, sendInvitations } from "#lib/server/mail.js";
 import { askedFor, needSession } from "#lib/server/web.js";
 import { mayWrite, writeAgainAt } from "#lib/auto-reminder.js";
+import { rollAddresses } from "#lib/roll-line.js";
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
   const open = service().pollFor(needSession(locals), params.id)?.status === "open";
@@ -35,8 +36,7 @@ export const actions: Actions = {
     const text = typeof data?.get("addresses") === "string" ? String(data?.get("addresses")) : "";
     const result = service().addToRoll(session, params.id, text);
     if (!result.ok) {
-      const lines = [...new Set(text.split(/[\n\r,;]+/).map((l) => l.trim()).filter((l) => l.length > 0).map((l) => l.toLowerCase()))].sort();
-      const asked = askedFor(service(), session, result.error, "add_roll", params.id, lines);
+      const asked = askedFor(service(), session, result.error, "add_roll", params.id, rollAddresses(text));
       if (asked) return { requested: asked };
       return fail(400, { error: result.error, text });
     }

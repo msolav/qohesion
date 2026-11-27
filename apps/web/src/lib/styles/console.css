@@ -131,6 +131,7 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 .cx-choice.check b::before{border-radius:5px}
 .cx-choice small{color:var(--soft);font-size:.9rem;line-height:1.4}
 .cx-choice.has-ico>span{padding-right:3.4rem}
+@media (min-width:44rem){.cx-choices.cols-3 .cx-choice.has-ico>span{padding-right:var(--space-4);padding-top:3.4rem}}
 .cx-choice .ico{position:absolute;top:var(--space-4);right:var(--space-4);display:grid;place-items:center;width:2rem;height:2rem;color:var(--dim);transition:color .15s ease-out}
 .cx-choice:hover .ico{color:var(--soft)}
 .cx-choice input:checked+span .ico{color:var(--mint)}
@@ -560,3 +561,13 @@ button.cx-choice.preset[aria-pressed="true"] .ico{color:var(--mint)}
 .bld-extra h3{margin:0;font-size:1.05rem}
 .bld-extra .bld-row{grid-template-columns:minmax(0,1fr) auto}
 .bld-extra-head .bld-row-tools{opacity:1}
+
+/* Beside a legend: a link to the page that explains the setting. */
+.cx-info{display:inline-flex;align-items:center;gap:.3rem;margin-inline-start:.6rem;font-size:.85rem;font-weight:600;text-decoration:underline;text-underline-offset:.2em;color:var(--mint)}
+.cx-info svg{flex:none}
+.cx .bld-subhead{margin:var(--space-5) 0 var(--space-2);font-size:1rem}
+.cx .cx-sublabel{margin:0 0 .35rem;font-size:.85rem;font-weight:700;opacity:.8}
+.cx .disc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:var(--space-4);margin-top:var(--space-3)}
+.cx .cx-choice small.sample{justify-self:start;text-align:left;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem}
+.cx .cx-help.warn{color:var(--warn)}
+.cx .bld-changes{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-5);margin:var(--space-4) 0 0}

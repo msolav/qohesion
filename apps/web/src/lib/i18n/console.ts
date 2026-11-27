@@ -97,7 +97,7 @@ export interface ConsoleMessages {
   readonly build: {
     readonly needLanguages: string; readonly needOptionLanguages: string;
     readonly moreQuestions: string; readonly moreQuestionsHelp: string; readonly questionN: string; readonly addQuestion: string; readonly removeQuestion: string; readonly moveQuestionUp: string; readonly moveQuestionDown: string; readonly thresholdOneQuestion: string; readonly moreCount: string;
-    readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"question" | "choices" | "results" | "closing" | "review", string>>;
+    readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"question" | "choices" | "results" | "closing" | "review", string>>; readonly settingsTitle: string;
     readonly next: string; readonly back: string; readonly change: string; readonly reviewLead: string;
     readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly fillLabel: string; readonly fillHelp: string; readonly fillOutline: string; readonly fillSolid: string; readonly styleDefault: string;
     readonly moveUp: string; readonly moveDown: string; readonly removeOption: string; readonly drag: string; readonly moved: string;
@@ -332,7 +332,7 @@ const en: ConsoleMessages = {
   roll: {
     title: "Roll",
     add: "Add addresses",
-    addHelp: "One address per line, or separated by commas or semicolons. Up to 200 per poll.",
+    addHelp: "One address per line, or separated by commas or semicolons. Up to 200 per poll. A name can come before the address, in angle brackets, first name first: Marie Tremblay <marie@example.org>. Names appear only in the list of signatories of a named poll.",
     addPlaceholder: "name@example.org",
     addSubmit: "Add to the roll",
     added: "{n} added.",
@@ -521,6 +521,7 @@ const en: ConsoleMessages = {
     stepsLabel: "Steps",
     step: "Step {n} of {total}",
     stepNames: { question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
+    settingsTitle: "Settings participants are shown",
     next: "Continue",
     back: "Back",
     change: "Change",
@@ -629,7 +630,7 @@ const en: ConsoleMessages = {
     lapsedText: "The request lapsed without a decision.",
     staleTitle: "This draft changed after approval was asked",
     staleText: "Answers given before the change no longer count. Changed: {fields}. Ask again to start over.",
-    fields: { questions: "questions", title: "title", question: "question", description: "details", kind: "kind", options: "options", translations: "translations", timing: "results timing", audience: "results audience", theme: "template", opensAt: "opening date", closesAt: "closing date", rules: "closing rules", allowChange: "changing a vote", encrypted: "encryption", markFill: "mark style", anonymity: "anonymity", publishCount: "published count", lockCancel: "cancelling", keyThreshold: "counting key", paged: "pages", lateRoll: "adding participants", autoReminder: "automatic reminders", roll: "participants" },
+    fields: { questions: "questions", title: "title", question: "question", description: "details", kind: "kind", options: "options", translations: "translations", timing: "results timing", audience: "results audience", theme: "template", opensAt: "opening date", closesAt: "closing date", rules: "closing rules", allowChange: "changing a vote", encrypted: "encryption", markFill: "mark style", anonymity: "anonymity", disclosure: "list of signatories", publishCount: "published count", lockCancel: "cancelling", keyThreshold: "counting key", paged: "pages", lateRoll: "adding participants", autoReminder: "automatic reminders", roll: "participants" },
     policyTitle: "Approval between administrators",
     policyText: "Publishing a poll, and changes to the organization, can need the agreement of other administrators. With one administrator nothing is asked. Once a rule is on, changing it needs approval under the rule in force.",
     ruleLabel: "Rule",
@@ -957,7 +958,7 @@ const fr: ConsoleMessages = {
   roll: {
     title: "Liste des votants",
     add: "Ajouter des adresses",
-    addHelp: "Une adresse par ligne, ou séparées par des virgules ou des points-virgules. Jusqu’à 200 par scrutin.",
+    addHelp: "Une adresse par ligne, ou séparées par des virgules ou des points-virgules. Jusqu’à 200 par scrutin. Un nom peut précéder l’adresse, entre chevrons, le prénom en premier: Marie Tremblay <marie@exemple.org>. Les noms n’apparaissent que dans la liste des signataires d’un vote nominatif.",
     addPlaceholder: "nom@exemple.org",
     addSubmit: "Ajouter à la liste",
     added: "{n} ajoutée(s).",
@@ -1146,6 +1147,7 @@ const fr: ConsoleMessages = {
     stepsLabel: "Étapes",
     step: "Étape {n} de {total}",
     stepNames: { question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
+    settingsTitle: "Réglages présentés aux participants",
     next: "Continuer",
     back: "Retour",
     change: "Modifier",
@@ -1254,7 +1256,7 @@ const fr: ConsoleMessages = {
     lapsedText: "La demande a expiré sans décision.",
     staleTitle: "Ce brouillon a changé après la demande d’approbation",
     staleText: "Les réponses données avant le changement ne comptent plus. Modifié: {fields}. Demander de nouveau pour recommencer.",
-    fields: { questions: "questions", title: "titre", question: "question", description: "détails", kind: "type", options: "options", translations: "traductions", timing: "moment des résultats", audience: "destinataires des résultats", theme: "modèle", opensAt: "date d’ouverture", closesAt: "date de fermeture", rules: "règles de fermeture", allowChange: "modification du vote", encrypted: "chiffrement", markFill: "style des marques", anonymity: "anonymat", publishCount: "décompte publié", lockCancel: "annulation", keyThreshold: "clé de dépouillement", paged: "pages", lateRoll: "ajout de participants", autoReminder: "rappels automatiques", roll: "participants" },
+    fields: { questions: "questions", title: "titre", question: "question", description: "détails", kind: "type", options: "options", translations: "traductions", timing: "moment des résultats", audience: "destinataires des résultats", theme: "modèle", opensAt: "date d’ouverture", closesAt: "date de fermeture", rules: "règles de fermeture", allowChange: "modification du vote", encrypted: "chiffrement", markFill: "style des marques", anonymity: "anonymat", disclosure: "liste des signataires", publishCount: "décompte publié", lockCancel: "annulation", keyThreshold: "clé de dépouillement", paged: "pages", lateRoll: "ajout de participants", autoReminder: "rappels automatiques", roll: "participants" },
     policyTitle: "Approbation entre administrateurs",
     policyText: "La publication d’un scrutin et les changements de l’organisation peuvent demander l’accord d’autres administrateurs. Avec un seul administrateur, rien n’est demandé. Une fois une règle activée, la changer demande une approbation selon la règle en vigueur.",
     ruleLabel: "Règle",

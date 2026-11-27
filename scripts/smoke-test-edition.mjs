@@ -124,6 +124,32 @@ check("the closed poll shows its ledger", ledger.text.includes(receipt ?? "?"));
 const checked = await admin.send(`/console/polls/${pollId}/results?/check`, { method: "POST", form: { receipt: receipt?.toLowerCase() ?? "" } });
 check("a receipt is checked against the ledger", checked.status === 200);
 
+// A named poll: names on the roll, and the list of signatories shown as the poll sets it.
+const namedMade = await admin.send("/console/polls/new", { method: "POST", form: { title: "Named poll", question: "Do you agree?", kind: "yes-no", timing: "live", audience: "voters", theme: "ballot-paper", closes_at: closing, anonymity: "named", disclosure_name: "masked", disclosure_email: "masked" } });
+const namedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(namedMade.location)?.[1];
+check("a named poll is created", Boolean(namedId), namedMade.location);
+await admin.send(`/console/polls/${namedId}/roll?/add`, { method: "POST", form: { addresses: 'Marie Tremblay <marie.tremblay@example.com>\n"Roy, Jean" <jean@example.com>' } });
+const namedRoll = await admin.send(`/console/polls/${namedId}/roll`);
+check("names are kept beside the addresses", namedRoll.text.includes("Marie Tremblay") && namedRoll.text.includes("Roy, Jean"));
+const namedTokens = [...new Set([...namedRoll.text.matchAll(/\/v\/([0-9A-Z]{24})/g)].map((m) => m[1]))];
+await admin.send(`/console/polls/${namedId}?/open`, { method: "POST", form: {} });
+const namedRules = await anonymous.send(`/v/${namedTokens[0]}?view=all`);
+check("the ballot lists its settings with a link to the explanation", namedRules.text.includes('class="prop"') && namedRules.text.includes("/how?lang=") && namedRules.text.includes("Marie T***"));
+await anonymous.send(`/v/${namedTokens[0]}`, { method: "POST", form: { choice: "for" } });
+await anonymous.send(`/v/${namedTokens[1]}`, { method: "POST", form: { choice: "against" } });
+const namedAsVoter = JSON.parse((await anonymous.send(`/api/results/${namedId}?t=${namedTokens[0]}`)).text);
+const readWho = (view) => (view.answers ?? []).map((a) => a.who).sort().join("|");
+check("a member reads the signatories as the poll sets them", readWho(namedAsVoter) === "Marie T*** <m***y@e***e.com>|Roy, J*** <j***n@e***e.com>", readWho(namedAsVoter));
+const namedAsAdmin = JSON.parse((await admin.send(`/api/results/${namedId}`)).text);
+check("an administrator reads the full entry", readWho(namedAsAdmin).includes("Marie Tremblay <marie.tremblay@example.com>"), readWho(namedAsAdmin));
+await admin.send(`/console/polls/${namedId}?/close`, { method: "POST", form: {} });
+
+// The pages that explain the settings and the voting methods.
+const how = await anonymous.send("/how?lang=en");
+check("the page on how a poll works explains secrecy and encryption", how.status === 200 && how.text.includes("Anonymous ballot") && how.text.includes("Encrypted ballots") && how.text.includes("AES-256-GCM"));
+const methods = await anonymous.send("/methods?lang=fr");
+check("the page on voting methods lists them in French", methods.status === 200 && methods.text.includes("Jugement majoritaire") && methods.text.includes("Prévu"));
+
 // A poll shown one page at a time: introduction first, the same ballot on one page by link, a calendar file with an alarm.
 const paged = await admin.send("/console/polls/new", { method: "POST", form: { title: "Paged poll", question: "Do you agree?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing, paged: "yes" } });
 const pagedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(paged.location)?.[1];

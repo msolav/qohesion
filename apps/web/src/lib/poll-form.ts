@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Qohesion contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { readDisclosure } from "./disclosure.js";
 import { isColorId, isIconId } from "./option-style.js";
 import { isAutoReminder, type AutoReminder } from "./auto-reminder.js";
 import { cleanLanguages, isLang, type Lang, type Translations } from "./poll-i18n.js";
@@ -140,5 +141,6 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     paged: text(data, "paged") === "yes",
     lateRoll: text(data, "late_roll") === "yes",
     keyThreshold: text(data, "key_mode") === "shared" ? whole(text(data, "key_threshold")) : 1,
+    disclosure: readDisclosure({ name: text(data, "disclosure_name"), email: text(data, "disclosure_email") }),
   };
 }

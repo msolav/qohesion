@@ -1,8 +1,12 @@
 <script lang="ts">
   import { tick } from "svelte";
   import BallotView from "#lib/components/BallotView.svelte";
+  import PropertyList from "#lib/components/PropertyList.svelte";
   import UiIcon from "#lib/components/UiIcon.svelte";
+  import { DEFAULT_DISCLOSURE, EMAIL_MODES, NAME_MODES, maskEmail, maskName, type EmailMode, type NameMode } from "#lib/disclosure.js";
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
+  import { guideMessages } from "#lib/i18n/guide.js";
+  import { learnHref, propertiesOf } from "#lib/properties.js";
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { COLOR_IDS, ICON_IDS, ICONS, COLORS, colorName, iconName } from "#lib/option-style.js";
   import { AUDIENCES, TIMINGS, type Anonymity, type ResultsAudience, type ResultsTiming } from "#lib/results-rules.js";
@@ -23,6 +27,7 @@
   }: { locale: Locale; submit: string; initial: PollInput | null; error: string | null; defaultTheme: Theme; timeZone?: string; defaultCloses?: string; administrators?: number } = $props();
 
   const m = $derived(consoleMessages[locale]);
+  const g = $derived(guideMessages[locale]);
   const start = (() => initial)();
 
   type Texts = Record<Lang, string>;
@@ -104,6 +109,8 @@
   let allowChange = $state(start?.allowChange ?? false);
   let keyMode = $state<"one" | "shared">((start?.keyThreshold ?? 1) > 1 ? "shared" : "one");
   let keyThreshold = $state(String(Math.max(2, start?.keyThreshold ?? 2)));
+  let discName = $state<NameMode>(start?.disclosure?.name ?? DEFAULT_DISCLOSURE.name);
+  let discEmail = $state<EmailMode>(start?.disclosure?.email ?? DEFAULT_DISCLOSURE.email);
   let publishCount = $state(start?.publishCount ?? false);
   let lockCancel = $state(start?.lockCancel ?? false);
   let paged = $state(start?.paged ?? true);
@@ -137,6 +144,7 @@
   function applyPreset(id: Preset): void {
     if (id === "open") {
       timing = "live"; audience = "voters"; anonymity = "named"; encryption = "none"; publishCount = false; lockCancel = false; lateRoll = true;
+      discName = "full"; discEmail = "full";
     } else {
       lateRoll = false;
       timing = "close"; anonymity = "secret"; encryption = "sealed";
@@ -190,6 +198,9 @@
     anonymity,
     allowChange,
     lateRoll,
+    publishCount,
+    lockCancel,
+    disclosure: { name: discName, email: discEmail },
     rules: previewRules,
     timeZone: zone,
     closesAt: zonedToUtc(closesAt, zone),
@@ -197,6 +208,26 @@
     rollCode: null,
   });
   const serverError = $derived(error ? errorText(m, error) : "");
+  const sampleName = "Marie Tremblay";
+  const sampleAddress = "marie.tremblay@example.org";
+  /** The settings as the review step lists them: the same rows the ballot's rules page shows. */
+  const properties = $derived(
+    propertiesOf(locale, {
+      questionTypes: [kind === "choice" ? "single" : "yes-no", ...extras.map((e) => (e.kind === "choice" ? ("single" as const) : ("yes-no" as const)))],
+      anonymity,
+      encrypted: encryption === "sealed",
+      timing,
+      audience,
+      allowChange,
+      lateRoll,
+      publishCount,
+      lockCancel,
+      disclosure: { name: discName, email: discEmail },
+      rules: previewRules,
+      closes: closesAt ? closesAt.replace("T", " ") : null,
+    }),
+  );
+  const infoLink = (page: "how" | "methods", anchor: string): string => learnHref(locale, { page, anchor });
 
   function go(to: number): void {
     problem = null;
@@ -366,7 +397,7 @@
     <section class="bld-step" id="step-1" hidden={enhanced && step !== 1} aria-labelledby="h-1">
       <h2 id="h-1">{stepLabel("choices")}</h2>
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.form.kind}</legend>
+        <legend class="cx-label">{m.form.kind} <a class="cx-info" href={infoLink("methods", "single")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.methods.title}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
         <div class="cx-choices cols-2">
           <label class="cx-choice has-ico"><input type="radio" name="kind" value="yes-no" bind:group={kind} data-first /><span><i class="ico"><UiIcon name="check" /></i><b>{m.form.kindYesNo}</b><small>{m.form.kindYesNoText}</small></span></label>
           <label class="cx-choice has-ico"><input type="radio" name="kind" value="choice" bind:group={kind} /><span><i class="ico"><UiIcon name="list" /></i><b>{m.form.kindChoice}</b><small>{m.form.kindChoiceText}</small></span></label>
@@ -524,15 +555,38 @@
         </div>
       </fieldset>
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.form.anonymityTitle}</legend>
+        <legend class="cx-label">{m.form.anonymityTitle} <a class="cx-info" href={infoLink("how", anonymity === "named" ? "named" : "secret")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.props.learn}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
         <div class="cx-choices cols-2">
           {#each ["secret", "named"] as const as value (value)}
             <label class="cx-choice has-ico"><input type="radio" name="anonymity" {value} bind:group={anonymity} /><span><i class="ico"><UiIcon name={value === "secret" ? "lock" : "users"} /></i><b>{m.form.anonymityNames.title[value]}</b><small>{m.form.anonymityNames.text[value]}</small></span></label>
           {/each}
         </div>
       </fieldset>
+      {#if anonymity === "named"}
+        <fieldset class="cx-field disclosure">
+          <legend class="cx-label">{g.disclosure.title} <a class="cx-info" href={infoLink("how", "list")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.props.learn}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
+          <p class="cx-help">{g.disclosure.help}</p>
+          <div class="disc-grid">
+            <div role="radiogroup" aria-label={g.disclosure.nameTitle}>
+              <p class="cx-sublabel">{g.disclosure.nameTitle}</p>
+              {#each NAME_MODES as value (value)}
+                <label class="cx-choice"><input type="radio" name="disclosure_name" {value} bind:group={discName} /><span><b>{g.disclosure.nameModes[value].title}</b>{#if g.disclosure.nameModes[value].example}<small class="sample">{value === "masked" ? maskName(sampleName) : sampleName}</small>{/if}</span></label>
+              {/each}
+            </div>
+            <div role="radiogroup" aria-label={g.disclosure.emailTitle}>
+              <p class="cx-sublabel">{g.disclosure.emailTitle}</p>
+              {#each EMAIL_MODES as value (value)}
+                <label class="cx-choice"><input type="radio" name="disclosure_email" {value} bind:group={discEmail} /><span><b>{g.disclosure.emailModes[value].title}</b>{#if g.disclosure.emailModes[value].example}<small class="sample">{value === "masked" ? maskEmail(sampleAddress) : sampleAddress}</small>{/if}</span></label>
+              {/each}
+            </div>
+          </div>
+          <p class="cx-help">{g.disclosure.adminsFull} {g.disclosure.needsNames}</p>
+          {#if discName === "none" && discEmail === "none"}<p class="cx-help" role="status">{g.disclosure.nobody}</p>{/if}
+          {#if audience === "anyone" && discEmail === "full"}<p class="cx-help warn" role="status">{g.disclosure.publicFull}</p>{/if}
+        </fieldset>
+      {/if}
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.seal.title}</legend>
+        <legend class="cx-label">{m.seal.title} <a class="cx-info" href={infoLink("how", "sealed")} target="_blank" rel="noopener"><UiIcon name="info" size={16} />{g.props.learn}<span class="sr-only"> ({g.props.newTab})</span></a></legend>
         <p class="cx-help">{m.seal.help}</p>
         <div class="cx-choices cols-2">
           <label class="cx-choice has-ico"><input type="radio" name="encryption" value="sealed" bind:group={encryption} disabled={timing === "live"} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
@@ -650,9 +704,10 @@
         <div><dt>{m.form.pollTitle}</dt><dd>{titles[def] || "–"}<br />{questions[def] || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.options}</dt><dd>{kind === "choice" ? labels.join(" · ") || "–" : m.form.kindYesNo}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>
         {#if extras.length > 0}<div><dt>{m.build.moreQuestions}</dt><dd>{fill(m.build.moreCount, { n: extras.length })}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>{/if}
-        <div><dt>{m.form.results}</dt><dd>{m.resultsStatement[timing][audience]}<br />{encryption === "sealed" ? m.seal.sealed.title : m.seal.none.title}<br />{m.form.anonymityNames.title[anonymity]}</dd><dd><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}</button></dd></div>
-        <div><dt>{m.build.stepNames.closing}</dt><dd>{m.form.opening}: {opensMode === "date" && opensAt ? opensAt.replace("T", " ") : m.form.openManual}<br />{m.form.closeAt}: {closesAt ? closesAt.replace("T", " ") : "–"} · {THEME_NAMES[theme][locale]}</dd><dd><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}</button></dd></div>
       </dl>
+      <h3 class="bld-subhead">{m.build.settingsTitle}</h3>
+      <PropertyList {locale} items={properties} />
+      <p class="bld-changes"><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}: {m.build.stepNames.results}</button><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}: {m.build.stepNames.closing}</button></p>
     </section>
 
     <div class="bld-nav">

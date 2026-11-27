@@ -1,7 +1,10 @@
 <script lang="ts">
   import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
   import type { CloseRules } from "#lib/close-rules.js";
-  import UiIcon from "#lib/components/UiIcon.svelte";
+  import PropertyList from "#lib/components/PropertyList.svelte";
+  import type { Disclosure } from "#lib/disclosure.js";
+  import { guideMessages } from "#lib/i18n/guide.js";
+  import { propertiesOf, typeOfOptions } from "#lib/properties.js";
   import { DEFAULT_TIME_ZONE, formatMoment } from "#lib/zoned.js";
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { iconOf, iconPath } from "#lib/option-style.js";
@@ -33,6 +36,10 @@
     readonly anonymity: "secret" | "named";
     readonly allowChange: boolean;
     readonly lateRoll: boolean;
+    /** What the poll tells about its list of answers, its published count and cancelling. Absent for a poll that says nothing of them. */
+    readonly publishCount?: boolean;
+    readonly lockCancel?: boolean;
+    readonly disclosure?: Disclosure | null;
     /** How the poll was approved when published. Absent in the builder preview and for older polls. */
     readonly approval?: { readonly rule: "none" | "majority" | "all"; readonly approvals: number; readonly eligible: number; readonly at: string; readonly digest: string; readonly confirmed?: number | undefined } | null;
     readonly rules: CloseRules;
@@ -107,6 +114,26 @@
     const option = q.options[index];
     return option ? optionLabel(locale, option) || fill(m.form.optionN, { n: index + 1 }) : "";
   };
+  const properties = $derived(
+    propertiesOf(locale, {
+      questionTypes: questions.map((q) => typeOfOptions(q.options)),
+      anonymity: poll.anonymity,
+      encrypted: poll.encrypted,
+      timing: poll.timing,
+      audience: poll.audience,
+      allowChange: poll.allowChange,
+      lateRoll: poll.lateRoll,
+      publishCount: poll.publishCount ?? false,
+      lockCancel: poll.lockCancel ?? false,
+      disclosure: poll.disclosure ?? null,
+      rules: poll.rules,
+      closes: poll.closesAt ? when(poll.closesAt) : null,
+      roll: { count: poll.rollCount, code: poll.rollCode },
+      ...(poll.approval
+        ? { approval: { badge: poll.approval.rule !== "none" && poll.approval.eligible >= 2 ? fill(guideMessages[locale].props.approvalBadge, { a: poll.approval.approvals, n: poll.approval.eligible }) : guideMessages[locale].props.approvalNone, lines: [approvalText, fill(m.approval.factCode, { code: approvalCode }), poll.approval.confirmed !== undefined ? fill(m.approval.factConfirmed, { c: poll.approval.confirmed, n: poll.approval.eligible }) : ""].filter((t) => t !== "") } }
+        : {}),
+    }),
+  );
   const answered = (id: string) => (answers[id] ?? "") !== "";
   /**
    * The last page of a flow is where the ballot is sent: the check page when the vote is final. When it can be changed,
@@ -146,43 +173,7 @@
   {/if}
 
   {#if step === "all" || step === "rules"}
-  <dl class="facts" aria-label={m.voter.facts}>
-    <div>
-      <dt>{m.voter.closes}</dt>
-      <dd>{poll.closesAt ? when(poll.closesAt) : m.voter.noClose}</dd>
-      {#if rulesSentence(m, poll.rules)}<dd class="note">{rulesSentence(m, poll.rules)}</dd>{/if}
-    </div>
-    <div>
-      <dt>{m.voter.roll}</dt>
-      <dd>{poll.rollCount === null ? "—" : poll.rollCount === 1 ? m.voter.rollOne : fill(m.voter.rollValue, { n: poll.rollCount })}</dd>
-      {#if poll.rollCode}<dd class="note">{fill(m.voter.rollNote, { code: poll.rollCode })}</dd>{/if}
-      <dd class="note">{poll.lateRoll ? m.voter.rollLate : m.voter.rollFixed}</dd>
-    </div>
-    <div>
-      <dt>{m.voter.ballotType}</dt>
-      <dd class="badges">
-        <span class="badge"><UiIcon name={poll.anonymity === "named" ? "users" : "shield"} size={16} />{poll.anonymity === "named" ? m.voter.namedValue : m.voter.ballotValue}</span>
-        <span class="badge"><UiIcon name={poll.encrypted ? "lock" : "eye"} size={16} />{poll.encrypted ? m.seal.factSealed : m.seal.factPlain}</span>
-      </dd>
-      <dd class="note">{poll.anonymity === "named" ? fill(m.voter.namedNote, { who: m.voter.namedWho[poll.audience] }) : m.voter.ballotNote} {poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
-    </div>
-    <div>
-      <dt>{m.voter.yourVote}</dt>
-      <dd class="note">{poll.allowChange ? m.voter.changeAllowed : m.voter.changeFinal}</dd>
-    </div>
-    <div>
-      <dt>{m.voter.results}</dt>
-      <dd class="note">{m.resultsStatement[poll.timing][poll.audience]}</dd>
-    </div>
-    {#if poll.approval}
-      <div>
-        <dt>{m.approval.factTitle}</dt>
-        <dd class="note">{approvalText}</dd>
-        <dd class="note">{fill(m.approval.factCode, { code: approvalCode })}</dd>
-        {#if poll.approval.confirmed !== undefined}<dd class="note">{fill(m.approval.factConfirmed, { c: poll.approval.confirmed, n: poll.approval.eligible })}</dd>{/if}
-      </div>
-    {/if}
-  </dl>
+    <section aria-label={m.voter.facts}><PropertyList {locale} items={properties} links={!preview} /></section>
   {/if}
 
   {#if step === "rules" && poll.closesAt && calendarHref}<p class="cal"><a href={calendarHref} data-sveltekit-reload>{m.voter.addToCalendar}</a></p>{/if}
@@ -191,9 +182,9 @@
     <dl class="facts" aria-label={m.voter.confirmChoice}>
       {#each questions as q (q.id)}
         <div>
-          <dt>{q.prompt}</dt>
+          <dt>{q.prompt || poll.title}</dt>
           <dd class="picked">{labelOf(q)}</dd>
-          {#if step === "summary"}<dd class="change"><button class="linklike" type="button" onclick={() => onedit(q.id)}>{m.voter.changeAnswer}<span class="sr-only"> · {q.prompt}</span></button></dd>{/if}
+          {#if step === "summary"}<dd class="change"><button class="linklike" type="button" onclick={() => onedit(q.id)}>{m.voter.changeAnswer}<span class="sr-only"> · {q.prompt || poll.title}</span></button></dd>{/if}
         </div>
       {/each}
     </dl>

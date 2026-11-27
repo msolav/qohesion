@@ -39,3 +39,31 @@
 .log__release ul{margin:0;padding:0 0 0 1.1rem;display:grid;gap:var(--space-2);max-width:34rem}
 .log__release li{padding-left:var(--space-1)}
 .log code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;padding:.05em .3em;background:var(--line-soft);border-radius:4px;overflow-wrap:anywhere}
+
+/* Information pages (how a poll works, voting methods): a reading surface with a contents list */
+.guide{padding:var(--space-6) 0 var(--space-5);max-width:40rem}
+.guide h1{font-size:clamp(1.6rem,6.2vw,2.05rem);line-height:1.1;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.guide__lede{margin-top:var(--space-4);color:var(--ink-2)}
+.guide__note{margin-top:var(--space-3);font-size:.9rem;color:var(--ink-2)}
+.guide__toc{margin-top:var(--space-5);padding:var(--space-4);border:1.5px solid var(--ink);border-radius:var(--radius)}
+.guide__toc h2{font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.guide__toc h3{margin-top:var(--space-4);font-size:.9rem;font-weight:700}
+.guide__toc ul{margin:var(--space-2) 0 0;padding:0;list-style:none;display:grid;gap:0}
+.guide__toc li a{display:flex;align-items:center;gap:var(--space-3);min-height:2.75rem;padding:var(--space-1) 0;font-weight:600;text-decoration:none}
+.guide__toc li a:hover{text-decoration:underline}
+.guide__toc>p{margin-top:var(--space-4);font-weight:600}
+.guide__ico{display:inline-grid;place-items:center;flex:none;inline-size:2rem;block-size:2rem;border:1.5px solid currentColor;border-radius:10px}
+.guide__family{margin-top:var(--space-7)}
+.guide__family>h2{font-size:1.4rem;line-height:1.15;font-weight:800;padding-top:var(--space-4);border-top:3px solid var(--ink)}
+.guide__topic{margin-top:var(--space-6);padding-top:var(--space-4);border-top:1.5px solid var(--ink)}
+.guide__topic h2,.guide__topic h3.guide__method{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2) var(--space-3);font-size:1.25rem;line-height:1.2;font-weight:800}
+.guide__summary{margin-top:var(--space-3);font-weight:700}
+.guide__topic p{margin-top:var(--space-3)}
+.guide__topic h3:not(.guide__method),.guide__topic h4{margin:var(--space-5) 0 var(--space-2);font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.guide__steps,.guide__limits{margin:0;padding:0 0 0 1.25rem;display:grid;gap:var(--space-2)}
+.guide__steps{list-style:decimal}
+.guide__limits{list-style:disc}
+.guide__steps li,.guide__limits li{padding-left:var(--space-1)}
+.guide__state{display:inline-block;margin-inline-start:var(--space-2);padding:0 .6rem;border:1.5px solid currentColor;border-radius:99px;font-size:.78rem;font-weight:700;letter-spacing:.02em;line-height:1.6}
+.guide__state[data-state="planned"]{border-style:dashed;opacity:.8}
+.guide__state[data-state="built"]{background:color-mix(in srgb,currentColor 12%,transparent)}

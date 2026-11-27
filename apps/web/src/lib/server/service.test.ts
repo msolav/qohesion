@@ -412,13 +412,48 @@ describe("cancelling and named answers", () => {
     expect(service.getPoll(sealed.id)?.status).toBe("cancelled");
   });
 
-  it("shows who answered what in a named poll to those who see the results, with addresses hidden from the public", () => {
+  it("shows who answered what in a named poll: administrators in full, everyone else as the poll's setting says", () => {
     const { poll, tokens } = openedPoll({ anonymity: "named", timing: "live", audience: "anyone" }, "marie@example.org\njean@example.org");
     must(service.castBallot(tokens[0] ?? "", "for"));
     must(service.castBallot(tokens[1] ?? "", "against"));
     expect(service.resultsFor(poll.id, "administrator")?.answers).toEqual([{ who: "marie@example.org", choice: "for", answers: { q1: "for" } }, { who: "jean@example.org", choice: "against", answers: { q1: "against" } }]);
-    expect(service.resultsFor(poll.id, "voter")?.answers?.[0]?.who).toBe("marie@example.org");
-    expect(service.resultsFor(poll.id, "anyone")?.answers).toEqual([{ who: "m***@e***.org", choice: "for", answers: { q1: "for" } }, { who: "j***@e***.org", choice: "against", answers: { q1: "against" } }]);
+    // The default hides most of each address, for participants and for the public alike.
+    expect(service.resultsFor(poll.id, "voter")?.answers?.[0]?.who).toBe("m***e@e***e.org");
+    expect(service.resultsFor(poll.id, "anyone")?.answers).toEqual([{ who: "m***e@e***e.org", choice: "for", answers: { q1: "for" } }, { who: "j***n@e***e.org", choice: "against", answers: { q1: "against" } }]);
+  });
+
+  it("shows names and addresses as the poll sets them, for every pair of modes", () => {
+    const roll = "Marie Tremblay <marie@example.org>\njean@example.org";
+    const read = (name: "full" | "masked" | "none", email: "full" | "masked" | "none") => {
+      const { poll, tokens } = openedPoll({ anonymity: "named", timing: "live", audience: "anyone", disclosure: { name, email } }, roll);
+      must(service.castBallot(tokens[0] ?? "", "for"));
+      must(service.castBallot(tokens[1] ?? "", "against"));
+      return { voter: service.resultsFor(poll.id, "voter")?.answers?.map((a) => a.who) ?? null, admin: service.resultsFor(poll.id, "administrator")?.answers?.map((a) => a.who) ?? null };
+    };
+    expect(read("full", "full").voter).toEqual(["Marie Tremblay <marie@example.org>", "jean@example.org"]);
+    expect(read("full", "masked").voter).toEqual(["Marie Tremblay <m***e@e***e.org>", "j***n@e***e.org"]);
+    expect(read("masked", "none").voter).toEqual(["Marie T***", "—"]);
+    expect(read("none", "masked").voter).toEqual(["m***e@e***e.org", "j***n@e***e.org"]);
+    // Administrators read the full entry whatever is set, and a list that shows nobody is not shown to the others.
+    expect(read("none", "none")).toEqual({ voter: null, admin: ["Marie Tremblay <marie@example.org>", "jean@example.org"] });
+  });
+
+  it("keeps a name given with an address, and gives one to an entry that had none", () => {
+    const poll = must(service.createPoll(owner, input({ anonymity: "named" })));
+    must(service.addToRoll(owner, poll.id, '"Tremblay, Marie" <marie@example.org>, jean@example.org'));
+    expect(service.roll(owner, poll.id).map((e) => [e.name, e.address])).toEqual([["Tremblay, Marie", "marie@example.org"], [null, "jean@example.org"]]);
+    const again = must(service.addToRoll(owner, poll.id, "Jean Roy <jean@example.org>"));
+    expect(again.duplicates).toBe(1);
+    expect(service.roll(owner, poll.id)[1]?.name).toBe("Jean Roy");
+  });
+
+  it("counts a change of name as a change of what was approved, and a poll without names keeps its digest", () => {
+    const plain = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, plain.id, "marie@example.org"));
+    const before = service.pollApprovalState(owner, plain.id)?.digest;
+    must(service.removeFromRoll(owner, plain.id, service.roll(owner, plain.id)[0]?.id ?? 0));
+    must(service.addToRoll(owner, plain.id, "Marie <marie@example.org>"));
+    expect(service.pollApprovalState(owner, plain.id)?.digest).not.toBe(before);
   });
 
   it("shows nobody's answer in a secret poll, and keeps no link to the voter", () => {
@@ -434,7 +469,7 @@ describe("cancelling and named answers", () => {
   });
 
   it("hides the answers of a named, sealed poll until the count, and counts only each member's last one", () => {
-    const poll = must(service.createPoll(owner, input({ anonymity: "named", encrypted: true, allowChange: true, audience: "voters" })));
+    const poll = must(service.createPoll(owner, input({ anonymity: "named", encrypted: true, allowChange: true, audience: "voters", disclosure: { name: "full", email: "full" } })));
     must(service.addToRoll(owner, poll.id, "marie@example.org"));
     const opened = must(service.openPoll(owner, poll.id));
     const [t] = [...service.voterTokens(owner, poll.id).values()];

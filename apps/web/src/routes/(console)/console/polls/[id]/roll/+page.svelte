@@ -114,7 +114,7 @@
         <tbody>
           {#each data.entries as entry (entry.id)}
             <tr>
-              <td class="addr">{entry.address}{#if entry.status !== "voted" && mayReachJunk(entry.address)} <span class="cx-chip late" title={m.mail.junkNote}>{m.mail.junk}</span>{/if}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.firstInvitedOn ?? entry.invitedOn }) : m.mail.notYet}{#if entry.invites > 1} · {fill(entry.invites === 2 ? m.mail.reminderOne : m.mail.reminderMany, { n: entry.invites - 1, day: entry.invitedOn ?? "" })}{/if}</span>{/if}</td>
+              <td class="addr">{#if entry.name}<b>{entry.name}</b><br />{/if}{entry.address}{#if entry.status !== "voted" && mayReachJunk(entry.address)} <span class="cx-chip late" title={m.mail.junkNote}>{m.mail.junk}</span>{/if}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.firstInvitedOn ?? entry.invitedOn }) : m.mail.notYet}{#if entry.invites > 1} · {fill(entry.invites === 2 ? m.mail.reminderOne : m.mail.reminderMany, { n: entry.invites - 1, day: entry.invitedOn ?? "" })}{/if}</span>{/if}</td>
               <td>
                 <span class="cx-chip {entry.status === 'voted' ? 'open' : ''}">{m.member[entry.status]}</span>
                 {#if entry.late}<span class="cx-chip late" title={m.roll.lateNote}>{m.roll.late}</span>{/if}

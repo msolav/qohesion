@@ -22,6 +22,8 @@ import { DEFAULT_TIME_ZONE, isTimeZone } from "../zoned.js";
 import { NO_APPROVAL, isDelay, isMeaning, isRule, type Answer, type ApprovalPolicy } from "../approval.js";
 import { APPROVAL_SCHEMA, ApprovalStore, type ApprovalKind, type ApprovalRequest } from "./approvals.js";
 import { GOVERNANCE_SCHEMA, GovernanceLog, type GovernanceRecord } from "./governance.js";
+import { DEFAULT_DISCLOSURE, isEmailMode, isNameMode, readDisclosure, showsNobody, signatoryLabel, type Disclosure } from "../disclosure.js";
+import { parseRollText, rollAddresses } from "../roll-line.js";
 import { accessTo, isAnonymity, isAudience, isTiming, type Access, type Anonymity, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -197,6 +199,8 @@ export interface Poll {
   readonly paged: boolean;
   /** Administrators may keep adding participants after the poll opens (they are marked as late). Stated to voters. */
   readonly lateRoll: boolean;
+  /** How a named poll shows each signatory in its list of answers. Null for a poll made before this was a setting. */
+  readonly disclosure: Disclosure | null;
   /** How the poll was approved when it was published. Null for a poll published before approvals existed. */
   readonly approval: PollApproval | null;
   /** Set when the poll was cancelled: when, by which key, and how many ballots had been cast. */
@@ -215,6 +219,8 @@ export interface Poll {
 export interface RollEntry {
   readonly id: number;
   readonly address: string;
+  /** The name given with the address, or null. Shown only in the list of signatories of a named poll. */
+  readonly name: string | null;
   readonly status: MemberStatus;
   readonly late: boolean;
   readonly addedAt: string;
@@ -262,6 +268,8 @@ export interface PollInput {
   readonly lockCancel: boolean;
   readonly paged: boolean;
   readonly lateRoll: boolean;
+  /** How the list of signatories of a named poll reads. Absent: the default. */
+  readonly disclosure?: Disclosure;
   /** The administrator confirmed permission to contact the participants, which automatic reminders need. */
   readonly reminderPermission: boolean;
   /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
@@ -399,6 +407,8 @@ export class Service {
     addIfMissing("roll", rollColumns, "invited_at", "TEXT");
     addIfMissing("roll", rollColumns, "invite_count", "INTEGER NOT NULL DEFAULT 0");
     addIfMissing("roll", rollColumns, "first_invited_on", "TEXT");
+    addIfMissing("roll", rollColumns, "name", "TEXT");
+    addIfMissing("polls", columns, "disclosure", "TEXT");
     // Links sent before the exact moment was kept count as sent, at the latest by the end of that day or now, so that a
     // reminder is not offered too early. Their count is one.
     this.#db.prepare("UPDATE roll SET invited_at = MIN(invited_on || 'T23:59:59.000Z', ?) WHERE invited_on IS NOT NULL AND invited_at IS NULL").run(this.#iso());
@@ -595,8 +605,13 @@ export class Service {
       lockCancel: poll.lockCancel, keyThreshold: poll.keyThreshold, paged: poll.paged, lateRoll: poll.lateRoll, autoReminder: poll.autoReminder,
       // Added only for several questions, so that the digest of a poll of one question does not change.
       ...(poll.questions.length > 1 ? { questions: poll.questions } : {}),
+      // Likewise, only when set, so that polls made before it keep their digest.
+      ...(poll.disclosure ? { disclosure: poll.disclosure } : {}),
     };
-    const rollDigest = sha256hex(this.#all("SELECT fingerprint FROM roll WHERE poll_id = ? ORDER BY fingerprint", poll.id).map((r) => String(r["fingerprint"])).join("\n"));
+    const rollRows = this.#all("SELECT fingerprint, name FROM roll WHERE poll_id = ? ORDER BY fingerprint", poll.id);
+    // Names are shown in the list of signatories, so a change of name is a change of what was approved. Without any name the digest is that of the fingerprints alone.
+    const named = rollRows.filter((r) => typeof r["name"] === "string" && r["name"] !== "").map((r) => `${String(r["fingerprint"])}:${String(r["name"])}`);
+    const rollDigest = sha256hex(rollRows.map((r) => String(r["fingerprint"])).join("\n") + (named.length > 0 ? `\nnames\n${named.join("\n")}` : ""));
     return { fields, rollDigest, digest: sha256hex(JSON.stringify({ fields, rollDigest })) };
   }
 
@@ -928,6 +943,7 @@ export class Service {
       lockCancel: r["lock_cancel"] === 1,
       paged: r["paged"] !== 0,
       lateRoll: r["late_roll"] !== 0,
+      disclosure: typeof r["disclosure"] === "string" ? readDisclosure(r["disclosure"]) : null,
       approval: parseApproval(r["approval_json"]),
       cancelled: r["cancelled_by"] === null || r["cancelled_by"] === undefined ? null : { by: String(r["cancelled_by"]), ballots: Number(r["cancelled_ballots"] ?? 0) },
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
@@ -983,6 +999,7 @@ export class Service {
     if (input.encrypted && input.timing === "live") return "encryption_needs_close";
     if (!isAnonymity(input.anonymity)) return "invalid_results";
     if (!isAutoReminder(input.autoReminder)) return "invalid_results";
+    if (input.disclosure && (!isNameMode(input.disclosure.name) || !isEmailMode(input.disclosure.email))) return "invalid_results";
     if (input.autoReminder !== "none" && !input.reminderPermission) return "attestation_required";
     if (!Number.isInteger(input.keyThreshold) || input.keyThreshold < 1 || input.keyThreshold > 20) return "invalid_threshold";
     if (input.keyThreshold > 1 && !input.encrypted) return "invalid_threshold";
@@ -1068,9 +1085,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, late_roll, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, late_roll, disclosure, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), this.#iso(),
       );
       this.#writeQuestions(id, input);
       this.#log(id, session, "created", "");
@@ -1087,8 +1104,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ? WHERE id = ?",
-      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, pollId,
+      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ?, disclosure = ? WHERE id = ?",
+      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), pollId,
     );
     this.#writeQuestions(pollId, input);
     const next = this.getPoll(pollId);
@@ -1131,11 +1148,11 @@ export class Service {
     if (poll.status === "open" && !poll.lateRoll) return problem("roll_locked");
     // Once scheduled, the roll is what was approved: it can change again after unscheduling.
     if (poll.status === "scheduled") return problem("roll_scheduled");
-    const lines = text.split(/[\n\r,;]+/).map((l) => l.trim()).filter((l) => l.length > 0);
+    const lines = parseRollText(text);
     if (lines.length === 0) return problem("nothing_entered");
     if (lines.length > MAX_ROLL) return problem("too_many_addresses");
-    // Adding people to a poll that is already open is a change of what was approved.
-    const gate = poll.status === "open" ? this.#gate(poll.spaceId, "add_roll", pollId, [...new Set(lines.map((l) => l.toLowerCase()))].sort()) : ok({ requestId: null });
+    // Adding people to a poll that is already open is a change of what was approved. The request names the addresses; a name is only a label.
+    const gate = poll.status === "open" ? this.#gate(poll.spaceId, "add_roll", pollId, rollAddresses(text)) : ok({ requestId: null });
     if (!gate.ok) return gate;
     let added = 0;
     let duplicates = 0;
@@ -1143,17 +1160,21 @@ export class Service {
     this.#transaction(() => {
       const count = Number(this.#one("SELECT COUNT(*) AS n FROM roll WHERE poll_id = ?", pollId)?.["n"] ?? 0);
       let room = MAX_ROLL - count;
-      for (const line of lines) {
-        const check = checkAddress(line);
+      for (const entry of lines) {
+        const line = entry.line;
+        const check = checkAddress(entry.address);
         if (!check.ok || !check.normalized) {
           rejected.push({ line, reason: check.issue?.code === "disposable" ? "disposable" : "invalid" });
           continue;
         }
         // The address is kept as typed, for display and for sending. The normalized form only decides who is the same person.
-        const parsed = parseAddress(line);
+        const parsed = parseAddress(entry.address);
         const shown = parsed ? `${parsed.local.toLowerCase()}@${parsed.domain}` : check.normalized;
         const fingerprint = this.#fingerprint(check.normalized);
-        if (this.#one("SELECT 1 AS x FROM roll WHERE poll_id = ? AND fingerprint = ?", pollId, fingerprint)) {
+        const existing = this.#one("SELECT id, name FROM roll WHERE poll_id = ? AND fingerprint = ?", pollId, fingerprint);
+        if (existing) {
+          // Typing a known address again with a name gives a name to an entry that had none, and changes nothing else.
+          if (entry.name !== null && existing["name"] === null && poll.status === "draft") this.#run("UPDATE roll SET name = ? WHERE id = ?", entry.name, Number(existing["id"]));
           duplicates++;
           continue;
         }
@@ -1163,8 +1184,8 @@ export class Service {
         }
         room--;
         this.#run(
-          "INSERT INTO roll (poll_id, address, fingerprint, token_hash, status, late, added_at) VALUES (?, ?, ?, ?, 'listed', ?, ?)",
-          pollId, shown, fingerprint, sha256hex(this.#token(pollId, fingerprint)), poll.status === "open" ? 1 : 0, this.#iso(),
+          "INSERT INTO roll (poll_id, address, name, fingerprint, token_hash, status, late, added_at) VALUES (?, ?, ?, ?, ?, 'listed', ?, ?)",
+          pollId, shown, entry.name, fingerprint, sha256hex(this.#token(pollId, fingerprint)), poll.status === "open" ? 1 : 0, this.#iso(),
         );
         added++;
       }
@@ -1190,6 +1211,7 @@ export class Service {
     return this.#all("SELECT * FROM roll WHERE poll_id = ? ORDER BY id", pollId).map((r) => ({
       id: Number(r["id"]),
       address: String(r["address"]),
+      name: typeof r["name"] === "string" && r["name"] !== "" ? r["name"] : null,
       status: String(r["status"]) as MemberStatus,
       late: r["late"] === 1,
       addedAt: String(r["added_at"]),
@@ -1689,12 +1711,26 @@ export class Service {
     };
   }
 
-  /** Who answered what in a named poll. An anonymous viewer sees the addresses partly hidden. */
-  #answers(poll: Poll, viewer: Viewer): { who: string; choice: string; answers: Record<string, string> }[] {
-    return this.#all(
-      "SELECT r.address AS address, b.choice AS choice FROM ballots b JOIN roll r ON r.id = b.roll_id WHERE b.poll_id = ? AND b.superseded = 0 AND b.choice != '' ORDER BY r.id",
+  /**
+   * Who answered what in a named poll, as the poll's setting lets this viewer read it. Administrators read the full entry.
+   * A poll made before the setting existed keeps what it did: participants read addresses in full, anyone else partly hidden.
+   * With neither the name nor the address shown, the list is not shown, and the totals are.
+   */
+  #answers(poll: Poll, viewer: Viewer): { who: string; choice: string; answers: Record<string, string> }[] | null {
+    const setting = poll.disclosure;
+    if (setting && viewer !== "administrator" && showsNobody(setting)) return null;
+    const rows = this.#all(
+      "SELECT r.address AS address, r.name AS name, b.choice AS choice FROM ballots b JOIN roll r ON r.id = b.roll_id WHERE b.poll_id = ? AND b.superseded = 0 AND b.choice != '' ORDER BY r.id",
       poll.id,
-    ).map((r) => ({ who: viewer === "anyone" ? maskAddress(String(r["address"])) : String(r["address"]), choice: String(r["choice"]), answers: this.#answersOf(poll, String(r["choice"])) }));
+    );
+    return rows.map((r) => {
+      const address = String(r["address"]);
+      const name = typeof r["name"] === "string" && r["name"] !== "" ? r["name"] : null;
+      const who = viewer === "administrator" ? signatoryLabel({ name, address }, { name: "full", email: "full" })
+        : setting ? signatoryLabel({ name, address }, setting)
+        : viewer === "anyone" ? maskAddress(address) : address;
+      return { who, choice: String(r["choice"]), answers: this.#answersOf(poll, String(r["choice"])) };
+    });
   }
 
   /** Who a member is, for the results page they opened with their link. */
