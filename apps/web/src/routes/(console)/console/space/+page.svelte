@@ -25,6 +25,7 @@
 
 <div class="cx-title"><h1>{m.space.title}</h1></div>
 
+{#if form && "requested" in form && form.requested}<p class="cx-notice gap" role="status">{m.approval.requested} <a href="/console/approvals">{m.approval.requestedSee}</a></p>{/if}
 <section aria-labelledby="settings-h">
   <h2 id="settings-h">{m.space.settings}</h2>
   <form class="cx-form gap" method="POST" action="?/save" use:enhance>

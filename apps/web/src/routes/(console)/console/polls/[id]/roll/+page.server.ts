@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { service } from "#lib/server/runtime.js";
 import { consoleMessages } from "#lib/i18n/console.js";
 import { mailConfigured, sendInvitations } from "#lib/server/mail.js";
-import { needSession } from "#lib/server/web.js";
+import { askedFor, needSession } from "#lib/server/web.js";
 import { mayWrite, writeAgainAt } from "#lib/auto-reminder.js";
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
@@ -22,6 +22,9 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
     timeZone: service().getSpace(session.spaceId)?.timeZone ?? "America/Toronto",
     toSend: { new: service().invitees(session, params.id, "new").length, reminder: service().invitees(session, params.id, "reminder").length },
     reminderAt: wait ? wait.toISOString() : null,
+    waitingRequests: service().approvalRequests(session).open.filter((r) => r.kind === "add_roll" && r.subject === params.id),
+    me: session.keyId,
+    canAnswer: session.administrator,
   };
 };
 
@@ -31,7 +34,12 @@ export const actions: Actions = {
     const data = await request.formData().catch(() => undefined);
     const text = typeof data?.get("addresses") === "string" ? String(data?.get("addresses")) : "";
     const result = service().addToRoll(session, params.id, text);
-    if (!result.ok) return fail(400, { error: result.error, text });
+    if (!result.ok) {
+      const lines = [...new Set(text.split(/[\n\r,;]+/).map((l) => l.trim()).filter((l) => l.length > 0).map((l) => l.toLowerCase()))].sort();
+      const asked = askedFor(service(), session, result.error, "add_roll", params.id, lines);
+      if (asked) return { requested: asked };
+      return fail(400, { error: result.error, text });
+    }
     return { report: result.value };
   },
   send: async ({ request, locals, params, url }) => {
@@ -49,22 +57,27 @@ export const actions: Actions = {
     const space = service().getSpace(poll.spaceId);
     const locale = space?.locale ?? "fr";
     const m = consoleMessages[locale];
+    // A message to someone who already got a link is a reminder, whichever button sent it. Read before the hold changes it.
+    const isReminder = which === "reminder" || (typeof which === "number" && (service().roll(session, params.id).find((e) => e.id === which)?.invites ?? 0) > 0);
+    // Held before sending: a second press cannot send to the same people while the messages go out.
+    const held = service().reserveInvites(params.id, targets.map((t) => t.id));
+    const heldTargets = targets.filter((t) => held.some((h) => h.id === t.id));
     const report = await sendInvitations(
-      targets.map((t) => ({ id: t.id, address: t.address, link: `${url.origin}/v/${t.token}` })),
+      heldTargets.map((t) => ({ id: t.id, address: t.address, link: `${url.origin}/v/${t.token}` })),
       {
         locale,
         organization: poll.organization,
         poll: poll.title,
         closesAt: poll.closesAt,
         timeZone: space?.timeZone ?? "America/Toronto",
-        // A message to someone who already got a link is a reminder, whichever button sent it.
-        reminder: which === "reminder" || (typeof which === "number" && (service().roll(session, params.id).find((e) => e.id === which)?.invites ?? 0) > 0),
+        reminder: isReminder,
         ballotStatement: poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain,
         resultsStatement: m.resultsStatement[poll.timing][poll.audience],
       },
     );
-    service().markInvited(session, params.id, report.sent);
-    return { mailReport: { sent: report.sent.length, failed: report.failed, problem: report.firstProblem, nobody: targets.length === 0 } };
+    service().releaseInvites(params.id, held.filter((h) => !report.sent.includes(h.id)));
+    service().recordSent(params.id, session, "links_sent", report.sent.length);
+    return { mailReport: { sent: report.sent.length, failed: report.failed, problem: report.firstProblem, nobody: heldTargets.length === 0 } };
   },
   remove: async ({ request, locals, params }) => {
     const session = needSession(locals);

@@ -78,6 +78,15 @@ export interface ActionApprovalState {
   readonly request: ApprovalRequest | null;
 }
 
+/** What a roll entry held before a message was held for it: to put back if the message does not go. */
+export interface InviteHold {
+  readonly id: number;
+  readonly invitedOn: string | null;
+  readonly invitedAt: string | null;
+  readonly count: number;
+  readonly firstInvitedOn: string | null;
+}
+
 export type SpaceUpdate = Space & { readonly request: ApprovalRequest | null };
 
 export interface Session {
@@ -1061,18 +1070,47 @@ export class Service {
     return waiting.map(writeAgainAt).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
   }
 
-  /** Records that links were sent: the moment on each entry, and one line in the history (a count, no addresses). */
-  markInvited(session: Session, pollId: string, ids: readonly number[]): void {
-    if (ids.length === 0 || !this.pollFor(session, pollId)) return;
-    this.#markSent(pollId, ids, session, "links_sent");
+  /**
+   * Holds the participants a message is about to go to: each is marked as written to now, after a check that they still
+   * may be (not voted, not written to in the last 24 hours). Sending takes time, so the hold comes first: a second press
+   * or the timer cannot send to the same people meanwhile. What each entry held before is returned, to put back for
+   * those whose message did not go.
+   */
+  reserveInvites(pollId: string, ids: readonly number[]): InviteHold[] {
+    const poll = this.getPoll(pollId);
+    if (!poll || poll.status !== "open") return [];
+    return this.#transaction(() => {
+      const now = this.#now();
+      const at = this.#iso();
+      const holds: InviteHold[] = [];
+      for (const id of ids) {
+        const r = this.#one("SELECT status, invited_on, invited_at, invite_count, first_invited_on FROM roll WHERE id = ? AND poll_id = ?", id, pollId);
+        if (!r || String(r["status"]) === "voted") continue;
+        const last = r["invited_at"] === null ? null : String(r["invited_at"]);
+        if (!mayWrite(last, now)) continue;
+        holds.push({ id, invitedOn: r["invited_on"] === null ? null : String(r["invited_on"]), invitedAt: last, count: Number(r["invite_count"] ?? 0), firstInvitedOn: r["first_invited_on"] === null || r["first_invited_on"] === undefined ? null : String(r["first_invited_on"]) });
+        this.#run("UPDATE roll SET invited_on = ?, invited_at = ?, invite_count = invite_count + 1, first_invited_on = COALESCE(first_invited_on, ?) WHERE id = ? AND poll_id = ?", at.slice(0, 10), at, at.slice(0, 10), id, pollId);
+      }
+      return holds;
+    });
   }
 
-  #markSent(pollId: string, ids: readonly number[], who: Session | string, action: string): void {
-    const at = this.#iso();
+  /** Puts back what was held for those whose message did not go. */
+  releaseInvites(pollId: string, holds: readonly InviteHold[]): void {
     this.#transaction(() => {
-      for (const id of ids) this.#run("UPDATE roll SET invited_on = ?, invited_at = ?, invite_count = invite_count + 1, first_invited_on = COALESCE(first_invited_on, ?) WHERE id = ? AND poll_id = ?", at.slice(0, 10), at, at.slice(0, 10), id, pollId);
-      this.#log(pollId, who, action, String(ids.length));
+      for (const h of holds) this.#run("UPDATE roll SET invited_on = ?, invited_at = ?, invite_count = ?, first_invited_on = ? WHERE id = ? AND poll_id = ?", h.invitedOn, h.invitedAt, h.count, h.firstInvitedOn, h.id, pollId);
     });
+  }
+
+  /** One line in the history: how many links or reminders went out (a count, no addresses). */
+  recordSent(pollId: string, who: Session | string, action: string, count: number): void {
+    if (count > 0) this.#log(pollId, who, action, String(count));
+  }
+
+  /** Holds and records in one step, for links already sent. */
+  markInvited(session: Session, pollId: string, ids: readonly number[]): void {
+    if (ids.length === 0 || !this.pollFor(session, pollId)) return;
+    this.recordSent(pollId, session, "links_sent", this.reserveInvites(pollId, ids).length);
   }
 
   /** Open polls whose automatic reminder is due now, with those who should get it. Used by the timer of the server. */
@@ -1093,10 +1131,19 @@ export class Service {
     return due;
   }
 
-  /** Records an automatic reminder: who was written to, and that today's reminder is done. */
+  /**
+   * Ends an automatic reminder run. Today counts as done when nobody was left to write to or at least one message went,
+   * so the check does not repeat every few minutes. When every message failed, it is tried again at the next check.
+   */
+  finishAutoReminder(pollId: string, sent: number, failed: number, localDay: string): void {
+    if (sent > 0 || failed === 0) this.#run("UPDATE polls SET last_auto_reminder_on = ? WHERE id = ?", localDay, pollId);
+    this.recordSent(pollId, "automatic", "reminder_sent", sent);
+  }
+
+  /** Holds, records and ends the run in one step, for messages already sent. */
   markAutoReminded(pollId: string, ids: readonly number[], localDay: string): void {
-    this.#run("UPDATE polls SET last_auto_reminder_on = ? WHERE id = ?", localDay, pollId);
-    if (ids.length > 0) this.#markSent(pollId, ids, "automatic", "reminder_sent");
+    const held = this.reserveInvites(pollId, ids);
+    this.finishAutoReminder(pollId, held.length, 0, localDay);
   }
 
   // ---- Opening and closing ----

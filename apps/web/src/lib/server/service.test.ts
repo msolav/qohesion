@@ -884,6 +884,39 @@ describe("the roll as the administrator reads it", () => {
     expect(later.roll(session, poll.id)[0]).toMatchObject({ invites: 1, firstInvitedOn: "2026-11-30" });
   });
 
+  it("holds the people a message goes to, so that a second send finds nobody, and puts back those whose message failed", () => {
+    const { poll } = openedPoll({}, "a@example.com\nb@example.com");
+    const ids = service.roll(owner, poll.id).map((e) => e.id);
+    const held = service.reserveInvites(poll.id, ids);
+    expect(held).toHaveLength(2);
+    expect(service.reserveInvites(poll.id, ids)).toHaveLength(0);
+    expect(service.invitees(owner, poll.id, "reminder")).toHaveLength(0);
+    service.releaseInvites(poll.id, held.filter((h) => h.id === ids[1]));
+    expect(service.invitees(owner, poll.id, "new").map((e) => e.id)).toEqual([ids[1]]);
+    expect(service.roll(owner, poll.id).find((e) => e.id === ids[1])).toMatchObject({ invites: 0, invitedOn: null });
+    expect(service.roll(owner, poll.id).find((e) => e.id === ids[0])).toMatchObject({ invites: 1 });
+  });
+
+  it("counts the day of an automatic reminder as done unless every message failed", () => {
+    const poll = must(service.createPoll(owner, input({ autoReminder: "daily", reminderPermission: true })));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    must(service.openPoll(owner, poll.id));
+    service.markInvited(owner, poll.id, service.invitees(owner, poll.id, "new").map((e) => e.id));
+    now = new Date("2026-12-02T15:30:00Z");
+    const [due] = service.dueReminders();
+    const ids = due?.targets.map((t) => t.id) ?? [];
+    expect(ids).toHaveLength(1);
+    // Every message failed: the entries are put back and the reminder is still due at the next check.
+    const held = service.reserveInvites(poll.id, ids);
+    service.releaseInvites(poll.id, held);
+    service.finishAutoReminder(poll.id, 0, 1, "2026-12-02");
+    expect(service.dueReminders()).toHaveLength(1);
+    // One message went: the day is done.
+    const again = service.reserveInvites(poll.id, ids);
+    service.finishAutoReminder(poll.id, again.length, 0, "2026-12-02");
+    expect(service.dueReminders()).toEqual([]);
+  });
+
   it("refuses new participants after opening when the poll says the roll is fixed", () => {
     const fixed = openedPoll({ lateRoll: false }).poll;
     expect(service.addToRoll(owner, fixed.id, "late@example.com")).toEqual({ ok: false, error: "roll_locked" });

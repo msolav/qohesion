@@ -44,6 +44,13 @@
     </div>
   </div>
 {/if}
+{#if form && "requested" in form && form.requested}<p class="cx-notice gap" role="status">{m.approval.requested} <a href="/console/approvals">{m.approval.requestedSee}</a></p>{/if}
+{#each [data.actions.close_poll, data.actions.cancel_poll, data.actions.open_scheduled] as pending (pending.request?.id ?? pending.state)}
+  {#if pending.request}
+    {#if pending.state === "approved"}<p class="cx-notice gap" role="status">{m.approval.approvedUse}</p>{/if}
+    <div class="cx-approvals gap"><ApprovalCard request={pending.request} locale={data.locale} timeZone={data.timeZone} me={data.me} canAnswer={data.canAnswer} showLink={false} /></div>
+  {/if}
+{/each}
 {#if form?.error && !form.step}<p class="cx-notice error" role="alert">{errorText(m, form.error)}</p>{/if}
 
 {#if poll.status === "draft" || poll.status === "scheduled" || poll.status === "cancelled"}<p class="cx-notice" class:warn={poll.status === "draft"}>

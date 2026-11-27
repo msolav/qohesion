@@ -135,3 +135,6 @@ img,svg{display:block}
 .castbar__row .cast{flex:1;width:auto}
 .castbar .back{min-height:3.6rem;padding:var(--space-2) var(--space-4);border:1.5px solid currentColor;border-radius:var(--radius);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
 a.cast{display:flex;align-items:center;justify-content:center;text-decoration:none}
+
+/* The sticky bar must not hide the control that has focus. */
+html{scroll-padding-bottom:10rem}

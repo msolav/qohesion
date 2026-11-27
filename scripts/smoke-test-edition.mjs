@@ -189,6 +189,16 @@ const gatedTokens = [...new Set([...(await admin.send(`/console/polls/${gatedId}
 const gatedBallot = await anonymous.send(`/v/${gatedTokens[0]}?view=all`);
 check("the ballot says how the poll was approved", gatedBallot.text.includes("2 of 2") || gatedBallot.text.includes("2 administrateurs sur 2"));
 
+// Closing by hand also needs approval: the first press asks, the other administrator approves, the second press closes.
+const closeAsk = await admin.send(`/console/polls/${gatedId}?/close`, { method: "POST", form: {} });
+check("closing by hand asks for approval instead of closing", closeAsk.status === 200 && (closeAsk.text.includes("Sent to the other administrators") || closeAsk.text.includes("Soumis aux autres administrateurs")));
+const closeWaiting = await clerk.send("/console/approvals");
+const closeId = /name="request" value="([a-z0-9]+)"/.exec(closeWaiting.text)?.[1];
+const closeDigest = /name="digest" value="([0-9a-f]{64})"/.exec(closeWaiting.text)?.[1];
+await clerk.send("/console/approvals?/answer", { method: "POST", form: { request: closeId, digest: closeDigest, answer: "approve" } });
+const closeNow = await admin.send(`/console/polls/${gatedId}?/close`, { method: "POST", form: {} });
+check("the approved close goes through", closeNow.status === 303);
+
 // A request left waiting, and a draft changed after it was asked.
 const waitingPoll = await admin.send("/console/polls/new", { method: "POST", form: { title: "Waiting poll", question: "Adopt the rules?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing } });
 const waitingId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(waitingPoll.location)?.[1];

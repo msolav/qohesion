@@ -36,7 +36,7 @@
       {#if session}
         <nav class="cx-nav" aria-label={m.nav.label}>
           {#if session.administrator}<a href="/console/polls" aria-current={here("/console/polls")}>{m.nav.polls}</a>{/if}
-          {#if session.administrator || session.owner}<a href="/console/approvals" aria-current={here("/console/approvals")}>{m.approval.title}{#if data.waiting > 0}<span class="cx-badge" aria-label={fill(m.approval.pendingNotice, { n: data.waiting })}>{data.waiting}</span>{/if}</a>{/if}
+          {#if session.administrator || session.owner}<a href="/console/approvals" aria-current={here("/console/approvals")}>{m.approval.title}{#if data.waiting > 0}<span class="cx-badge" aria-label={data.waiting === 1 ? m.approval.pendingOne : fill(m.approval.pendingNotice, { n: data.waiting })}>{data.waiting}</span>{/if}</a>{/if}
           {#if session.owner}<a href="/console/space" aria-current={here("/console/space")}>{m.nav.space}</a>{/if}
         </nav>
       {:else}

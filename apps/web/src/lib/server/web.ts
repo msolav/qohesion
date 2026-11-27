@@ -44,3 +44,20 @@ export function receiptCheck(locals: App.Locals, poll: Poll, memberToken: string
   const found = allowed ? service().checkReceipt(poll.id, input) : null;
   return { input, found };
 }
+
+/**
+ * When an action is refused for lack of approval, the request for it is made at once, so that one press does what the
+ * administrator meant. Returns the name of the action that was asked for, or null when the refusal was for another reason.
+ */
+export function askedFor(
+  svc: import("./service.js").Service,
+  session: import("./service.js").Session,
+  error: string,
+  kind: import("./service.js").ActionKind,
+  subject: string,
+  detail?: unknown,
+): import("./service.js").ActionKind | null {
+  if (error !== "approval_required") return null;
+  const asked = svc.requestAction(session, kind, subject, detail);
+  return asked.ok ? kind : null;
+}

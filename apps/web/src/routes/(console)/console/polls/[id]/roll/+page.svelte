@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ApprovalCard from "#lib/components/ApprovalCard.svelte";
   import { mayReachJunk } from "#lib/junk-domains.js";
   import { enhance } from "$app/forms";
   import CopyButton from "#lib/components/CopyButton.svelte";
@@ -29,6 +30,10 @@
   const reasons = $derived({ invalid: m.roll.reasonInvalid, disposable: m.roll.reasonDisposable });
 </script>
 
+{#if form && "requested" in form && form.requested}<p class="cx-notice gap" role="status">{m.approval.requested} <a href="/console/approvals">{m.approval.requestedSee}</a></p>{/if}
+{#each data.waitingRequests as request (request.id)}
+  <div class="cx-approvals gap"><ApprovalCard {request} locale={data.locale} timeZone={data.timeZone} me={data.me} canAnswer={data.canAnswer} showLink={false} /></div>
+{/each}
 {#if poll.status === "open" && !poll.lateRoll}
   <section aria-labelledby="add-h">
     <h2 id="add-h">{m.roll.add}</h2>

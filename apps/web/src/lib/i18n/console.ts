@@ -110,8 +110,9 @@ export interface ConsoleMessages {
   readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
   readonly approval: {
     readonly title: string; readonly lede: string; readonly empty: string; readonly openTitle: string; readonly recentTitle: string;
-    readonly kindPublish: string; readonly kindPolicy: string; readonly kindSettings: string;
-    readonly asked: string; readonly expires: string; readonly counts: string; readonly yourAnswer: string; readonly code: string;
+    readonly kindPublish: string; readonly kindPolicy: string; readonly kindSettings: string; readonly kindOpenScheduled: string; readonly kindClose: string; readonly kindCancel: string; readonly kindAddRoll: string; readonly kindAddKey: string; readonly kindRevokeKey: string; readonly kindDelete: string;
+    readonly requested: string; readonly requestedSee: string; readonly pendingOne: string; readonly answerRecorded: string; readonly approvedUse: string;
+    readonly asked: string; readonly expires: string; readonly counts: string; readonly code: string;
     readonly approve: string; readonly reject: string; readonly abstain: string;
     readonly answerName: Readonly<Record<"approve" | "reject" | "abstain", string>>;
     readonly status: Readonly<Record<"pending" | "approved" | "rejected" | "lapsed" | "applied" | "superseded" | "blocked", string>>;
@@ -561,10 +562,21 @@ const en: ConsoleMessages = {
     kindPublish: "Publish the poll “{title}”",
     kindPolicy: "Change the approval rule",
     kindSettings: "Change the organization’s details",
+    kindOpenScheduled: "Open the scheduled poll “{title}” before its date",
+    kindClose: "Close the poll “{title}” before its end",
+    kindCancel: "Cancel the poll “{title}”",
+    kindAddRoll: "Add {n} participants to the poll “{title}”",
+    kindAddKey: "Create a key for {label} ({roles})",
+    kindRevokeKey: "Revoke the key of {label}",
+    kindDelete: "Delete the organization {name}",
+    requested: "Sent to the other administrators for approval. Once approved, do the same again to carry it out.",
+    requestedSee: "See the request",
+    pendingOne: "1 request waits for an answer.",
+    answerRecorded: "Answer recorded: {answer}.",
+    approvedUse: "Approved. Do it again now to carry it out.",
     asked: "Asked by {who} on {date}",
     expires: "Open until {date}",
     counts: "Approvals: {a} of {needed} needed",
-    yourAnswer: "Your answer: {answer}",
     code: "Content code {code}",
     approve: "Approve",
     reject: "Reject",
@@ -596,7 +608,7 @@ const en: ConsoleMessages = {
     policySent: "The change was sent to the other administrators for approval.",
     policySaved: "The rule is saved.",
     settingsSent: "The change was sent to the other administrators for approval. The details stay as they are until then.",
-    pendingNotice: "{n} requests wait for your answer.",
+    pendingNotice: "{n} requests wait for an answer.",
     onlyOne: "There is one administrator, so nothing is asked of anyone yet. The rule applies once a second administrator is added.",
     factTitle: "Approval",
     factOnlyOne: "Published by the only administrator of this organization.",
@@ -680,6 +692,7 @@ const en: ConsoleMessages = {
     request_closed: "This request is already decided.",
     invalid_policy: "The rule, the meaning of an abstention and the number of hours must be valid.",
     invalid_answer: "Answer with approve, reject or abstain.",
+    roll_scheduled: "The roll is fixed once the poll is scheduled. Take the scheduling back to change it.",
     roll_locked: "This poll does not allow adding participants after it opens.",
     cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
     not_open: "This poll is not open yet.",
@@ -1132,10 +1145,21 @@ const fr: ConsoleMessages = {
     kindPublish: "Publier le scrutin « {title} »",
     kindPolicy: "Changer la règle d’approbation",
     kindSettings: "Changer les renseignements de l’organisation",
+    kindOpenScheduled: "Ouvrir le scrutin planifié « {title} » avant sa date",
+    kindClose: "Fermer le scrutin « {title} » avant son terme",
+    kindCancel: "Annuler le scrutin « {title} »",
+    kindAddRoll: "Ajouter {n} participants au scrutin « {title} »",
+    kindAddKey: "Créer une clé pour {label} ({roles})",
+    kindRevokeKey: "Révoquer la clé de {label}",
+    kindDelete: "Supprimer l’organisation {name}",
+    requested: "Soumis aux autres administrateurs pour approbation. Une fois approuvé, refaire la même action pour l’exécuter.",
+    requestedSee: "Voir la demande",
+    pendingOne: "1 demande attend une réponse.",
+    answerRecorded: "Réponse enregistrée: {answer}.",
+    approvedUse: "Approuvé. Refaire l’action maintenant pour l’exécuter.",
     asked: "Demandé par {who} le {date}",
     expires: "Ouverte jusqu’au {date}",
     counts: "Approbations: {a} sur {needed} nécessaires",
-    yourAnswer: "Votre réponse: {answer}",
     code: "Code du contenu {code}",
     approve: "Approuver",
     reject: "Refuser",
@@ -1167,7 +1191,7 @@ const fr: ConsoleMessages = {
     policySent: "Le changement a été soumis aux autres administrateurs pour approbation.",
     policySaved: "La règle est enregistrée.",
     settingsSent: "Le changement a été soumis aux autres administrateurs pour approbation. Les renseignements restent inchangés d’ici là.",
-    pendingNotice: "{n} demandes attendent votre réponse.",
+    pendingNotice: "{n} demandes attendent une réponse.",
     onlyOne: "Il y a un seul administrateur, donc rien n’est demandé à personne pour l’instant. La règle s’applique dès l’ajout d’un deuxième administrateur.",
     factTitle: "Approbation",
     factOnlyOne: "Publié par le seul administrateur de cette organisation.",
@@ -1251,6 +1275,7 @@ const fr: ConsoleMessages = {
     request_closed: "Cette demande est déjà décidée.",
     invalid_policy: "La règle, le sens d’une abstention et le nombre d’heures doivent être valides.",
     invalid_answer: "Répondre par approuver, refuser ou s’abstenir.",
+    roll_scheduled: "La liste est fixée une fois le scrutin planifié. Annuler la planification pour la modifier.",
     roll_locked: "Ce scrutin ne permet pas d’ajouter des participants après son ouverture.",
     cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",
     not_open: "Ce scrutin n’est pas encore ouvert.",

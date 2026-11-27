@@ -30,8 +30,11 @@ export async function runAutoReminders(origin: string, send?: Parameters<typeof 
     if (!poll || !space) continue;
     polls++;
     const m = consoleMessages[space.locale];
+    // Held before sending, so that nothing else writes to the same people while the messages go out.
+    const held = svc.reserveInvites(due.pollId, due.targets.map((t) => t.id));
+    const targets = due.targets.filter((t) => held.some((h) => h.id === t.id));
     const report = await sendInvitations(
-      due.targets.map((t) => ({ id: t.id, address: t.address, link: `${origin}/v/${t.token}` })),
+      targets.map((t) => ({ id: t.id, address: t.address, link: `${origin}/v/${t.token}` })),
       {
         locale: space.locale,
         organization: poll.organization,
@@ -46,8 +49,8 @@ export async function runAutoReminders(origin: string, send?: Parameters<typeof 
     );
     sent += report.sent.length;
     failed += report.failed;
-    // Today's reminder counts as done even when nobody was left to write to, so the check does not repeat every few minutes.
-    svc.markAutoReminded(due.pollId, report.sent, utcToLocalInput(new Date().toISOString(), space.timeZone).slice(0, 10));
+    svc.releaseInvites(due.pollId, held.filter((h) => !report.sent.includes(h.id)));
+    svc.finishAutoReminder(due.pollId, report.sent.length, report.failed, utcToLocalInput(new Date().toISOString(), space.timeZone).slice(0, 10));
   }
   return { polls, sent, failed };
 }
