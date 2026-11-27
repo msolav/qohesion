@@ -204,7 +204,7 @@ export function renderInvitation(input: InvitationInput): Rendered {
       { link: { label: `Lien de vote${until ? ` (le scrutin ferme le ${until})` : ""}${NBSP}:`, url: link } },
       { p: `Bulletin${NBSP}: ${ballot}` },
       { p: `Résultats${NBSP}: ${results}` },
-      { note: "Ce message automatique est envoyé par le service Qohesion au nom de l’organisateur du scrutin. Les réponses ne sont pas lues. Si ce message ne vous concerne pas, aucune action n’est nécessaire." },
+      { note: "Ce message automatique est envoyé par le service Qohesion au nom de l’organisateur du scrutin. Les réponses ne sont pas lues. Si ce message ne vous concerne pas, aucune action n’est nécessaire. S’il se trouvait dans le dossier des indésirables, le marquer comme non indésirable pour que les prochains arrivent." },
     ];
     return assemble("fr", `${input.reminder ? `Rappel${NBSP}: ` : ""}Scrutin${NBSP}: ${poll}`, blocks);
   }
@@ -216,7 +216,7 @@ export function renderInvitation(input: InvitationInput): Rendered {
     { link: { label: `Voting link${until ? ` (the poll closes on ${until})` : ""}:`, url: link } },
     { p: `Ballot: ${ballot}` },
     { p: `Results: ${results}` },
-    { note: "This automated message is sent by the Qohesion service on behalf of the organizer of the poll. Replies are not read. If this message is not for you, no action is needed." },
+    { note: "This automated message is sent by the Qohesion service on behalf of the organizer of the poll. Replies are not read. If this message is not for you, no action is needed. If it was in your junk folder, mark it as not junk so that the next ones arrive." },
   ];
   return assemble("en", `${input.reminder ? "Reminder: " : ""}Poll: ${poll}`, blocks);
 }

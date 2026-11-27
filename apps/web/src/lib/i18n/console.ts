@@ -104,7 +104,7 @@ export interface ConsoleMessages {
   };
   readonly mail: {
     readonly title: string; readonly text: string; readonly notConfigured: string; readonly attest: string; readonly sendNew: string; readonly sendAll: string; readonly sendOne: string;
-    readonly reportOne: string; readonly reminderWait: string; readonly reminderOne: string; readonly reminderIn: string; readonly sendReminderOne: string; readonly reminderMany: string;
+    readonly reportOne: string; readonly reminderWait: string; readonly reminderOne: string; readonly reminderIn: string; readonly junk: string; readonly junkNote: string; readonly junkNotice: string; readonly sendReminderOne: string; readonly reminderMany: string;
     readonly report: string; readonly reportFailed: string; readonly sentOn: string; readonly notYet: string; readonly onlyOpen: string; readonly nothingToSend: string;
   };
   readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
@@ -536,6 +536,9 @@ const en: ConsoleMessages = {
     sendAll: "Send a reminder ({n})",
     sendOne: "Send by email",
     reportOne: "1 email was sent.",
+    junk: "May reach junk",
+    junkNote: "This provider often files these messages as junk.",
+    junkNotice: "Participants who have not voted and are at providers that often file these messages as junk: {n}. Ask them to check their junk folder, or copy their link and send it another way.",
     reminderIn: "Reminder possible in {time}",
     sendReminderOne: "Send a reminder",
     reminderOne: "1 reminder, last on {day}",
@@ -1104,6 +1107,9 @@ const fr: ConsoleMessages = {
     sendAll: "Envoyer un rappel ({n})",
     sendOne: "Envoyer par courriel",
     reportOne: "1 courriel a été envoyé.",
+    junk: "Risque de courrier indésirable",
+    junkNote: "Ce fournisseur classe souvent ces messages comme indésirables.",
+    junkNotice: "Participants qui n’ont pas voté et dont le fournisseur classe souvent ces messages comme indésirables: {n}. Leur demander de vérifier le dossier des indésirables, ou copier leur lien et le leur envoyer autrement.",
     reminderIn: "Rappel possible dans {time}",
     sendReminderOne: "Envoyer un rappel",
     reminderOne: "1 rappel, dernier le {day}",

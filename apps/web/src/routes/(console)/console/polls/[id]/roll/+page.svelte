@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mayReachJunk } from "#lib/junk-domains.js";
   import { enhance } from "$app/forms";
   import CopyButton from "#lib/components/CopyButton.svelte";
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
@@ -17,6 +18,7 @@
     const h = Math.floor(minutes / 60);
     return h > 0 ? `${h} h ${String(minutes % 60).padStart(2, "0")} min` : `${minutes} min`;
   }
+  const junkCount = $derived(data.entries.filter((e) => e.status !== "voted" && mayReachJunk(e.address)).length);
   const allLinks = $derived(data.entries.map((e) => `${e.address}\t${e.link}`).join("\n"));
   const mailReport = $derived(form && "mailReport" in form ? form.mailReport : null);
   const mailError = $derived(form && "mailError" in form ? form.mailError : null);
@@ -69,6 +71,7 @@
       <p class="cx-help">{m.mail.text}</p>
       <form id="mail" class="cx-form gap" method="POST" action="?/send" use:enhance>
         <label class="cx-choice check"><input type="checkbox" name="permission" value="yes" /><span><b>{m.mail.attest}</b></span></label>
+        {#if junkCount > 0}<p class="cx-notice gap" role="note">{fill(m.mail.junkNotice, { n: junkCount })}</p>{/if}
         {#if mailError}<p class="cx-error" role="alert">{errorText(m, mailError)}</p>{/if}
         <div class="cx-actions">
           <button class="cx-btn" type="submit" name="which" value="new" disabled={data.toSend.new === 0}>{fill(m.mail.sendNew, { n: data.toSend.new })}</button>
@@ -106,7 +109,7 @@
         <tbody>
           {#each data.entries as entry (entry.id)}
             <tr>
-              <td class="addr">{entry.address}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.firstInvitedOn ?? entry.invitedOn }) : m.mail.notYet}{#if entry.invites > 1} · {fill(entry.invites === 2 ? m.mail.reminderOne : m.mail.reminderMany, { n: entry.invites - 1, day: entry.invitedOn ?? "" })}{/if}</span>{/if}</td>
+              <td class="addr">{entry.address}{#if entry.status !== "voted" && mayReachJunk(entry.address)} <span class="cx-chip late" title={m.mail.junkNote}>{m.mail.junk}</span>{/if}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.firstInvitedOn ?? entry.invitedOn }) : m.mail.notYet}{#if entry.invites > 1} · {fill(entry.invites === 2 ? m.mail.reminderOne : m.mail.reminderMany, { n: entry.invites - 1, day: entry.invitedOn ?? "" })}{/if}</span>{/if}</td>
               <td>
                 <span class="cx-chip {entry.status === 'voted' ? 'open' : ''}">{m.member[entry.status]}</span>
                 {#if entry.late}<span class="cx-chip late" title={m.roll.lateNote}>{m.roll.late}</span>{/if}
