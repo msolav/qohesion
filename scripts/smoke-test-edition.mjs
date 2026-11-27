@@ -195,6 +195,7 @@ check("opening without approval is refused", refusedOpen.status === 400);
 await admin.send(`/console/polls/${gatedId}?/requestApproval`, { method: "POST", form: {} });
 const waiting = await clerk.send("/console/approvals");
 check("the other administrator sees the request", waiting.text.includes("Needs approval"));
+check("the approvals page shows the organization details to confirm", waiting.text.includes("Organization details") || waiting.text.includes("Renseignements de l’organisation"));
 const requestId = /name="request" value="([a-z0-9]+)"/.exec(waiting.text)?.[1];
 const digest = /name="digest" value="([0-9a-f]{64})"/.exec(waiting.text)?.[1];
 const answered = await clerk.send("/console/approvals?/answer", { method: "POST", form: { request: requestId, digest, answer: "approve" } });

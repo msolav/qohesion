@@ -16,10 +16,19 @@ export const load: PageServerLoad = ({ locals }) => {
     timeZone: service().getSpace(session.spaceId)?.timeZone ?? DEFAULT_TIME_ZONE,
     policy: service().approvalPolicy(session.spaceId),
     administrators: service().administratorCount(session.spaceId),
+    setup: service().setupStatus(session.spaceId),
   };
 };
 
 export const actions: Actions = {
+  confirm: async ({ request, locals }) => {
+    const session = needSession(locals);
+    const data = await request.formData().catch(() => undefined);
+    const digest = typeof data?.get("digest") === "string" ? String(data?.get("digest")) : "";
+    const result = service().confirmSetup(session, digest);
+    if (!result.ok) return fail(400, { error: result.error });
+    return { confirmed: true as const };
+  },
   answer: async ({ request, locals }) => {
     const session = needSession(locals);
     const data = await request.formData().catch(() => undefined);

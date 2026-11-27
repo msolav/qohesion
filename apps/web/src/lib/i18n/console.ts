@@ -123,7 +123,7 @@ export interface ConsoleMessages {
     readonly policyTitle: string; readonly policyText: string; readonly ruleLabel: string; readonly rules: Readonly<Record<"none" | "majority" | "all", string>>;
     readonly abstentionLabel: string; readonly meanings: Readonly<Record<"agreement" | "disagreement" | "neutral" | "discarded", string>>;
     readonly delayLabel: string; readonly delayHelp: string; readonly policySave: string; readonly policySent: string; readonly policySaved: string; readonly settingsSent: string; readonly pendingNotice: string; readonly onlyOne: string;
-    readonly factTitle: string; readonly factOnlyOne: string; readonly factNoRule: string; readonly factSingle: string; readonly factApproved: string; readonly factCode: string;
+    readonly factTitle: string; readonly factOnlyOne: string; readonly factNoRule: string; readonly factSingle: string; readonly factApproved: string; readonly factCode: string; readonly factConfirmed: string; readonly setupTitle: string; readonly setupText: string; readonly setupConfirm: string; readonly setupConfirmedBy: string; readonly setupNotYet: string; readonly setupAdmins: string; readonly setupDone: string;
   };
   readonly seal: {
     readonly title: string; readonly help: string; readonly sealed: { readonly title: string; readonly text: string }; readonly none: { readonly title: string; readonly text: string }; readonly liveNote: string;
@@ -630,6 +630,14 @@ const en: ConsoleMessages = {
     factSingle: "Published by the only administrator. The approval rule applies once there are two or more.",
     factApproved: "Published with the approval of {a} of {n} administrators on {date}. Rule: {rule}.",
     factCode: "Content code {code}",
+    factConfirmed: "Organization details confirmed by {c} of {n} administrators.",
+    setupTitle: "Organization details",
+    setupText: "Check that these details match the organization’s records, then confirm. A change to any of them clears the confirmations.",
+    setupConfirm: "Confirm these details",
+    setupConfirmedBy: "Confirmed by {n} of {total} administrators.",
+    setupNotYet: "Not confirmed yet",
+    setupAdmins: "Administrators",
+    setupDone: "Confirmed.",
   },
   seal: {
     title: "Ballot protection",
@@ -1232,6 +1240,14 @@ const fr: ConsoleMessages = {
     factSingle: "Publié par le seul administrateur. La règle d’approbation s’applique dès qu’il y en a deux ou plus.",
     factApproved: "Publié avec l’approbation de {a} administrateurs sur {n}, le {date}. Règle: {rule}.",
     factCode: "Code du contenu {code}",
+    factConfirmed: "Renseignements de l’organisation confirmés par {c} administrateurs sur {n}.",
+    setupTitle: "Renseignements de l’organisation",
+    setupText: "Vérifier que ces renseignements correspondent aux dossiers de l’organisation, puis confirmer. Un changement à l’un d’eux annule les confirmations.",
+    setupConfirm: "Confirmer ces renseignements",
+    setupConfirmedBy: "Confirmé par {n} administrateurs sur {total}.",
+    setupNotYet: "Pas encore confirmé",
+    setupAdmins: "Administrateurs",
+    setupDone: "Confirmé.",
   },
   seal: {
     title: "Protection des bulletins",

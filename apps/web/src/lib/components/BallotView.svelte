@@ -34,7 +34,7 @@
     readonly allowChange: boolean;
     readonly lateRoll: boolean;
     /** How the poll was approved when published. Absent in the builder preview and for older polls. */
-    readonly approval?: { readonly rule: "none" | "majority" | "all"; readonly approvals: number; readonly eligible: number; readonly at: string; readonly digest: string } | null;
+    readonly approval?: { readonly rule: "none" | "majority" | "all"; readonly approvals: number; readonly eligible: number; readonly at: string; readonly digest: string; readonly confirmed?: number | undefined } | null;
     readonly rules: CloseRules;
     readonly timeZone?: string;
     readonly closesAt: string | null;
@@ -179,6 +179,7 @@
         <dt>{m.approval.factTitle}</dt>
         <dd class="note">{approvalText}</dd>
         <dd class="note">{fill(m.approval.factCode, { code: approvalCode })}</dd>
+        {#if poll.approval.confirmed !== undefined}<dd class="note">{fill(m.approval.factConfirmed, { c: poll.approval.confirmed, n: poll.approval.eligible })}</dd>{/if}
       </div>
     {/if}
   </dl>

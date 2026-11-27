@@ -55,6 +55,18 @@ export interface PollApproval {
   readonly at: string;
   /** The digest of what was approved. */
   readonly digest: string;
+  /** How many administrators had confirmed the organization's details when the poll was published (ADR 0009 section 7). */
+  readonly confirmed?: number;
+}
+
+export interface SetupStatus {
+  /** The digest of the details as they are now. */
+  readonly digest: string;
+  readonly name: string;
+  readonly locale: Locale;
+  readonly timeZone: string;
+  readonly policy: ApprovalPolicy;
+  readonly administrators: readonly { readonly id: string; readonly label: string; readonly confirmed: boolean; readonly confirmedAt: string | null }[];
 }
 
 export type ApprovalState = "not_needed" | "none" | "pending" | "approved" | "rejected" | "lapsed" | "stale";
@@ -343,6 +355,7 @@ export class Service {
     db.exec(SCHEMA);
     this.#migrate();
     db.exec(APPROVAL_SCHEMA);
+    db.exec("CREATE TABLE IF NOT EXISTS setup_confirmations (space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, key_id TEXT NOT NULL, label TEXT NOT NULL, digest TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (space_id, key_id))");
     this.#approvals = new ApprovalStore(db, this.#now, {
       policyOf: (spaceId) => this.approvalPolicy(spaceId),
       administratorsOf: (spaceId) => this.#administrators(spaceId),
@@ -692,17 +705,58 @@ export class Service {
     return { required, state, request: state === "none" ? null : request };
   }
 
+  /**
+   * The organization's setup record (ADR 0009 section 7): its name, language, time zone, the approval rule and the
+   * administrators. Each administrator can confirm that it matches their records. A confirmation names the digest it was
+   * given for, so a change to any detail clears every confirmation.
+   */
+  setupStatus(spaceId: string): SetupStatus | null {
+    const space = this.getSpace(spaceId);
+    if (!space) return null;
+    const policy = this.approvalPolicy(spaceId);
+    const admins = this.#administrators(spaceId);
+    const digest = sha256hex(JSON.stringify({ name: space.name, locale: space.locale, timeZone: space.timeZone, policy, administrators: admins.map((a) => [a.id, a.label]) }));
+    const confirmations = new Map(this.#all("SELECT key_id, digest, at FROM setup_confirmations WHERE space_id = ?", spaceId).map((r) => [String(r["key_id"]), { digest: String(r["digest"]), at: String(r["at"]) }]));
+    return {
+      digest,
+      name: space.name,
+      locale: space.locale,
+      timeZone: space.timeZone,
+      policy,
+      administrators: admins.map((a) => {
+        const c = confirmations.get(a.id);
+        const valid = c !== undefined && c.digest === digest;
+        return { id: a.id, label: a.label, confirmed: valid, confirmedAt: valid ? c.at : null };
+      }),
+    };
+  }
+
+  /** An administrator confirms the setup record as shown. It names the digest, so a record that changed in between is refused. */
+  confirmSetup(session: Session, seenDigest: string): Result<SetupStatus> {
+    if (!session.administrator) return problem("forbidden");
+    const status = this.setupStatus(session.spaceId);
+    if (!status) return problem("not_found");
+    if (status.digest !== seenDigest) return problem("approval_stale");
+    this.#run(
+      "INSERT INTO setup_confirmations (space_id, key_id, label, digest, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (space_id, key_id) DO UPDATE SET digest = excluded.digest, at = excluded.at, label = excluded.label",
+      session.spaceId, session.keyId, session.label, status.digest, this.#iso(),
+    );
+    const next = this.setupStatus(session.spaceId);
+    return next ? ok(next) : problem("not_found");
+  }
+
   /** What a publication needs, and the record of how it was approved. Used when a poll is opened or scheduled. */
   #publicationGate(poll: Poll): Result<{ requestId: string | null; approval: PollApproval }> {
     const content = this.#pollContent(poll);
     const policy = this.approvalPolicy(poll.spaceId);
     const at = this.#iso();
+    const confirmed = this.setupStatus(poll.spaceId)?.administrators.filter((a) => a.confirmed).length ?? 0;
     if (!this.#approvals.required(poll.spaceId)) {
-      return ok({ requestId: null, approval: { rule: policy.rule, approvals: 1, eligible: Math.max(1, this.#administrators(poll.spaceId).length), at, digest: content.digest } });
+      return ok({ requestId: null, approval: { rule: policy.rule, approvals: 1, eligible: Math.max(1, this.#administrators(poll.spaceId).length), at, digest: content.digest, confirmed } });
     }
     const request = this.#approvals.permit(poll.spaceId, "publish_poll", poll.id, content.digest);
     if (!request) return problem("approval_required");
-    return ok({ requestId: request.id, approval: { rule: policy.rule, approvals: request.tally.approvals, eligible: request.tally.eligible, at, digest: content.digest } });
+    return ok({ requestId: request.id, approval: { rule: policy.rule, approvals: request.tally.approvals, eligible: request.tally.eligible, at, digest: content.digest, confirmed } });
   }
 
   #stamp(pollId: string, gate: { requestId: string | null; approval: PollApproval }): void {

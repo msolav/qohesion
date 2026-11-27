@@ -932,6 +932,38 @@ describe("several questions in one poll (ADR 0010)", () => {
 
 });
 
+describe("confirming the organization's details", () => {
+  it("lets each administrator confirm the record, and a change clears every confirmation", () => {
+    const key = must(service.createKey(owner, { label: "Clerk", owner: false, administrator: true }));
+    const clerk = service.session(service.signIn(key.key) ?? "") as Session;
+    const before = service.setupStatus(owner.spaceId);
+    expect(before?.administrators.every((a) => !a.confirmed)).toBe(true);
+    const confirmed = must(service.confirmSetup(owner, before?.digest ?? ""));
+    expect(confirmed.administrators.filter((a) => a.confirmed).map((a) => a.label)).toEqual(["Owner"]);
+    must(service.confirmSetup(clerk, confirmed.digest));
+    expect(service.setupStatus(owner.spaceId)?.administrators.every((a) => a.confirmed)).toBe(true);
+    must(service.updateSpace(owner, { name: "Renamed", locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" }));
+    expect(service.setupStatus(owner.spaceId)?.administrators.some((a) => a.confirmed)).toBe(false);
+  });
+
+  it("refuses a confirmation of a record that changed since it was shown, and one from a non-administrator", () => {
+    const status = service.setupStatus(owner.spaceId);
+    must(service.updateSpace(owner, { name: "Changed", locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" }));
+    expect(service.confirmSetup(owner, status?.digest ?? "")).toEqual({ ok: false, error: "approval_stale" });
+    const board = must(service.createKey(owner, { label: "Board", owner: true, administrator: false }));
+    const boardSession = service.session(service.signIn(board.key) ?? "") as Session;
+    expect(service.confirmSetup(boardSession, service.setupStatus(owner.spaceId)?.digest ?? "")).toEqual({ ok: false, error: "forbidden" });
+  });
+
+  it("records how many had confirmed when a poll was published", () => {
+    must(service.confirmSetup(owner, service.setupStatus(owner.spaceId)?.digest ?? ""));
+    const poll = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, poll.id, "a@example.com"));
+    must(service.openPoll(owner, poll.id));
+    expect(service.getPoll(poll.id)?.approval).toMatchObject({ confirmed: 1, eligible: 1 });
+  });
+});
+
 describe("the organization's name", () => {
   const rename = (name: string) => service.updateSpace(owner, { name, locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" });
 
