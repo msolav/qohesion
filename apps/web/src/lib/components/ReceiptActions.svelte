@@ -54,10 +54,10 @@
         <input type="hidden" name="receipt" value={code} />
         <button type="submit" class="rcpt__btn" disabled={sending}>{m.voter.receiptMail}</button>
         <p class="rcpt__note">{ties ? m.voter.receiptMailSecret : m.voter.receiptMailKept}</p>
-        {#if outcome}<p class="rcpt__err" role="alert">{errorText(m, outcome)}</p>{/if}
       </form>
     {/if}
   {/if}
+  {#if outcome && outcome !== "sent"}<p class="rcpt__err" role="alert">{errorText(m, outcome)}</p>{/if}
 </div>
 
 <style>

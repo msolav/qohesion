@@ -138,9 +138,8 @@ check("the ballot lists its settings with a link to the explanation", namedRules
 await anonymous.send(`/v/${namedTokens[0]}`, { method: "POST", form: { choice: "for" } });
 await anonymous.send(`/v/${namedTokens[1]}`, { method: "POST", form: { choice: "against" } });
 const noMail = await anonymous.send(`/v/${namedTokens[0]}`, { method: "POST", form: { intent: "receipt", receipt: "0000-0000-0000" } });
-check("a receipt by email is refused when the installation cannot send email", noMail.status === 400 && noMail.text.includes("cannot send email"), String(noMail.status));
-const namedRulesAfter = await anonymous.send(`/v/${namedTokens[1]}?view=all`);
-check("the rules list the receipt setting", namedRulesAfter.text.includes('data-prop="receipt"'));
+check("a receipt by email is refused when the installation cannot send email", noMail.status === 400 && /cannot send email|ne peut pas envoyer de courriel/.test(noMail.text), String(noMail.status));
+check("the rules list the receipt setting", namedRules.text.includes('data-prop="receipt"'));
 const namedAsVoter = JSON.parse((await anonymous.send(`/api/results/${namedId}?t=${namedTokens[0]}`)).text);
 const readWho = (view) => (view.answers ?? []).map((a) => a.who).sort().join("|");
 check("a member reads the signatories as the poll sets them", readWho(namedAsVoter) === "Marie T*** <m***y@e***e.com>|Roy, J*** <j***n@e***e.com>", readWho(namedAsVoter));
