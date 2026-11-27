@@ -11,6 +11,12 @@
   const poll = $derived(data.poll);
   const report = $derived(form && "report" in form ? form.report : null);
   const failed = $derived(form && "error" in form ? form : null);
+  /** Time left before a reminder is possible, as "18 h 20 min". */
+  function waitText(iso: string): string {
+    const minutes = Math.max(1, Math.ceil((Date.parse(iso) - Date.now()) / 60_000));
+    const h = Math.floor(minutes / 60);
+    return h > 0 ? `${h} h ${String(minutes % 60).padStart(2, "0")} min` : `${minutes} min`;
+  }
   const allLinks = $derived(data.entries.map((e) => `${e.address}\t${e.link}`).join("\n"));
   const mailReport = $derived(form && "mailReport" in form ? form.mailReport : null);
   const mailError = $derived(form && "mailError" in form ? form.mailError : null);
@@ -108,7 +114,16 @@
               <td class:none={!entry.votedOn} data-label={m.roll.day}>{entry.votedOn ?? "–"}</td>
               <td>
                 <div class="cx-actions">
-                  {#if data.canSend && entry.status !== "voted"}<button class="cx-btn ghost small" type="submit" form="mail" name="which" value={entry.id}>{m.mail.sendOne}</button>{/if}
+                  {#if data.canSend && entry.status !== "voted"}
+                    {#if entry.invites === 0}
+                      <button class="cx-btn ghost small" type="submit" form="mail" name="which" value={entry.id}>{m.mail.sendOne}</button>
+                    {:else if entry.writeAgainAt}
+                      <span class="cx-help" role="status">{fill(m.mail.reminderIn, { time: waitText(entry.writeAgainAt), date: formatMoment(entry.writeAgainAt, data.locale, data.timeZone) })}</span>
+                      <button class="cx-btn ghost small" type="button" disabled>{m.mail.sendReminderOne}</button>
+                    {:else}
+                      <button class="cx-btn ghost small" type="submit" form="mail" name="which" value={entry.id}>{m.mail.sendReminderOne}</button>
+                    {/if}
+                  {/if}
                   {#if poll.status !== "closed" && entry.status !== "voted"}<CopyButton text={entry.link} label={m.roll.copyLink} done={m.common.copied} small />{/if}
                   {#if poll.status === "draft"}
                     <form method="POST" action="?/remove" use:enhance>

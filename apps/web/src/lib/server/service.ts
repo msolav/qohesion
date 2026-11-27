@@ -142,6 +142,8 @@ export interface RollEntry {
   readonly votedOn: string | null;
   /** The day a link was last sent by email, or null. */
   readonly invitedOn: string | null;
+  /** The moment of the latest link, for the 24 hour gap. */
+  readonly invitedAt: string | null;
   /** The day of the first link, and how many times a link was sent (the first one included). */
   readonly firstInvitedOn: string | null;
   readonly invites: number;
@@ -730,6 +732,7 @@ export class Service {
       addedAt: String(r["added_at"]),
       votedOn: r["voted_on"] === null ? null : String(r["voted_on"]),
       invitedOn: r["invited_on"] === null ? null : String(r["invited_on"]),
+      invitedAt: r["invited_at"] === null || r["invited_at"] === undefined ? null : String(r["invited_at"]),
       firstInvitedOn: r["first_invited_on"] === null || r["first_invited_on"] === undefined ? null : String(r["first_invited_on"]),
       invites: Number(r["invite_count"] ?? 0),
     }));

@@ -104,7 +104,7 @@ export interface ConsoleMessages {
   };
   readonly mail: {
     readonly title: string; readonly text: string; readonly notConfigured: string; readonly attest: string; readonly sendNew: string; readonly sendAll: string; readonly sendOne: string;
-    readonly reportOne: string; readonly reminderWait: string; readonly reminderOne: string; readonly reminderMany: string;
+    readonly reportOne: string; readonly reminderWait: string; readonly reminderOne: string; readonly reminderIn: string; readonly sendReminderOne: string; readonly reminderMany: string;
     readonly report: string; readonly reportFailed: string; readonly sentOn: string; readonly notYet: string; readonly onlyOpen: string; readonly nothingToSend: string;
   };
   readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
@@ -521,6 +521,8 @@ const en: ConsoleMessages = {
     sendAll: "Send a reminder ({n})",
     sendOne: "Send by email",
     reportOne: "1 email was sent.",
+    reminderIn: "Reminder possible in {time}",
+    sendReminderOne: "Send a reminder",
     reminderOne: "1 reminder, last on {day}",
     reminderMany: "{n} reminders, last on {day}",
     reminderWait: "A reminder can be sent 24 hours after the last message, from {date}.",
@@ -601,6 +603,7 @@ const en: ConsoleMessages = {
     unknown_link: "This link is not valid.",
     closed: "This poll is closed.",
     cancelled: "This poll was cancelled.",
+    reminder_wait: "This participant was written to less than 24 hours ago. A reminder can go out once 24 hours have passed.",
     roll_locked: "This poll does not allow adding participants after it opens.",
     cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
     not_open: "This poll is not open yet.",
@@ -1028,6 +1031,8 @@ const fr: ConsoleMessages = {
     sendAll: "Envoyer un rappel ({n})",
     sendOne: "Envoyer par courriel",
     reportOne: "1 courriel a été envoyé.",
+    reminderIn: "Rappel possible dans {time}",
+    sendReminderOne: "Envoyer un rappel",
     reminderOne: "1 rappel, dernier le {day}",
     reminderMany: "{n} rappels, dernier le {day}",
     reminderWait: "Un rappel peut être envoyé 24 heures après le dernier message, à partir du {date}.",
@@ -1108,6 +1113,7 @@ const fr: ConsoleMessages = {
     unknown_link: "Ce lien n’est pas valide.",
     closed: "Ce scrutin est fermé.",
     cancelled: "Ce scrutin a été annulé.",
+    reminder_wait: "Ce participant a reçu un message il y a moins de 24 heures. Un rappel peut partir une fois les 24 heures écoulées.",
     roll_locked: "Ce scrutin ne permet pas d’ajouter des participants après son ouverture.",
     cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",
     not_open: "Ce scrutin n’est pas encore ouvert.",
@@ -1138,7 +1144,8 @@ export const consoleMessages: Readonly<Record<Locale, ConsoleMessages>> = { fr, 
 
 /** Replaces {name} in a text with a value. */
 export function fill(text: string, values: Readonly<Record<string, string | number>>): string {
-  return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in values ? String(values[name]) : match));
+  // A time such as "3:34 p.m." ends with a period, so a template that adds one after it would show two.
+  return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in values ? String(values[name]) : match)).replace(/([ap]\.m)\.\./gi, "$1.");
 }
 
 export function errorText(m: ConsoleMessages, code: string | undefined): string {
