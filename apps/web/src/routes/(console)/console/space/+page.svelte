@@ -31,7 +31,8 @@
     {#if form && "saved" in form}<p class="cx-notice" role="status">{m.space.saved}</p>{/if}
     <div class="cx-field" class:invalid={failedIn("save")}>
       <label for="name">{m.space.name}</label>
-      <input id="name" name="name" type="text" maxlength="80" bind:value={name} required />
+      <input id="name" name="name" type="text" maxlength="80" bind:value={name} readonly={data.nameLocked} aria-describedby={data.nameLocked ? "name-locked" : undefined} required />
+      {#if data.nameLocked}<p class="cx-help" id="name-locked">{m.space.nameLocked}</p>{/if}
       {#if failedIn("save")}<p class="cx-error" role="alert">{errorText(m, failedIn("save")?.error)}</p>{/if}
     </div>
     <div class="cx-two">

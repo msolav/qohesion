@@ -13,7 +13,7 @@ export const load: PageServerLoad = ({ params, locals, url }) => {
   // The poll as the member reads it: in their language when it is offered, else in the default one.
   const text = localize(poll, locals.locale);
   const base = {
-    organization: space?.name ?? null,
+    organization: poll.organization,
     poll: { id: poll.id, title: text.title, question: text.question, description: text.description, options: text.options, timing: poll.timing, audience: poll.audience, closesAt: poll.closesAt, rollCount: poll.rollCount, rollCode: poll.rollCode, encrypted: poll.encrypted, markFill: poll.markFill, anonymity: poll.anonymity, allowChange: poll.allowChange, lateRoll: poll.lateRoll, paged: poll.paged && url.searchParams.get("view") !== "all", rules: poll.rules, cancelled: poll.cancelled, closedAt: poll.closedAt, timeZone: space?.timeZone ?? "America/Toronto", opensAt: poll.opensAt },
     canSeeResults: accessTo(poll, "voter").totals || poll.status === "closed",
   };

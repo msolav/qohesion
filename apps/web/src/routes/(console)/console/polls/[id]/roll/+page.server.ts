@@ -48,7 +48,7 @@ export const actions: Actions = {
       targets.map((t) => ({ id: t.id, address: t.address, link: `${url.origin}/v/${t.token}` })),
       {
         locale,
-        organization: space?.name ?? "Qohesion",
+        organization: poll.organization,
         poll: poll.title,
         closesAt: poll.closesAt,
         timeZone: space?.timeZone ?? "America/Toronto",

@@ -594,6 +594,29 @@ describe("sending links", () => {
   });
 });
 
+describe("the organization's name", () => {
+  const rename = (name: string) => service.updateSpace(owner, { name, locale: "en", theme: "ballot-paper" as never, timeZone: "America/Toronto" });
+
+  it("can change while no poll is scheduled or open", () => {
+    expect(must(rename("New Name")).name).toBe("New Name");
+  });
+
+  it("is fixed while a poll is open, and a poll keeps the name it was published under", () => {
+    const { poll } = openedPoll();
+    expect(rename("Other Name")).toEqual({ ok: false, error: "name_locked" });
+    expect(service.nameLocked(owner.spaceId)).toBe(true);
+    must(service.closePoll(owner, poll.id));
+    expect(service.nameLocked(owner.spaceId)).toBe(false);
+    must(rename("Other Name"));
+    expect(service.getPoll(poll.id)?.organization).toBe("Maple Court Association");
+  });
+
+  it("lets the other settings change while a poll is open", () => {
+    openedPoll();
+    expect(must(service.updateSpace(owner, { name: "Maple Court Association", locale: "fr", theme: "ballot-paper" as never, timeZone: "America/Toronto" })).locale).toBe("fr");
+  });
+});
+
 describe("the roll as the administrator reads it", () => {
   it("keeps an address as typed, dots included, and still counts a Gmail address once", () => {
     const poll = must(service.createPoll(owner, input()));

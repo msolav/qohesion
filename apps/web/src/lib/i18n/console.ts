@@ -79,7 +79,7 @@ export interface ConsoleMessages {
   readonly history: { readonly title: string; readonly empty: string; readonly actions: Readonly<Record<string, string>> };
   readonly space: {
     readonly title: string; readonly settings: string; readonly name: string; readonly language: string; readonly template: string; readonly save: string; readonly saved: string;
-    readonly timeZone: string;
+    readonly timeZone: string; readonly nameLocked: string;
     readonly keys: string; readonly keysText: string; readonly keyLabel: string; readonly keyRoles: string; readonly addKey: string; readonly createKey: string; readonly revoke: string; readonly revoked: string; readonly confirmRevoke: string; readonly you: string;
     readonly newKeyTitle: string; readonly newKeyText: string; readonly danger: string; readonly dangerText: string; readonly confirmName: string; readonly deleteSpace: string;
   };
@@ -386,6 +386,7 @@ const en: ConsoleMessages = {
     title: "Organization",
     settings: "Settings",
     name: "Name",
+    nameLocked: "The name is fixed while a poll is scheduled or open, because participants were told it. Each poll keeps the name it was published under.",
     language: "Language of the interface",
     template: "Default ballot template",
     save: "Save the settings",
@@ -571,6 +572,7 @@ const en: ConsoleMessages = {
   },
   errors: {
     already_set_up: "This installation already has its organization. Sign in with its key.",
+    name_locked: "The name cannot change while a poll is scheduled or open. Participants were told this name.",
     name_required: "Enter a name.",
     name_too_long: "The name is too long (80 characters at most).",
     label_required: "Enter who the key is for.",
@@ -891,6 +893,7 @@ const fr: ConsoleMessages = {
     title: "Organisation",
     settings: "Paramètres",
     name: "Nom",
+    nameLocked: "Le nom est fixé tant qu’un scrutin est planifié ou ouvert, car les participants en ont été informés. Chaque scrutin garde le nom sous lequel il a été publié.",
     language: "Langue de l’interface",
     template: "Modèle de bulletin par défaut",
     save: "Enregistrer les paramètres",
@@ -1076,6 +1079,7 @@ const fr: ConsoleMessages = {
   },
   errors: {
     already_set_up: "Cette installation a déjà son organisation. Ouvrir une session avec sa clé.",
+    name_locked: "Le nom ne peut pas changer tant qu’un scrutin est planifié ou ouvert. Les participants ont été informés de ce nom.",
     name_required: "Saisir un nom.",
     name_too_long: "Le nom est trop long (80 caractères au maximum).",
     label_required: "Indiquer pour qui est la clé.",

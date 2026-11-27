@@ -13,11 +13,10 @@ export const GET: RequestHandler = ({ params, locals }) => {
   if (!poll || !poll.closesAt || poll.status === "closed" || poll.status === "cancelled") error(404, "Not found");
   const m = consoleMessages[locals.locale];
   const text = localize(poll, locals.locale);
-  const org = service().getSpace(poll.spaceId)?.name ?? "";
   const body = calendarFile({
     uid: poll.id,
     summary: fill(m.voter.calendarSummary, { title: text.title }),
-    description: fill(m.voter.calendarNote, { org }),
+    description: fill(m.voter.calendarNote, { org: poll.organization }),
     alarmText: m.voter.calendarAlarm,
     closesAt: poll.closesAt,
     now: new Date().toISOString(),

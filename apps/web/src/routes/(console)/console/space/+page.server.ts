@@ -15,7 +15,7 @@ export const load: PageServerLoad = ({ locals }) => {
   const session = needSession(locals);
   if (!session.owner) redirect(303, "/console/polls");
   const space = service().getSpace(session.spaceId);
-  return { space, keys: service().listKeys(session), currentKey: session.keyId, timeZones: TIME_ZONES };
+  return { space, nameLocked: service().nameLocked(session.spaceId), keys: service().listKeys(session), currentKey: session.keyId, timeZones: TIME_ZONES };
 };
 
 export const actions: Actions = {

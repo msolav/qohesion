@@ -84,6 +84,8 @@ export interface PollOption {
 export interface Poll {
   readonly id: string;
   readonly spaceId: string;
+  /** The name of the organization when the poll was published, and for a draft its current name. */
+  readonly organization: string;
   /** Names the poll in lists and emails. */
   readonly title: string;
   /** The question members answer, shown above the choices. */
@@ -280,6 +282,9 @@ export class Service {
     addIfMissing("polls", columns, "lock_cancel", "INTEGER NOT NULL DEFAULT 0");
     addIfMissing("polls", columns, "paged", "INTEGER NOT NULL DEFAULT 1");
     addIfMissing("polls", columns, "late_roll", "INTEGER NOT NULL DEFAULT 1");
+    addIfMissing("polls", columns, "org_name", "TEXT");
+    // A poll published before the name was kept keeps the name the organization has now.
+    this.#db.exec("UPDATE polls SET org_name = (SELECT name FROM spaces WHERE spaces.id = polls.space_id) WHERE org_name IS NULL AND status != 'draft'");
     addIfMissing("polls", columns, "published_key", "TEXT");
     addIfMissing("polls", columns, "cancelled_by", "TEXT");
     addIfMissing("polls", columns, "cancelled_ballots", "INTEGER");
@@ -390,9 +395,16 @@ export class Service {
     if (name.length === 0) return problem("name_required");
     if (name.length > 80) return problem("name_too_long");
     if (!isTimeZone(input.timeZone)) return problem("invalid_time_zone");
+    // Voters were told the name on their ballot and in their emails, so it stays while a poll is scheduled or open.
+    if (name !== this.getSpace(session.spaceId)?.name && this.nameLocked(session.spaceId)) return problem("name_locked");
     this.#run("UPDATE spaces SET name = ?, locale = ?, theme = ?, time_zone = ? WHERE id = ?", name, input.locale, input.theme, input.timeZone, session.spaceId);
     const space = this.getSpace(session.spaceId);
     return space ? ok(space) : problem("not_found");
+  }
+
+  /** True while a poll of the organization is scheduled or open: its name cannot change then. */
+  nameLocked(spaceId: string): boolean {
+    return this.#one("SELECT 1 AS x FROM polls WHERE space_id = ? AND status IN ('scheduled', 'open') LIMIT 1", spaceId) !== undefined;
   }
 
   listKeys(session: Session): KeyInfo[] {
@@ -481,6 +493,7 @@ export class Service {
     return {
       id: String(r["id"]),
       spaceId: String(r["space_id"]),
+      organization: r["org_name"] === null || r["org_name"] === undefined ? (this.getSpace(String(r["space_id"]))?.name ?? "") : String(r["org_name"]),
       title: String(r["title"]),
       question: String(r["question"] ?? ""),
       description: String(r["description"]),
@@ -639,7 +652,7 @@ export class Service {
 
   history(session: Session, pollId: string): HistoryItem[] {
     if (!this.pollFor(session, pollId)) return [];
-    return this.#all("SELECT at, actor, action, detail FROM history WHERE poll_id = ? ORDER BY id", pollId).map((r) => ({ at: String(r["at"]), actor: String(r["actor"]), action: String(r["action"]), detail: String(r["detail"]) }));
+    return this.#all("SELECT at, actor, action, detail FROM history WHERE poll_id = ? ORDER BY id DESC", pollId).map((r) => ({ at: String(r["at"]), actor: String(r["actor"]), action: String(r["action"]), detail: String(r["detail"]) }));
   }
 
   // ---- Roll ----
@@ -822,7 +835,7 @@ export class Service {
     const fingerprints = this.#all("SELECT fingerprint FROM roll WHERE poll_id = ?", poll.id).map((r) => String(r["fingerprint"]));
     if (fingerprints.length === 0) return problem("roll_empty");
     const frozen = freezeRoll(fingerprints);
-    this.#run("UPDATE polls SET status = 'open', opened_at = ?, roll_code = ?, roll_count = ? WHERE id = ?", at, frozen.code, frozen.count, poll.id);
+    this.#run("UPDATE polls SET status = 'open', opened_at = ?, roll_code = ?, roll_count = ?, org_name = COALESCE(org_name, (SELECT name FROM spaces WHERE spaces.id = polls.space_id)) WHERE id = ?", at, frozen.code, frozen.count, poll.id);
     this.#log(poll.id, who, "opened", `${frozen.count} · ${frozen.code}${poll.encrypted ? " · sealed" : ""}`);
     return ok(null);
   }
@@ -872,7 +885,7 @@ export class Service {
         countingKey = keys.value.countingKey;
         shares = keys.value.shares;
       }
-      this.#run("UPDATE polls SET status = 'scheduled', public_key = ? WHERE id = ?", publicKey, pollId);
+      this.#run("UPDATE polls SET status = 'scheduled', public_key = ?, org_name = (SELECT name FROM spaces WHERE spaces.id = polls.space_id) WHERE id = ?", publicKey, pollId);
       this.#log(pollId, session, "scheduled", poll.opensAt);
       return ok(null);
     });

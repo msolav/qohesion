@@ -34,7 +34,7 @@ export async function runAutoReminders(origin: string, send?: Parameters<typeof 
       due.targets.map((t) => ({ id: t.id, address: t.address, link: `${origin}/v/${t.token}` })),
       {
         locale: space.locale,
-        organization: space.name,
+        organization: poll.organization,
         poll: poll.title,
         closesAt: poll.closesAt,
         timeZone: space.timeZone,
