@@ -41,10 +41,6 @@
       </nav>
     </header>
 
-    {#if data.edition === "test"}
-      <p class="edition" role="note"><strong>{consoleMessages[data.locale].edition.label}.</strong> {consoleMessages[data.locale].edition.text}</p>
-    {/if}
-
     <main id="content" tabindex="-1">
       {@render children()}
     </main>

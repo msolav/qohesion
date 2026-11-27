@@ -24,9 +24,6 @@
 
 <div class="cx">
   <a class="skip" href="#content">{t.shell.skip}</a>
-  <div class="cx-edition" role="note">
-    <div><strong>{m.edition.label}</strong><span>{m.edition.text}</span></div>
-  </div>
   <header class="cx-top">
     <div>
       <a class="cx-brand" href={session ? "/console" : "/"}>
