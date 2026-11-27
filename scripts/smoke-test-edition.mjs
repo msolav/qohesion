@@ -5,6 +5,7 @@
 // Walks the test edition end to end against a running server: creates an organization, signs in, creates a poll with
 // live results, adds a roll, opens it, votes, reads the results as each kind of viewer, closes, and checks a receipt.
 // Usage: node scripts/smoke-test-edition.mjs [http://127.0.0.1:3000]
+// When the server has a password (QOHESION_GATE_PASSWORD), give it as GATE_PASSWORD in the environment.
 // The server must run with QOHESION_EDITION=test. Everything it creates is a new organization, left in the database.
 
 const base = (process.argv[2] ?? "http://127.0.0.1:3000").replace(/\/$/, "");
@@ -15,7 +16,13 @@ const check = (name, ok, detail = "") => {
 };
 
 class Client {
-  cookie = "";
+  cookies = new Map();
+  get cookie() {
+    return [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+  get session() {
+    return this.cookies.get("qs") ?? "";
+  }
   async send(path, { method = "GET", form } = {}) {
     const headers = { origin: base, accept: "text/html,application/json" };
     if (this.cookie) headers.cookie = this.cookie;
@@ -26,26 +33,32 @@ class Client {
     }
     const response = await fetch(base + path, { method, headers, body, redirect: "manual" });
     for (const c of response.headers.getSetCookie?.() ?? []) {
-      const pair = c.split(";")[0];
-      if (pair.startsWith("qs=")) this.cookie = pair.endsWith("=") ? "" : pair;
+      const [name, ...rest] = c.split(";")[0].split("=");
+      const value = rest.join("=");
+      if (value === "") this.cookies.delete(name);
+      else this.cookies.set(name, value);
     }
     return { status: response.status, location: response.headers.get("location") ?? "", text: await response.text() };
+  }
+  async passGate() {
+    if (process.env.GATE_PASSWORD) await this.send("/gate", { method: "POST", form: { password: process.env.GATE_PASSWORD, next: "/" } });
   }
 }
 
 const admin = new Client();
 const anonymous = new Client();
+const other = new Client();
+for (const c of [admin, anonymous, other]) await c.passGate();
 
 const created = await admin.send("/start", { method: "POST", form: { name: "Smoke Test Association" } });
 const key = /QK-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}-[0-9A-Z]{6}/.exec(created.text)?.[0];
 check("creating an organization shows a key once", Boolean(key));
-check("creating an organization signs in", admin.cookie.startsWith("qs="));
+check("creating an organization signs in", admin.session !== "");
 
-const other = new Client();
 const refused = await other.send("/signin", { method: "POST", form: { key: "QK-AAAAAA-AAAAAA-AAAAAA-AAAAAA" } });
-check("an unknown key is refused", refused.status === 400 && other.cookie === "");
+check("an unknown key is refused", refused.status === 400 && other.session === "");
 const accepted = await other.send("/signin", { method: "POST", form: { key } });
-check("the key signs in", accepted.status === 303 && other.cookie.startsWith("qs="));
+check("the key signs in", accepted.status === 303 && other.session !== "");
 
 check("the console needs a session", (await anonymous.send("/console/polls")).status === 303);
 

@@ -101,6 +101,8 @@ export interface RollEntry {
   readonly late: boolean;
   readonly addedAt: string;
   readonly votedOn: string | null;
+  /** The day a link was last sent by email, or null. */
+  readonly invitedOn: string | null;
 }
 
 export interface PollInput {
@@ -165,7 +167,7 @@ CREATE TABLE IF NOT EXISTS polls (
 CREATE TABLE IF NOT EXISTS roll (
   id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, address TEXT NOT NULL,
   fingerprint TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL, late INTEGER NOT NULL, added_at TEXT NOT NULL,
-  voted_on TEXT, UNIQUE (poll_id, fingerprint));
+  voted_on TEXT, invited_on TEXT, UNIQUE (poll_id, fingerprint));
 -- A ballot holds no reference to a voter, and the roll holds no reference to a ballot. Only the day of a vote is kept on the roll.
 CREATE TABLE IF NOT EXISTS ballots (poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, seq INTEGER NOT NULL, choice TEXT NOT NULL, entry TEXT NOT NULL, PRIMARY KEY (poll_id, seq));
 CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, at TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, detail TEXT NOT NULL);
@@ -200,6 +202,8 @@ export class Service {
   /** Adds the columns that databases made by an earlier build lack. */
   #migrate(): void {
     const columns = (this.#db.prepare("PRAGMA table_info(polls)").all() as { name: string }[]).map((c) => c.name);
+    const rollColumns = (this.#db.prepare("PRAGMA table_info(roll)").all() as { name: string }[]).map((c) => c.name);
+    if (!rollColumns.includes("invited_on")) this.#db.exec("ALTER TABLE roll ADD COLUMN invited_on TEXT");
     if (!columns.includes("encrypted")) this.#db.exec("ALTER TABLE polls ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0");
     if (!columns.includes("public_key")) this.#db.exec("ALTER TABLE polls ADD COLUMN public_key TEXT");
     if (!columns.includes("counted")) this.#db.exec("ALTER TABLE polls ADD COLUMN counted INTEGER NOT NULL DEFAULT 1");
@@ -559,6 +563,7 @@ export class Service {
       late: r["late"] === 1,
       addedAt: String(r["added_at"]),
       votedOn: r["voted_on"] === null ? null : String(r["voted_on"]),
+      invitedOn: r["invited_on"] === null ? null : String(r["invited_on"]),
     }));
   }
 
@@ -566,8 +571,31 @@ export class Service {
   voterTokens(session: Session, pollId: string): ReadonlyMap<number, string> {
     if (!this.pollFor(session, pollId)) return new Map();
     const map = new Map<number, string>();
-    for (const r of this.#all("SELECT id, fingerprint FROM roll WHERE poll_id = ?", pollId)) map.set(Number(r["id"]), this.#token(pollId, String(r["fingerprint"])));
+    for (const r of this.#all("SELECT id, fingerprint FROM roll WHERE poll_id = ? ORDER BY id", pollId)) map.set(Number(r["id"]), this.#token(pollId, String(r["fingerprint"])));
     return map;
+  }
+
+  /**
+   * The entries a poll's links can be sent to by email: those that have not voted, and (unless `all`) have not been
+   * sent a link yet, or only the entry named. Each comes with its personal token.
+   */
+  invitees(session: Session, pollId: string, which: "new" | "all" | number): { id: number; address: string; token: string }[] {
+    const poll = this.pollFor(session, pollId);
+    if (!poll || poll.status !== "open") return [];
+    return this.#all("SELECT id, address, fingerprint, status, invited_on FROM roll WHERE poll_id = ? ORDER BY id", pollId)
+      .filter((r) => String(r["status"]) !== "voted")
+      .filter((r) => (typeof which === "number" ? Number(r["id"]) === which : which === "all" ? true : r["invited_on"] === null))
+      .map((r) => ({ id: Number(r["id"]), address: String(r["address"]), token: this.#token(pollId, String(r["fingerprint"])) }));
+  }
+
+  /** Records that links were sent: the day on each entry, and one line in the history (a count, no addresses). */
+  markInvited(session: Session, pollId: string, ids: readonly number[]): void {
+    if (ids.length === 0 || !this.pollFor(session, pollId)) return;
+    const day = this.#iso().slice(0, 10);
+    this.#transaction(() => {
+      for (const id of ids) this.#run("UPDATE roll SET invited_on = ? WHERE id = ? AND poll_id = ?", day, id, pollId);
+      this.#log(pollId, session, "links_sent", String(ids.length));
+    });
   }
 
   // ---- Opening and closing ----

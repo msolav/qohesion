@@ -75,6 +75,10 @@ export interface ConsoleMessages {
     readonly votedTitle: string; readonly votedText: string; readonly closedTitle: string; readonly closedText: string; readonly notOpenTitle: string; readonly notOpenText: string;
     readonly unknownTitle: string; readonly unknownText: string; readonly seeResults: string; readonly publicResults: string;
   };
+  readonly mail: {
+    readonly title: string; readonly text: string; readonly notConfigured: string; readonly attest: string; readonly sendNew: string; readonly sendAll: string; readonly sendOne: string;
+    readonly report: string; readonly reportFailed: string; readonly sentOn: string; readonly notYet: string; readonly onlyOpen: string; readonly nothingToSend: string;
+  };
   readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
   readonly seal: {
     readonly title: string; readonly help: string; readonly sealed: { readonly title: string; readonly text: string }; readonly none: { readonly title: string; readonly text: string }; readonly liveNote: string;
@@ -265,7 +269,7 @@ const en: ConsoleMessages = {
   history: {
     title: "History",
     empty: "Nothing yet.",
-    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", opened: "Poll opened (roll count and code)", closed: "Poll closed", counted: "Sealed ballots counted" },
+    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", links_sent: "Links sent by email", opened: "Poll opened (roll count and code)", closed: "Poll closed", counted: "Sealed ballots counted" },
   },
   space: {
     title: "Organization",
@@ -322,6 +326,21 @@ const en: ConsoleMessages = {
     unknownText: "Check the link in the message you received, or ask an administrator for a new one.",
     seeResults: "Results",
     publicResults: "Results of this poll",
+  },
+  mail: {
+    title: "Send the links by email",
+    text: "Each member who has not voted receives their own link by email. The message says whether ballots are encrypted and who sees the results. Up to 100 messages are sent each time.",
+    notConfigured: "Email is not set up on this server, so links are copied by hand. An operator sets it up with the QOHESION_BREVO_API_KEY variable.",
+    attest: "I confirm that I have permission to contact these people about this poll.",
+    sendNew: "Send to members not yet sent a link ({n})",
+    sendAll: "Send again to everyone who has not voted ({n})",
+    sendOne: "Send by email",
+    report: "{n} sent.",
+    reportFailed: "{n} not sent. First problem:",
+    sentOn: "Link sent on {day}",
+    notYet: "No link sent yet",
+    onlyOpen: "Links can be sent once the poll is open.",
+    nothingToSend: "Nobody to send to: every member has voted or has already been sent a link.",
   },
   gate: { title: "Private test", lede: "This test is shared with chosen people. Enter the password to continue.", label: "Password", submit: "Continue", invalid: "This password is not correct." },
   seal: {
@@ -390,6 +409,8 @@ const en: ConsoleMessages = {
     required: "Choose one option.",
     unknown_option: "This option does not exist. Choose one from the list.",
     invalid_type: "The answer is not valid.",
+    attestation_required: "Confirm that you have permission to contact these people.",
+    mail_not_configured: "Email is not set up on this server.",
     encryption_needs_close: "Live results need ballots that are not encrypted. Choose one or the other.",
     wrong_counting_key: "This counting key does not open the ballots of this poll. Check it and try again.",
   },
@@ -573,7 +594,7 @@ const fr: ConsoleMessages = {
   history: {
     title: "Historique",
     empty: "Rien pour l’instant.",
-    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé", counted: "Bulletins chiffrés dépouillés" },
+    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", links_sent: "Liens envoyés par courriel", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé", counted: "Bulletins chiffrés dépouillés" },
   },
   space: {
     title: "Organisation",
@@ -630,6 +651,21 @@ const fr: ConsoleMessages = {
     unknownText: "Vérifier le lien dans le message reçu, ou demander un nouveau lien à l’administration.",
     seeResults: "Résultats",
     publicResults: "Résultats de ce scrutin",
+  },
+  mail: {
+    title: "Envoyer les liens par courriel",
+    text: "Chaque membre qui n’a pas voté reçoit son propre lien par courriel. Le message indique si les bulletins sont chiffrés et qui voit les résultats. Jusqu’à 100 messages sont envoyés à chaque fois.",
+    notConfigured: "Le courriel n’est pas configuré sur ce serveur : les liens se copient à la main. L’exploitant le configure avec la variable QOHESION_BREVO_API_KEY.",
+    attest: "Je confirme avoir la permission de joindre ces personnes au sujet de ce scrutin.",
+    sendNew: "Envoyer aux membres qui n’ont pas encore reçu de lien ({n})",
+    sendAll: "Renvoyer à toutes les personnes qui n’ont pas voté ({n})",
+    sendOne: "Envoyer par courriel",
+    report: "{n} envoyé(s).",
+    reportFailed: "{n} non envoyé(s). Premier problème :",
+    sentOn: "Lien envoyé le {day}",
+    notYet: "Aucun lien envoyé",
+    onlyOpen: "Les liens peuvent être envoyés une fois le scrutin ouvert.",
+    nothingToSend: "Personne à qui envoyer : tous les membres ont voté ou ont déjà reçu un lien.",
   },
   gate: { title: "Test privé", lede: "Ce test est partagé avec des personnes choisies. Saisir le mot de passe pour continuer.", label: "Mot de passe", submit: "Continuer", invalid: "Ce mot de passe n’est pas correct." },
   seal: {
@@ -698,6 +734,8 @@ const fr: ConsoleMessages = {
     required: "Choisir une option.",
     unknown_option: "Cette option n’existe pas. En choisir une dans la liste.",
     invalid_type: "La réponse n’est pas valide.",
+    attestation_required: "Confirmer que vous avez la permission de joindre ces personnes.",
+    mail_not_configured: "Le courriel n’est pas configuré sur ce serveur.",
     encryption_needs_close: "Les résultats en direct exigent des bulletins non chiffrés. Choisir l’un ou l’autre.",
     wrong_counting_key: "Cette clé de dépouillement n’ouvre pas les bulletins de ce scrutin. La vérifier et réessayer.",
   },

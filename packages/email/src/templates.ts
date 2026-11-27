@@ -170,6 +170,59 @@ export function renderVerification(input: VerificationInput): Rendered {
   return assemble("en", `Verification of an email address: ${poll}`, blocks);
 }
 
+// --- Invitation to vote -----------------------------------------------------------------------------------------------
+
+export interface InvitationInput {
+  readonly locale: EmailLocale;
+  readonly organization: string;
+  readonly poll: string;
+  /** The member's personal voting link. */
+  readonly link: string;
+  /** When voting ends, or null when an administrator closes the poll. */
+  readonly closesAt: Date | string | null;
+  readonly timeZone: string;
+  /** One sentence on whether ballots are encrypted, and one on who sees the results. Written by the application, in the locale. */
+  readonly ballotStatement: string;
+  readonly resultsStatement: string;
+}
+
+export function renderInvitation(input: InvitationInput): Rendered {
+  const org = cleanLabel(input.organization, 80);
+  const poll = cleanLabel(input.poll, 100);
+  const link = assertLink("link", input.link);
+  const ballot = cleanLabel(input.ballotStatement, 400);
+  const results = cleanLabel(input.resultsStatement, 400);
+  const until = input.closesAt === null ? null : formatMoment(input.closesAt, input.timeZone);
+
+  if (input.locale === "fr") {
+    const blocks: Block[] = [
+      { h: `Scrutin${NBSP}: ${poll}` },
+      { p: `«${NBSP}${org}${NBSP}» vous donne accès à ce scrutin. Le lien ci-dessous est personnel : il sert à voter une seule fois et ne doit pas être transmis.` },
+      { link: { label: `Lien de vote${until ? ` (le scrutin ferme le ${until})` : ""}${NBSP}:`, url: link } },
+      { p: `Bulletin${NBSP}: ${ballot}` },
+      { p: `Résultats${NBSP}: ${results}` },
+      { note: "Ce message automatique est envoyé par le service Qohesion au nom de l’organisateur du scrutin. Les réponses ne sont pas lues. Si ce message ne vous concerne pas, aucune action n’est nécessaire." },
+    ];
+    return assemble("fr", `Scrutin${NBSP}: ${poll}`, blocks);
+  }
+
+  const blocks: Block[] = [
+    { h: `Poll: ${poll}` },
+    { p: `"${org}" gives you access to this poll. The link below is personal: it is for voting once and should not be shared.` },
+    { link: { label: `Voting link${until ? ` (the poll closes on ${until})` : ""}:`, url: link } },
+    { p: `Ballot: ${ballot}` },
+    { p: `Results: ${results}` },
+    { note: "This automated message is sent by the Qohesion service on behalf of the organizer of the poll. Replies are not read. If this message is not for you, no action is needed." },
+  ];
+  return assemble("en", `Poll: ${poll}`, blocks);
+}
+
+/** An invitation to vote, with the member's personal link, for the voting lane. */
+export function invitationMessage(input: InvitationInput, envelope: MessageEnvelope): EmailMessage {
+  const r = renderInvitation(input);
+  return { lane: "voting", ...envelope, subject: r.subject, text: r.text, html: r.html, tags: ["invitation"] };
+}
+
 // --- Administrator sign-in ------------------------------------------------------------------------------------------
 
 export interface SignInInput {

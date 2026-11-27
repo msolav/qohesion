@@ -10,6 +10,10 @@
   const report = $derived(form && "report" in form ? form.report : null);
   const failed = $derived(form && "error" in form ? form : null);
   const allLinks = $derived(data.entries.map((e) => `${e.address}\t${e.link}`).join("\n"));
+  const mailReport = $derived(form && "mailReport" in form ? form.mailReport : null);
+  const mailError = $derived(form && "mailError" in form ? form.mailError : null);
+  const toSendNew = $derived(data.entries.filter((e) => e.status !== "voted" && !e.invitedOn).length);
+  const toSendAll = $derived(data.entries.filter((e) => e.status !== "voted").length);
   const reasons = $derived({ invalid: m.roll.reasonInvalid, disposable: m.roll.reasonDisposable });
 </script>
 
@@ -39,6 +43,35 @@
   </section>
 {/if}
 
+{#if poll.status === "open" || poll.status === "draft"}
+  <section class="cx-section" aria-labelledby="mail-h">
+    <h2 id="mail-h">{m.mail.title}</h2>
+    {#if poll.status === "draft"}
+      <p class="cx-help">{m.mail.onlyOpen}</p>
+    {:else if !data.mailConfigured}
+      <p class="cx-notice warn gap">{m.mail.notConfigured}</p>
+    {:else}
+      <p class="cx-help">{m.mail.text}</p>
+      <form id="mail" class="cx-form gap" method="POST" action="?/send" use:enhance>
+        <label class="cx-choice check"><input type="checkbox" name="permission" value="yes" /><span><b>{m.mail.attest}</b></span></label>
+        {#if mailError}<p class="cx-error" role="alert">{errorText(m, mailError)}</p>{/if}
+        <div class="cx-actions">
+          <button class="cx-btn" type="submit" name="which" value="new" disabled={toSendNew === 0}>{fill(m.mail.sendNew, { n: toSendNew })}</button>
+          <button class="cx-btn ghost" type="submit" name="which" value="all" disabled={toSendAll === 0}>{fill(m.mail.sendAll, { n: toSendAll })}</button>
+        </div>
+      </form>
+      {#if mailReport}
+        <div class="cx-notice gap" class:error={mailReport.failed > 0} role="status">
+          <div>
+            {#if mailReport.nobody}<p>{m.mail.nothingToSend}</p>{:else}<p>{fill(m.mail.report, { n: mailReport.sent })}</p>{/if}
+            {#if mailReport.failed > 0}<p>{fill(m.mail.reportFailed, { n: mailReport.failed })} <code>{mailReport.problem}</code></p>{/if}
+          </div>
+        </div>
+      {/if}
+    {/if}
+  </section>
+{/if}
+
 <section class="cx-section" aria-labelledby="roll-h">
   <div class="cx-title">
     <h2 id="roll-h">{m.roll.title} · {data.entries.length}</h2>
@@ -57,7 +90,7 @@
         <tbody>
           {#each data.entries as entry (entry.id)}
             <tr>
-              <td class="addr">{entry.address}</td>
+              <td class="addr">{entry.address}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.invitedOn }) : m.mail.notYet}</span>{/if}</td>
               <td>
                 <span class="cx-chip {entry.status === 'voted' ? 'open' : ''}">{m.member[entry.status]}</span>
                 {#if entry.late}<span class="cx-chip late" title={m.roll.lateNote}>{m.roll.late}</span>{/if}
@@ -65,6 +98,7 @@
               <td class:none={!entry.votedOn} data-label={m.roll.day}>{entry.votedOn ?? "–"}</td>
               <td>
                 <div class="cx-actions">
+                  {#if data.canSend && entry.status !== "voted"}<button class="cx-btn ghost small" type="submit" form="mail" name="which" value={entry.id}>{m.mail.sendOne}</button>{/if}
                   {#if poll.status !== "closed" && entry.status !== "voted"}<CopyButton text={entry.link} label={m.roll.copyLink} done={m.common.copied} small />{/if}
                   {#if poll.status === "draft"}
                     <form method="POST" action="?/remove" use:enhance>

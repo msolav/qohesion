@@ -22,7 +22,7 @@ QOHESION_EDITION=test QOHESION_DATA_DIR=./data ORIGIN=http://localhost:3000 npm 
 
 Open `http://localhost:3000/start`, create an organization and keep the key it shows once. The database (`qohesion.sqlite`) and the server secret (`secret`) are written to `QOHESION_DATA_DIR`. Deleting that folder erases everything; losing only the secret breaks the personal voting links. In a container: `docker compose -f compose.yml -f compose.test-edition.yml up -d`.
 
-`scripts/smoke-test-edition.mjs <address>` walks the whole flow against a running server.
+`scripts/start-test-edition.sh [port]` starts the build and reads private settings from files in your home folder (`~/.qohesion-brevo` for the email key, `~/.qohesion-test-gate` for a password in front of the whole test), so no key is typed in a chat or kept in the repository. With an email key set (`QOHESION_BREVO_API_KEY`), an administrator can send each member their personal link from the roll page, after confirming permission to contact them. `scripts/smoke-test-edition.mjs <address>` walks the whole flow against a running server.
 
 `ORIGIN` must be set to the public address when the build runs behind a proxy, so that form posts are accepted.
 

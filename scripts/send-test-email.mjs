@@ -11,9 +11,18 @@
 // commas or lines, kept outside the repository) and TEST_CODE=the code the service shows. One message is sent to each
 // address, separately, so recipients do not see one another, and the code is added to the body.
 
-const key = process.env.BREVO_API_KEY;
+// The key comes from the environment, or from the private file ~/.qohesion-brevo (one line: BREVO_API_KEY='...').
+function keyFromFile() {
+  try {
+    const text = readFileSync(`${process.env.HOME}/.qohesion-brevo`, "utf8");
+    return /^BREVO_API_KEY=['"]?([^'"\s]+)['"]?\s*$/m.exec(text)?.[1];
+  } catch {
+    return undefined;
+  }
+}
 import { readFileSync } from "node:fs";
 
+const key = process.env.BREVO_API_KEY ?? keyFromFile();
 const fromFile = process.env.TEST_TO_FILE ? readFileSync(process.env.TEST_TO_FILE, "utf8") : "";
 const recipients = [...new Set(`${process.env.TEST_TO ?? ""},${fromFile}`.split(/[\s,;]+/).filter((a) => a.includes("@")))];
 const to = recipients[0];

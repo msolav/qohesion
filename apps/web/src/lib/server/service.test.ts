@@ -221,6 +221,33 @@ describe("results visibility", () => {
   });
 });
 
+describe("sending links", () => {
+  it("offers the members who have not voted and not been sent a link, and remembers who was sent one", () => {
+    const { poll, tokens } = openedPoll();
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    const first = service.invitees(owner, poll.id, "new");
+    expect(first.map((e) => e.address)).toEqual(["b@example.com", "c@example.com"]);
+    expect(first[0]?.token).toBe(tokens[1]);
+    service.markInvited(owner, poll.id, [first[0]?.id ?? 0]);
+    expect(service.invitees(owner, poll.id, "new").map((e) => e.address)).toEqual(["c@example.com"]);
+    expect(service.invitees(owner, poll.id, "all").map((e) => e.address)).toEqual(["b@example.com", "c@example.com"]);
+    expect(service.invitees(owner, poll.id, first[0]?.id ?? 0).map((e) => e.address)).toEqual(["b@example.com"]);
+    expect(service.roll(owner, poll.id).find((e) => e.address === "b@example.com")?.invitedOn).toBe("2026-12-01");
+    expect(service.history(owner, poll.id).some((h) => h.action === "links_sent" && h.detail === "1")).toBe(true);
+  });
+
+  it("offers nobody before the poll is open or after it closes, or to another organization", () => {
+    const draft = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, draft.id, "a@example.com"));
+    expect(service.invitees(owner, draft.id, "all")).toEqual([]);
+    const { poll } = openedPoll();
+    const other = service.session(service.signIn(must(service.createSpace({ name: "Other", locale: "en" })).key) ?? "") as Session;
+    expect(service.invitees(other, poll.id, "all")).toEqual([]);
+    must(service.closePoll(owner, poll.id));
+    expect(service.invitees(owner, poll.id, "all")).toEqual([]);
+  });
+});
+
 describe("sealed ballots", () => {
   function sealedPoll(addresses = "a@example.com\nb@example.com\nc@example.com") {
     const poll = must(service.createPoll(owner, input({ encrypted: true })));

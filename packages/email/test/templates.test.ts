@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  assertLink, buildHeaders, cleanLabel, escapeHtml, formatMoment, renderSignIn, renderVerification,
+  assertLink, buildHeaders, cleanLabel, escapeHtml, formatMoment, renderInvitation, invitationMessage, renderSignIn, renderVerification,
   signInMessage, validateMessage, verificationMessage, type EmailLocale, type Rendered, type VerificationInput,
 } from "../src/index.js";
 
@@ -246,5 +246,49 @@ describe("ready-to-send messages", () => {
     expect(m.lane).toBe("service");
     expect(validateMessage(m)).toEqual([]);
     expect(m.tags).toEqual(["sign-in"]);
+  });
+});
+
+describe("invitation email", () => {
+  const base = {
+    organization: "Maple Court",
+    poll: "Budget 2027",
+    link: "https://vote.example.org/v/ABCDEF",
+    closesAt: "2026-12-12T20:00:00Z",
+    timeZone: "America/Toronto",
+    ballotStatement: "It is encrypted as soon as it is received.",
+    resultsStatement: "Results are shown to the members when the poll closes.",
+  } as const;
+
+  it("states the link, the closing time, how the ballot is protected and who sees the results, in both languages", () => {
+    for (const locale of ["en", "fr"] as const) {
+      const r = renderInvitation({ ...base, locale });
+      expect(r.text).toContain("https://vote.example.org/v/ABCDEF");
+      expect(r.text).toContain("Budget 2027");
+      expect(r.text).toContain(base.ballotStatement);
+      expect(r.text).toContain(base.resultsStatement);
+      expect(r.html).toContain('href="https://vote.example.org/v/ABCDEF"');
+    }
+    expect(renderInvitation({ ...base, locale: "en" }).text).toContain("closes on");
+    expect(renderInvitation({ ...base, locale: "fr" }).text).toContain("ferme le");
+  });
+
+  it("leaves out the closing time when an administrator closes the poll, and has no image", () => {
+    const r = renderInvitation({ ...base, locale: "en", closesAt: null });
+    expect(r.text).not.toContain("closes on");
+    expect(r.html).not.toContain("<img");
+  });
+
+  it("neutralises markup and header injection in names, and refuses a link that is not https", () => {
+    const r = renderInvitation({ ...base, locale: "en", organization: "A<script>x</script>", poll: "Vote\r\nBcc: x@y.zz" });
+    expect(r.html).not.toContain("<script>");
+    expect(r.subject).not.toMatch(/[\r\n]/);
+    expect(() => renderInvitation({ ...base, locale: "en", link: "javascript:alert(1)" })).toThrow();
+  });
+
+  it("builds a voting-lane message", () => {
+    const m = invitationMessage({ ...base, locale: "en" }, { from: { email: "noreply@qohesion.app" }, to: { email: "a@example.com" } });
+    expect(m.lane).toBe("voting");
+    expect(m.tags).toEqual(["invitation"]);
   });
 });

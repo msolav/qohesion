@@ -1,13 +1,16 @@
 import { fail } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { service } from "#lib/server/runtime.js";
+import { consoleMessages } from "#lib/i18n/console.js";
+import { mailConfigured, sendInvitations } from "#lib/server/mail.js";
 import { needSession } from "#lib/server/web.js";
 
 export const load: PageServerLoad = ({ locals, params, url }) => {
+  const open = service().pollFor(needSession(locals), params.id)?.status === "open";
   const session = needSession(locals);
   const tokens = service().voterTokens(session, params.id);
   const entries = service().roll(session, params.id).map((e) => ({ ...e, link: `${url.origin}/v/${tokens.get(e.id) ?? ""}` }));
-  return { entries };
+  return { entries, mailConfigured: mailConfigured(), canSend: open && mailConfigured() };
 };
 
 export const actions: Actions = {
@@ -18,6 +21,34 @@ export const actions: Actions = {
     const result = service().addToRoll(session, params.id, text);
     if (!result.ok) return fail(400, { error: result.error, text });
     return { report: result.value };
+  },
+  send: async ({ request, locals, params, url }) => {
+    const session = needSession(locals);
+    const data = await request.formData().catch(() => undefined);
+    if (!mailConfigured()) return fail(400, { mailError: "mail_not_configured" });
+    if (data?.get("permission") !== "yes") return fail(400, { mailError: "attestation_required" });
+    const poll = service().pollFor(session, params.id);
+    if (!poll || poll.status !== "open") return fail(400, { mailError: "not_open" });
+    const raw = String(data?.get("which") ?? "new");
+    const which = raw === "all" || raw === "new" ? raw : Number.isInteger(Number(raw)) ? Number(raw) : "new";
+    const targets = service().invitees(session, params.id, which).slice(0, 100);
+    const space = service().getSpace(poll.spaceId);
+    const locale = space?.locale ?? "fr";
+    const m = consoleMessages[locale];
+    const report = await sendInvitations(
+      targets.map((t) => ({ id: t.id, address: t.address, link: `${url.origin}/v/${t.token}` })),
+      {
+        locale,
+        organization: space?.name ?? "Qohesion",
+        poll: poll.title,
+        closesAt: poll.closesAt,
+        timeZone: "America/Toronto",
+        ballotStatement: poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain,
+        resultsStatement: m.resultsStatement[poll.timing][poll.audience],
+      },
+    );
+    service().markInvited(session, params.id, report.sent);
+    return { mailReport: { sent: report.sent.length, failed: report.failed, problem: report.firstProblem, nobody: targets.length === 0 } };
   },
   remove: async ({ request, locals, params }) => {
     const session = needSession(locals);

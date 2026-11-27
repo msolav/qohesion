@@ -5,6 +5,7 @@
 FROM node:22-alpine AS build
 WORKDIR /repo
 COPY VERSION CHANGELOG.md ./
+COPY packages/email ./packages/email
 COPY packages/engine ./packages/engine
 COPY packages/ledger ./packages/ledger
 COPY packages/roll ./packages/roll
