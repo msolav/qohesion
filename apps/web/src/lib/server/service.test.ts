@@ -1334,3 +1334,60 @@ describe("receipt by email", () => {
     expect(must(service.receiptMailTarget(tokens[0] ?? "", code)).publishesBallots).toBe(true);
   });
 });
+
+describe("roll that does not show who has voted", () => {
+  const hiddenPoll = () => openedPoll({ anonymity: "secret", showVoted: false });
+
+  it("keeps the default of showing who has voted, and always shows it for a named poll", () => {
+    expect(must(service.createPoll(owner, input({ anonymity: "secret" }))).showVoted).toBe(true);
+    expect(must(service.createPoll(owner, input({ anonymity: "secret", showVoted: false }))).showVoted).toBe(false);
+    expect(must(service.createPoll(owner, input({ anonymity: "named", showVoted: false, disclosure: { name: "full", email: "full" } }))).showVoted).toBe(true);
+  });
+
+  it("reads every entry the same and gives no day of voting, while the number of ballots is still counted", () => {
+    const { poll, tokens } = hiddenPoll();
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    const roll = service.roll(owner, poll.id);
+    expect(roll.every((e) => e.status === "hidden" && e.votedOn === null)).toBe(true);
+    expect(service.resultsFor(poll.id, "administrator")?.turnout).toBe(1);
+    // The link is still used up: one ballot for each link.
+    expect(service.castBallot(tokens[0] ?? "", "against")).toEqual({ ok: false, error: "already_voted" });
+  });
+
+  it("shows who has voted when the poll says so", () => {
+    const { poll, tokens } = openedPoll({ anonymity: "secret", showVoted: true });
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    const roll = service.roll(owner, poll.id);
+    expect(roll.filter((e) => e.status === "voted")).toHaveLength(1);
+    expect(roll.find((e) => e.status === "voted")?.votedOn).toBe("2026-12-01");
+  });
+
+  it("offers no reminder, since those who have not voted cannot be told apart", () => {
+    const { poll } = hiddenPoll();
+    expect(service.invitees(owner, poll.id, "new")).toHaveLength(3);
+    expect(service.invitees(owner, poll.id, "reminder")).toEqual([]);
+    expect(service.invitees(owner, poll.id, 1)).toEqual([]);
+    expect(service.createPoll(owner, input({ anonymity: "secret", showVoted: false, autoReminder: "daily", reminderPermission: true }))).toEqual({ ok: false, error: "reminder_needs_voters_known" });
+  });
+
+  it("changes the digest only when the roll hides who has voted", () => {
+    const shown = must(service.createPoll(owner, input({ anonymity: "secret" })));
+    const hidden = must(service.createPoll(owner, input({ anonymity: "secret", showVoted: false })));
+    const again = must(service.createPoll(owner, input({ anonymity: "secret", showVoted: true })));
+    const digest = (id: string) => service.pollApprovalState(owner, id)?.digest;
+    expect(digest(again.id)).toBe(digest(shown.id));
+    expect(digest(hidden.id)).not.toBe(digest(shown.id));
+  });
+});
+
+describe("results for the owner alone", () => {
+  it("shows the totals of a closed poll to the owner and not to an administrator-only key, participants or anyone", () => {
+    const { poll, tokens } = openedPoll({ audience: "owner", timing: "close", encrypted: false });
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    must(service.closePoll(owner, poll.id));
+    expect(service.resultsFor(poll.id, "owner")?.counts).toMatchObject({ for: 1 });
+    expect(service.resultsFor(poll.id, "administrator")?.counts ?? null).toBeNull();
+    expect(service.resultsFor(poll.id, "voter")?.counts ?? null).toBeNull();
+    expect(service.resultsFor(poll.id, "anyone")?.counts ?? null).toBeNull();
+  });
+});

@@ -42,6 +42,8 @@ export interface PropertyInput {
   readonly lockCancel: boolean;
   /** Whether a participant can ask for the receipt code by email. */
   readonly emailReceipt: boolean;
+  /** Whether the roll shows who has voted. Always true for a named poll. */
+  readonly showVoted: boolean;
   readonly disclosure: Disclosure | null;
   readonly rules: CloseRules;
   /** The closing moment, already written for the reader, or null when there is none. */
@@ -87,7 +89,8 @@ export function propertiesOf(locale: Locale, p: PropertyInput): Property[] {
   const rollBadge = roll === undefined || roll.count === null ? g.props[p.lateRoll ? "rollLate" : "rollFixed"] : roll.count === 1 ? m.voter.rollOne : fill(m.voter.rollValue, { n: roll.count });
   add("roll", "users", p.lateRoll ? "open" : "neutral", [rollBadge], [roll?.code ? fill(g.props.texts.roll.note, { code: roll.code }) : "", p.lateRoll ? g.props.texts.roll.late : g.props.texts.roll.fixed], null);
 
-  add("ballot", named ? "users" : "shield", named ? "open" : "private", [named ? m.voter.namedValue : m.voter.ballotValue], [named ? fill(g.props.texts.named, { who: m.voter.namedWho[p.audience] }) : g.props.texts.secret], { page: "how", anchor: named ? "named" : "secret" });
+  const hiddenVoters = !named && !p.showVoted;
+  add("ballot", named ? "users" : hiddenVoters ? "mask" : "ballot", named ? "open" : "private", [named ? m.voter.namedValue : m.form.anonymityNames.title[hiddenVoters ? "anonymous" : "voters"]], [named ? fill(g.props.texts.named, { who: m.voter.namedWho[p.audience] }) : hiddenVoters ? g.props.texts.secret : g.props.texts.secretVoters], { page: "how", anchor: named ? "named" : "secret" });
 
   if (named && p.disclosure) {
     const d = p.disclosure;
@@ -97,7 +100,7 @@ export function propertiesOf(locale: Locale, p: PropertyInput): Property[] {
     add("list", "list", "open", [badge], [showsNobody(d) ? g.props.listNothing : fill(g.props.listText, { what })], { page: "how", anchor: "list" });
   }
 
-  add("seal", p.encrypted ? "lock" : "eye", p.encrypted ? "private" : "open", [p.encrypted ? m.seal.factSealed : m.seal.factPlain], [p.encrypted ? g.props.texts.seal.sealed : named ? g.props.texts.seal.plainNamed : g.props.texts.seal.plainSecret], { page: "how", anchor: p.encrypted ? "sealed" : "secret" });
+  add("seal", p.encrypted ? "lock" : "unlock", p.encrypted ? "private" : "open", [p.encrypted ? m.seal.factSealed : m.seal.factPlain], [p.encrypted ? g.props.texts.seal.sealed : named ? g.props.texts.seal.plainNamed : g.props.texts.seal.plainSecret], { page: "how", anchor: p.encrypted ? "sealed" : "secret" });
 
   add("change", "pulse", p.allowChange ? "neutral" : "strict", [p.allowChange ? g.props.changeAllowed : g.props.changeFinal], [p.allowChange ? g.props.texts.change.allowed : g.props.texts.change.final], null);
 

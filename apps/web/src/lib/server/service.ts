@@ -203,6 +203,8 @@ export interface Poll {
   readonly disclosure: Disclosure | null;
   /** Participants may ask for their receipt code by email, once, from the confirmation page. Default: on for a named poll, off for a secret one. */
   readonly emailReceipt: boolean;
+  /** Whether the roll shows which participants have voted (never what they chose). Always true for a named poll. */
+  readonly showVoted: boolean;
   /** How the poll was approved when it was published. Null for a poll published before approvals existed. */
   readonly approval: PollApproval | null;
   /** Set when the poll was cancelled: when, by which key, and how many ballots had been cast. */
@@ -223,7 +225,8 @@ export interface RollEntry {
   readonly address: string;
   /** The name given with the address, or null. Shown only in the list of signatories of a named poll. */
   readonly name: string | null;
-  readonly status: MemberStatus;
+  /** `hidden` where the poll does not show who has voted: every entry reads the same. */
+  readonly status: MemberStatus | "hidden";
   readonly late: boolean;
   readonly addedAt: string;
   readonly votedOn: string | null;
@@ -274,6 +277,8 @@ export interface PollInput {
   readonly disclosure?: Disclosure;
   /** Whether a participant can ask for the receipt by email. Absent: on for a named poll, off for a secret one. */
   readonly emailReceipt?: boolean;
+  /** Whether the roll shows who has voted. Absent: yes. A named poll always does. */
+  readonly showVoted?: boolean;
   /** The administrator confirmed permission to contact the participants, which automatic reminders need. */
   readonly reminderPermission: boolean;
   /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
@@ -414,6 +419,7 @@ export class Service {
     addIfMissing("roll", rollColumns, "name", "TEXT");
     addIfMissing("polls", columns, "disclosure", "TEXT");
     addIfMissing("polls", columns, "receipt_email", "INTEGER");
+    addIfMissing("polls", columns, "show_voted", "INTEGER");
     addIfMissing("roll", rollColumns, "receipt_mails", "INTEGER NOT NULL DEFAULT 0");
     // Links sent before the exact moment was kept count as sent, at the latest by the end of that day or now, so that a
     // reminder is not offered too early. Their count is one.
@@ -615,6 +621,8 @@ export class Service {
       ...(poll.disclosure ? { disclosure: poll.disclosure } : {}),
       // Only when it differs from what the anonymity gives by default, so that earlier polls keep their digest.
       ...(poll.emailReceipt !== (poll.anonymity === "named") ? { emailReceipt: poll.emailReceipt } : {}),
+      // Only when the roll hides who has voted, so that earlier polls keep their digest.
+      ...(poll.showVoted ? {} : { showVoted: false }),
     };
     const rollRows = this.#all("SELECT fingerprint, name FROM roll WHERE poll_id = ? ORDER BY fingerprint", poll.id);
     // Names are shown in the list of signatories, so a change of name is a change of what was approved. Without any name the digest is that of the fingerprints alone.
@@ -953,6 +961,7 @@ export class Service {
       lateRoll: r["late_roll"] !== 0,
       disclosure: typeof r["disclosure"] === "string" ? readDisclosure(r["disclosure"]) : null,
       emailReceipt: r["receipt_email"] === 1 ? true : r["receipt_email"] === 0 ? false : r["anonymity"] === "named",
+      showVoted: r["anonymity"] === "named" || r["show_voted"] !== 0,
       approval: parseApproval(r["approval_json"]),
       cancelled: r["cancelled_by"] === null || r["cancelled_by"] === undefined ? null : { by: String(r["cancelled_by"]), ballots: Number(r["cancelled_ballots"] ?? 0) },
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
@@ -1010,6 +1019,7 @@ export class Service {
     if (!isAutoReminder(input.autoReminder)) return "invalid_results";
     if (input.disclosure && (!isNameMode(input.disclosure.name) || !isEmailMode(input.disclosure.email))) return "invalid_results";
     if (input.autoReminder !== "none" && !input.reminderPermission) return "attestation_required";
+    if (input.autoReminder !== "none" && input.anonymity === "secret" && input.showVoted === false) return "reminder_needs_voters_known";
     if (!Number.isInteger(input.keyThreshold) || input.keyThreshold < 1 || input.keyThreshold > 20) return "invalid_threshold";
     if (input.keyThreshold > 1 && !input.encrypted) return "invalid_threshold";
     const languages = cleanLanguages(input.translations.languages);
@@ -1094,9 +1104,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, late_roll, disclosure, receipt_email, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), (input.emailReceipt ?? input.anonymity === "named") ? 1 : 0, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, late_roll, disclosure, receipt_email, show_voted, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), (input.emailReceipt ?? input.anonymity === "named") ? 1 : 0, input.anonymity === "named" || input.showVoted !== false ? 1 : 0, this.#iso(),
       );
       this.#writeQuestions(id, input);
       this.#log(id, session, "created", "");
@@ -1113,8 +1123,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ?, disclosure = ?, receipt_email = ? WHERE id = ?",
-      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), (input.emailReceipt ?? input.anonymity === "named") ? 1 : 0, pollId,
+      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ?, disclosure = ?, receipt_email = ?, show_voted = ? WHERE id = ?",
+      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, JSON.stringify(input.disclosure ?? DEFAULT_DISCLOSURE), (input.emailReceipt ?? input.anonymity === "named") ? 1 : 0, input.anonymity === "named" || input.showVoted !== false ? 1 : 0, pollId,
     );
     this.#writeQuestions(pollId, input);
     const next = this.getPoll(pollId);
@@ -1216,15 +1226,18 @@ export class Service {
   }
 
   roll(session: Session, pollId: string): RollEntry[] {
-    if (!this.pollFor(session, pollId)) return [];
+    const poll = this.pollFor(session, pollId);
+    if (!poll) return [];
+    const hidden = !poll.showVoted;
     return this.#all("SELECT * FROM roll WHERE poll_id = ? ORDER BY id", pollId).map((r) => ({
       id: Number(r["id"]),
       address: String(r["address"]),
       name: typeof r["name"] === "string" && r["name"] !== "" ? r["name"] : null,
-      status: String(r["status"]) as MemberStatus,
+      // Where the roll does not show who has voted, every entry reads the same, and the day of a vote is not given.
+      status: hidden ? "hidden" : (String(r["status"]) as MemberStatus),
       late: r["late"] === 1,
       addedAt: String(r["added_at"]),
-      votedOn: r["voted_on"] === null ? null : String(r["voted_on"]),
+      votedOn: hidden || r["voted_on"] === null ? null : String(r["voted_on"]),
       invitedOn: r["invited_on"] === null ? null : String(r["invited_on"]),
       invitedAt: r["invited_at"] === null || r["invited_at"] === undefined ? null : String(r["invited_at"]),
       firstInvitedOn: r["first_invited_on"] === null || r["first_invited_on"] === undefined ? null : String(r["first_invited_on"]),
@@ -1248,9 +1261,11 @@ export class Service {
   invitees(session: Session, pollId: string, which: "new" | "reminder" | number): { id: number; address: string; token: string }[] {
     const poll = this.pollFor(session, pollId);
     if (!poll || poll.status !== "open") return [];
+    // A reminder goes to those who have not voted. Where the roll does not show who has voted, nobody can be told apart: no reminder.
+    if (!poll.showVoted && which !== "new") return [];
     const now = this.#now();
     return this.#all("SELECT id, address, fingerprint, status, invited_at FROM roll WHERE poll_id = ? ORDER BY id", pollId)
-      .filter((r) => String(r["status"]) !== "voted")
+      .filter((r) => !poll.showVoted || String(r["status"]) !== "voted")
       .filter((r) => {
         const last = r["invited_at"] === null ? null : String(r["invited_at"]);
         if (!mayWrite(last, now)) return false;
@@ -1320,7 +1335,7 @@ export class Service {
     const due: { pollId: string; spaceId: string; targets: { id: number; address: string; token: string }[] }[] = [];
     for (const r of this.#all("SELECT id FROM polls WHERE status = 'open' AND auto_reminder != 'none'")) {
       const poll = this.getPoll(String(r["id"]));
-      if (!poll || poll.status !== "open" || poll.autoReminder === "none") continue;
+      if (!poll || poll.status !== "open" || poll.autoReminder === "none" || !poll.showVoted) continue;
       const tz = this.getSpace(poll.spaceId)?.timeZone ?? DEFAULT_TIME_ZONE;
       const last = this.#one("SELECT last_auto_reminder_on AS d FROM polls WHERE id = ?", poll.id)?.["d"];
       if (!reminderDue({ mode: poll.autoReminder, now, timeZone: tz, closesAt: poll.closesAt, lastOn: last === null || last === undefined ? null : String(last) })) continue;
@@ -1641,7 +1656,7 @@ export class Service {
           status = step.status;
         }
       }
-      this.#run("UPDATE roll SET status = ?, voted_on = ? WHERE id = ?", status, this.#iso().slice(0, 10), Number(row["id"]));
+      this.#run("UPDATE roll SET status = ?, voted_on = ? WHERE id = ?", status, poll.showVoted ? this.#iso().slice(0, 10) : null, Number(row["id"]));
 
       const seq = Number(this.#one("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?", poll.id)?.["n"] ?? 0);
       // A sealed ballot is encrypted before it is stored: the table keeps no readable choice until the count.
@@ -1755,7 +1770,7 @@ export class Service {
    */
   #answers(poll: Poll, viewer: Viewer): { who: string; choice: string; answers: Record<string, string> }[] | null {
     const setting = poll.disclosure;
-    if (setting && viewer !== "administrator" && showsNobody(setting)) return null;
+    if (setting && viewer !== "administrator" && viewer !== "owner" && showsNobody(setting)) return null;
     const rows = this.#all(
       "SELECT r.address AS address, r.name AS name, b.choice AS choice FROM ballots b JOIN roll r ON r.id = b.roll_id WHERE b.poll_id = ? AND b.superseded = 0 AND b.choice != '' ORDER BY r.id",
       poll.id,
@@ -1763,7 +1778,7 @@ export class Service {
     return rows.map((r) => {
       const address = String(r["address"]);
       const name = typeof r["name"] === "string" && r["name"] !== "" ? r["name"] : null;
-      const who = viewer === "administrator" ? signatoryLabel({ name, address }, { name: "full", email: "full" })
+      const who = viewer === "administrator" || viewer === "owner" ? signatoryLabel({ name, address }, { name: "full", email: "full" })
         : setting ? signatoryLabel({ name, address }, setting)
         : viewer === "anyone" ? maskAddress(address) : address;
       return { who, choice: String(r["choice"]), answers: this.#answersOf(poll, String(r["choice"])) };

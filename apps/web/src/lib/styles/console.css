@@ -122,7 +122,7 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 
 /* Choice cards (radio and checkbox) */
 .cx-choices{display:grid;gap:var(--space-3);grid-template-columns:minmax(0,1fr)}
-@media (min-width:44rem){.cx-choices.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cx-choices.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:44rem){.cx-choices.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cx-choices.cols-2,.cx-choices.cols-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .cx-choice{position:relative;display:block}
 .cx-choice input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
 .cx-choice>span{display:grid;gap:var(--space-1);height:100%;padding:var(--space-4);background:var(--deep);border:1.5px solid var(--rule);border-radius:var(--r);transition:border-color .15s ease-out,background-color .15s ease-out}

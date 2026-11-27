@@ -52,7 +52,8 @@ export interface GuideMessages {
       readonly roll: { readonly note: string; readonly fixed: string; readonly late: string };
       readonly named: string;
       readonly secret: string;
-      readonly results: Readonly<Record<"close" | "live", Readonly<Record<"administrators" | "voters" | "anyone", string>>>>;
+      readonly secretVoters: string;
+      readonly results: Readonly<Record<"close" | "live", Readonly<Record<"owner" | "administrators" | "voters" | "anyone", string>>>>;
     };
     readonly approvalBadge: string;
     readonly approvalNone: string;
@@ -147,14 +148,17 @@ const en: GuideMessages = {
         late: "Administrators can add participants while voting is open. Participants added after the opening are marked as late and are not covered by the code of the list.",
       },
       named: "Each answer is recorded with the address of the participant who gave it, and shown with that address to {who}.",
-      secret: "Each ballot is recorded without the name of the participant. The record holds no reference from a ballot to a participant, nor from a participant to a ballot.",
+      secret: "Each ballot is recorded without the name of the participant. The record holds no reference from a ballot to a participant, nor from a participant to a ballot. The roll does not show who has voted: only the number of ballots is known.",
+      secretVoters: "Each ballot is recorded without the name of the participant. The record holds no reference from a ballot to a participant. The roll shows who has voted, never what was chosen.",
       results: {
         close: {
+          owner: "The results are shown to the owner once the poll has closed.",
           administrators: "The results are shown to the administrators once the poll has closed.",
           voters: "The results are shown to the participants on the roll once the poll has closed.",
           anyone: "The results are public once the poll has closed.",
         },
         live: {
+          owner: "The results are shown to the owner as ballots arrive.",
           administrators: "The results are shown to the administrators as ballots arrive.",
           voters: "The totals are shown to the participants on the roll and change as ballots arrive.",
           anyone: "The results are public and update as ballots arrive.",
@@ -523,14 +527,17 @@ const fr: GuideMessages = {
         late: "L’administration peut ajouter des participants pendant le vote. Les participants ajoutés après l’ouverture sont marqués comme tardifs et ne sont pas couverts par le code de la liste.",
       },
       named: "Chaque réponse est enregistrée avec l’adresse de la personne participante qui l’a donnée, et affichée avec cette adresse {who}.",
-      secret: "Chaque bulletin est enregistré sans le nom de la personne participante. Le registre ne contient aucune référence d’un bulletin à un participant, ni d’un participant à un bulletin.",
+      secret: "Chaque bulletin est enregistré sans le nom de la personne participante. Le registre ne contient aucune référence d’un bulletin à un participant, ni d’un participant à un bulletin. La liste n’indique pas qui a voté: seul le nombre de bulletins est connu.",
+      secretVoters: "Chaque bulletin est enregistré sans le nom de la personne participante. Le registre ne contient aucune référence d’un bulletin à un participant. La liste indique qui a voté, jamais ce qui a été choisi.",
       results: {
         close: {
+          owner: "Les résultats sont présentés au titulaire du compte une fois le scrutin fermé.",
           administrators: "Les résultats sont présentés à l’administration une fois le scrutin fermé.",
           voters: "Les résultats sont présentés aux participants de la liste une fois le scrutin fermé.",
           anyone: "Les résultats sont publics une fois le scrutin fermé.",
         },
         live: {
+          owner: "Les résultats sont présentés au titulaire du compte à mesure que les bulletins arrivent.",
           administrators: "Les résultats sont présentés à l’administration à mesure que les bulletins arrivent.",
           voters: "Les totaux sont présentés aux participants de la liste et changent à mesure que les bulletins arrivent.",
           anyone: "Les résultats sont publics et se mettent à jour à mesure que les bulletins arrivent.",

@@ -40,6 +40,7 @@
     readonly publishCount?: boolean;
     readonly lockCancel?: boolean;
     readonly emailReceipt?: boolean;
+    readonly showVoted?: boolean;
     readonly disclosure?: Disclosure | null;
     /** How the poll was approved when published. Absent in the builder preview and for older polls. */
     readonly approval?: { readonly rule: "none" | "majority" | "all"; readonly approvals: number; readonly eligible: number; readonly at: string; readonly digest: string; readonly confirmed?: number | undefined } | null;
@@ -127,6 +128,7 @@
       publishCount: poll.publishCount ?? false,
       lockCancel: poll.lockCancel ?? false,
       emailReceipt: poll.emailReceipt ?? false,
+      showVoted: poll.showVoted ?? true,
       disclosure: poll.disclosure ?? null,
       rules: poll.rules,
       closes: poll.closesAt ? when(poll.closesAt) : null,

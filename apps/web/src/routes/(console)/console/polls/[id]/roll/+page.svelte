@@ -80,7 +80,7 @@
         {#if mailError}<p class="cx-error" role="alert">{errorText(m, mailError)}</p>{/if}
         <div class="cx-actions">
           <button class="cx-btn" type="submit" name="which" value="new" disabled={data.toSend.new === 0}>{fill(m.mail.sendNew, { n: data.toSend.new })}</button>
-          <button class="cx-btn ghost" type="submit" name="which" value="reminder" disabled={data.toSend.reminder === 0}>{fill(m.mail.sendAll, { n: data.toSend.reminder })}</button>
+          {#if poll.showVoted}<button class="cx-btn ghost" type="submit" name="which" value="reminder" disabled={data.toSend.reminder === 0}>{fill(m.mail.sendAll, { n: data.toSend.reminder })}</button>{/if}
         </div>
         {#if data.toSend.reminder === 0 && data.reminderAt}<p class="cx-help">{fill(m.mail.reminderWait, { date: formatMoment(data.reminderAt, data.locale, data.timeZone) })}</p>{/if}
       </form>
@@ -109,22 +109,26 @@
     <div class="cx-wrap gap">
       <table class="stack">
         <thead>
-          <tr><th scope="col">{m.roll.address}</th><th scope="col">{m.roll.status}</th><th scope="col">{m.roll.day}</th><th scope="col"><span class="sr-only">{m.roll.link}</span></th></tr>
+          <tr><th scope="col">{m.roll.address}</th>{#if poll.showVoted}<th scope="col">{m.roll.status}</th><th scope="col">{m.roll.day}</th>{/if}<th scope="col"><span class="sr-only">{m.roll.link}</span></th></tr>
         </thead>
         <tbody>
           {#each data.entries as entry (entry.id)}
             <tr>
               <td class="addr">{#if entry.name}<b>{entry.name}</b><br />{/if}{entry.address}{#if entry.status !== "voted" && mayReachJunk(entry.address)} <span class="cx-chip late" title={m.mail.junkNote}>{m.mail.junk}</span>{/if}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.firstInvitedOn ?? entry.invitedOn }) : m.mail.notYet}{#if entry.invites > 1} · {fill(entry.invites === 2 ? m.mail.reminderOne : m.mail.reminderMany, { n: entry.invites - 1, day: entry.invitedOn ?? "" })}{/if}</span>{/if}</td>
-              <td>
-                <span class="cx-chip {entry.status === 'voted' ? 'open' : ''}">{m.member[entry.status]}</span>
-                {#if entry.late}<span class="cx-chip late" title={m.roll.lateNote}>{m.roll.late}</span>{/if}
-              </td>
-              <td class:none={!entry.votedOn} data-label={m.roll.day}>{entry.votedOn ?? "–"}</td>
+              {#if poll.showVoted && entry.status !== "hidden"}
+                <td>
+                  <span class="cx-chip {entry.status === 'voted' ? 'open' : ''}">{m.member[entry.status]}</span>
+                  {#if entry.late}<span class="cx-chip late" title={m.roll.lateNote}>{m.roll.late}</span>{/if}
+                </td>
+                <td class:none={!entry.votedOn} data-label={m.roll.day}>{entry.votedOn ?? "–"}</td>
+              {/if}
               <td>
                 <div class="cx-actions">
                   {#if data.canSend && entry.status !== "voted"}
                     {#if entry.invites === 0}
                       <button class="cx-btn ghost small" type="submit" form="mail" name="which" value={entry.id}>{m.mail.sendOne}</button>
+                    {:else if !poll.showVoted}
+                      <!-- no reminder where the roll does not show who has voted -->
                     {:else if entry.writeAgainAt}
                       <span class="cx-help" role="status">{fill(m.mail.reminderIn, { time: waitText(entry.writeAgainAt), date: formatMoment(entry.writeAgainAt, data.locale, data.timeZone) })}</span>
                       <button class="cx-btn ghost small" type="button" disabled>{m.mail.sendReminderOne}</button>
@@ -146,6 +150,6 @@
         </tbody>
       </table>
     </div>
-    <p class="cx-help gap">{m.roll.votedNote}</p>
+    <p class="cx-help gap">{poll.showVoted ? m.roll.votedNote : m.roll.hiddenNote}</p>
   {/if}
 </section>

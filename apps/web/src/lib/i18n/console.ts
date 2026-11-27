@@ -48,7 +48,7 @@ export interface ConsoleMessages {
     readonly languagesTitle: string; readonly languagesHelp: string; readonly defaultLanguage: string; readonly missingLanguage: string;
     readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string;
     readonly rulesTitle: string; readonly rulesHelp: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleThresholdNone: string; readonly ruleThresholdMajority: string; readonly ruleThresholdPercent: string; readonly ruleNeedsReadable: string; readonly members: string; readonly percent: string;
-    readonly anonymityTitle: string; readonly anonymityNames: Names<Anonymity>;
+    readonly anonymityTitle: string; readonly anonymityNames: Names<"anonymous" | "voters" | "named">; readonly reminderHidden: string;
     readonly changeTitle: string; readonly changeLabel: string; readonly changeHelp: string; readonly changeNeedsSealed: string; readonly timeZone: string;
     readonly preview: string; readonly locked: string; readonly create: string; readonly smallRoll: string;
   };
@@ -66,7 +66,7 @@ export interface ConsoleMessages {
     readonly title: string; readonly add: string; readonly addHelp: string; readonly addPlaceholder: string; readonly addSubmit: string;
     readonly added: string; readonly duplicates: string; readonly rejected: string; readonly reasonInvalid: string; readonly reasonDisposable: string;
     readonly address: string; readonly status: string; readonly link: string; readonly late: string; readonly remove: string; readonly empty: string;
-    readonly fixedRoll: string; readonly linksTitle: string; readonly linksText: string; readonly copyLink: string; readonly copyAll: string; readonly lateNote: string; readonly votedNote: string; readonly day: string;
+    readonly fixedRoll: string; readonly linksTitle: string; readonly linksText: string; readonly copyLink: string; readonly copyAll: string; readonly lateNote: string; readonly votedNote: string; readonly hiddenNote: string; readonly day: string;
   };
   readonly results: {
     readonly title: string; readonly live: string; readonly updated: string; readonly updating: string; readonly turnout: string; readonly of: string; readonly votes: string; readonly total: string;
@@ -215,8 +215,8 @@ const en: ConsoleMessages = {
       text: { close: "Totals appear when the poll closes, for administrators too.", live: "Totals and turnout update in real time for the chosen audience while voting is open." },
     },
     audienceNames: {
-      title: { administrators: "Administrators", voters: "Participants on the roll", anyone: "Anyone with the address" },
-      text: { administrators: "Only people signed in with an administrator key.", voters: "Anyone who holds a personal voting link.", anyone: "A public results page that needs no sign-in." },
+      title: { owner: "The owner", administrators: "Administrators", voters: "Participants on the roll", anyone: "Anyone with the address" },
+      text: { owner: "Only the person signed in with the owner key.", administrators: "Only people signed in with an administrator key.", voters: "Anyone who holds a personal voting link.", anyone: "A public results page that needs no sign-in." },
     },
     template: "Ballot template",
     templateSeed: "Seed Packet",
@@ -244,13 +244,13 @@ const en: ConsoleMessages = {
       },
     },
     presetCustom: "Custom settings",
-    emailReceiptLabel: "Let participants email themselves the receipt",
+    emailReceiptLabel: "Receipt by email",
     emailReceiptHelp: "After voting, a participant can ask for the receipt code to be sent to the address that received the link. The message holds the code and the page that checks it, and no voting link. Copying and saving the code are always offered.",
     emailReceiptHelpSecret: "Off by default for a secret poll. The email ties the participant's address to the receipt code, at the email provider and in the inbox. If the poll also publishes each ballot beside its code, whoever reads the email can find the answer.",
-    publishLabel: "Publish the count after the poll closes",
-    publishHelp: "Everyone who sees the results also sees the list of ballots, each with its receipt code and its choice. For encrypted ballots the counting key is published too. Anyone can then add the lines up and find their own ballot.",
-    lockCancelLabel: "Do not allow cancelling once voting has begun",
-    lockCancelHelp: "After the first ballot, the poll can only run to its end, so a result cannot be buried.",
+    publishLabel: "Published count",
+    publishHelp: "After the poll closes, everyone who sees the results also sees the list of ballots, each with its receipt code and its choice. For encrypted ballots the counting key is published too. Anyone can then add the lines up and find their own ballot.",
+    lockCancelLabel: "No cancelling",
+    lockCancelHelp: "Once voting has begun, the poll can only run to its end, so a result cannot be buried.",
     reminderTitle: "Automatic reminders",
     reminderHelp: "A reminder goes to each participant who has received a link and has not voted, at most once a day. Reminders need email to be set up on the server, and your confirmation that you may contact these people.",
     reminderNone: "No automatic reminders",
@@ -279,9 +279,14 @@ const en: ConsoleMessages = {
     percent: "% of the roll",
     anonymityTitle: "Who can tell who voted what",
     anonymityNames: {
-      title: { secret: "Fully anonymous", named: "Answers shown with names" },
-      text: { secret: "Answers are not linked to participants. The roll shows who has voted, not what they chose.", named: "Each answer is shown next to the address that gave it, to the people who see the results. Participants are told before they vote." },
+      title: { anonymous: "Fully anonymous", voters: "Voters known, answers secret", named: "Voters and answers known" },
+      text: {
+        anonymous: "Answers are not linked to participants, and the roll does not show who has voted. Only the number of ballots is known.",
+        voters: "Answers are not linked to participants. The roll shows who has voted, never what was chosen.",
+        named: "Each answer is shown next to the address that gave it, to the people who see the results. Participants are told before they vote.",
+      },
     },
+    reminderHidden: "Reminders need the roll to show who has voted, so they are not offered for a fully anonymous poll.",
     changeTitle: "Changing a vote",
     changeLabel: "Participants can change their vote until the poll closes",
     changeHelp: "Their last ballot is the one that counts. This needs encrypted ballots. To replace a vote, the poll must recognise its voter, so it keeps a pseudonym for each one. The pseudonym shows who voted and does not show the choice.",
@@ -359,6 +364,7 @@ const en: ConsoleMessages = {
     copyAll: "Copy all links",
     lateNote: "Added after the poll opened.",
     votedNote: "A voted status means a ballot was received. The roll does not hold the choice.",
+    hiddenNote: "This poll does not show who has voted. The roll lists the participants only, and no reminder is offered, since a reminder could not be limited to those who have not voted.",
     day: "Day voted",
   },
   results: {
@@ -476,7 +482,7 @@ const en: ConsoleMessages = {
     doneChange: "You can change your vote until the poll closes: open your link again.",
     namedValue: "Named",
     namedNote: "Your answer is recorded with your address and shown with it to {who}.",
-    namedWho: { administrators: "the administrators", voters: "the participants on the roll", anyone: "anyone with the results address (the address is partly hidden)" },
+    namedWho: { owner: "the owner", administrators: "the administrators", voters: "the participants on the roll", anyone: "anyone with the results address (the address is partly hidden)" },
     cancelledTitle: "This poll was cancelled",
     cancelledText: "No result will be published.",
     yourVote: "Your vote",
@@ -701,11 +707,13 @@ const en: ConsoleMessages = {
   },
   resultsStatement: {
     close: {
+      owner: "Results are shown to the owner when the poll closes.",
       administrators: "Results are shown to the administrators when the poll closes.",
       voters: "Results are shown to the participants on the roll when the poll closes.",
       anyone: "Results are public when the poll closes.",
     },
     live: {
+      owner: "Results are shown live to the owner.",
       administrators: "Results are shown live to the administrators.",
       voters: "Results are shown live to the participants on the roll. You will see the totals change as ballots arrive.",
       anyone: "Results are public and update live as ballots arrive.",
@@ -762,6 +770,7 @@ const en: ConsoleMessages = {
     receipt_limit: "The receipt was already sent three times for this link.",
     receipt_unavailable: "This installation cannot send email.",
     receipt_failed: "The email could not be sent. The code above is still valid.",
+    reminder_needs_voters_known: "Automatic reminders need the roll to show who has voted. Choose no reminder, or let the roll show who has voted.",
     cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
     not_open: "This poll is not open yet.",
     already_voted: "A ballot was already submitted with this link.",
@@ -857,8 +866,8 @@ const fr: ConsoleMessages = {
       text: { close: "Les totaux apparaissent à la fermeture du scrutin, y compris pour l’administration.", live: "Les totaux et la participation se mettent à jour en temps réel pour le public choisi pendant le vote." },
     },
     audienceNames: {
-      title: { administrators: "L’administration", voters: "Les participants de la liste", anyone: "Toute personne qui a l’adresse" },
-      text: { administrators: "Seulement les personnes connectées avec une clé d’administration.", voters: "Toute personne qui possède un lien de vote personnel.", anyone: "Une page de résultats publique, sans connexion." },
+      title: { owner: "Le titulaire du compte", administrators: "L’administration", voters: "Les participants de la liste", anyone: "Toute personne qui a l’adresse" },
+      text: { owner: "Seulement la personne connectée avec la clé du titulaire du compte.", administrators: "Seulement les personnes connectées avec une clé d’administration.", voters: "Toute personne qui possède un lien de vote personnel.", anyone: "Une page de résultats publique, sans connexion." },
     },
     template: "Modèle de bulletin",
     templateSeed: "Seed Packet",
@@ -886,12 +895,12 @@ const fr: ConsoleMessages = {
       },
     },
     presetCustom: "Paramètres personnalisés",
-    emailReceiptLabel: "Permettre aux participants de s’envoyer le reçu par courriel",
+    emailReceiptLabel: "Reçu par courriel",
     emailReceiptHelp: "Après le vote, la personne peut demander que le code de reçu soit envoyé à l’adresse qui a reçu le lien. Le message contient le code et la page qui le vérifie, et aucun lien de vote. La copie et l’enregistrement du code sont toujours offerts.",
     emailReceiptHelpSecret: "Désactivé par défaut pour un scrutin secret. Le courriel associe l’adresse de la personne au code de reçu, chez le fournisseur de courriel et dans la boîte de réception. Si le scrutin publie aussi chaque bulletin à côté de son code, la personne qui lit le courriel peut retrouver la réponse.",
-    publishLabel: "Publier le décompte après la fermeture du scrutin",
-    publishHelp: "Toutes les personnes qui voient les résultats voient aussi la liste des bulletins, chacun avec son code de reçu et son choix. Pour des bulletins chiffrés, la clé de dépouillement est publiée aussi. Chacun peut alors additionner les lignes et retrouver son bulletin.",
-    lockCancelLabel: "Ne pas permettre l’annulation une fois le vote commencé",
+    publishLabel: "Décompte publié",
+    publishHelp: "Après la fermeture du scrutin, toutes les personnes qui voient les résultats voient aussi la liste des bulletins, chacun avec son code de reçu et son choix. Pour des bulletins chiffrés, la clé de dépouillement est publiée aussi. Chacun peut alors additionner les lignes et retrouver son bulletin.",
+    lockCancelLabel: "Aucune annulation",
     lockCancelHelp: "Après le premier bulletin, le scrutin ne peut que se rendre à son terme: un résultat ne peut pas être enterré.",
     reminderTitle: "Rappels automatiques",
     reminderHelp: "Un rappel part vers chaque participant qui a reçu un lien et n’a pas voté, au plus une fois par jour. Les rappels exigent que le courriel soit configuré sur le serveur, et votre confirmation que vous pouvez joindre ces personnes.",
@@ -921,9 +930,14 @@ const fr: ConsoleMessages = {
     percent: "% de la liste",
     anonymityTitle: "Qui peut savoir qui a voté quoi",
     anonymityNames: {
-      title: { secret: "Entièrement anonyme", named: "Réponses affichées avec les noms" },
-      text: { secret: "Les réponses ne sont pas liées aux participants. La liste montre qui a voté, pas ce qui a été choisi.", named: "Chaque réponse est affichée avec l’adresse qui l’a donnée, aux personnes qui voient les résultats. Les participants en sont informés avant de voter." },
+      title: { anonymous: "Entièrement anonyme", voters: "Votants connus, réponses secrètes", named: "Votants et réponses connus" },
+      text: {
+        anonymous: "Les réponses ne sont pas liées aux participants, et la liste n’indique pas qui a voté. Seul le nombre de bulletins est connu.",
+        voters: "Les réponses ne sont pas liées aux participants. La liste indique qui a voté, jamais ce qui a été choisi.",
+        named: "Chaque réponse est affichée avec l’adresse qui l’a donnée, aux personnes qui voient les résultats. Les participants en sont informés avant de voter.",
+      },
     },
+    reminderHidden: "Les rappels exigent que la liste indique qui a voté: ils ne sont pas offerts pour un scrutin entièrement anonyme.",
     changeTitle: "Modifier son vote",
     changeLabel: "Les participants peuvent modifier leur vote jusqu’à la fermeture",
     changeHelp: "Leur dernier bulletin est celui qui compte. Cela exige des bulletins chiffrés. Pour remplacer un vote, le scrutin doit reconnaître son votant, donc il garde un pseudonyme pour chacun. Le pseudonyme montre qui a voté et ne montre pas le choix.",
@@ -1001,6 +1015,7 @@ const fr: ConsoleMessages = {
     copyAll: "Copier tous les liens",
     lateNote: "Ajoutée après l’ouverture du scrutin.",
     votedNote: "Le statut « a voté » indique qu’un bulletin a été reçu. La liste ne conserve pas le choix.",
+    hiddenNote: "Ce scrutin n’indique pas qui a voté. La liste présente seulement les participants, et aucun rappel n’est offert, puisqu’un rappel ne pourrait pas être limité aux personnes qui n’ont pas voté.",
     day: "Jour du vote",
   },
   results: {
@@ -1118,7 +1133,7 @@ const fr: ConsoleMessages = {
     doneChange: "Vous pouvez modifier votre vote jusqu’à la fermeture du scrutin: rouvrir votre lien.",
     namedValue: "Nominatif",
     namedNote: "Votre réponse est enregistrée avec votre adresse et affichée avec elle {who}.",
-    namedWho: { administrators: "à l’administration", voters: "aux participants de la liste", anyone: "à toute personne qui a l’adresse des résultats (l’adresse est en partie masquée)" },
+    namedWho: { owner: "au titulaire du compte", administrators: "à l’administration", voters: "aux participants de la liste", anyone: "à toute personne qui a l’adresse des résultats (l’adresse est en partie masquée)" },
     cancelledTitle: "Ce scrutin a été annulé",
     cancelledText: "Aucun résultat ne sera publié.",
     yourVote: "Votre vote",
@@ -1343,11 +1358,13 @@ const fr: ConsoleMessages = {
   },
   resultsStatement: {
     close: {
+      owner: "Les résultats sont affichés au titulaire du compte à la fermeture du scrutin.",
       administrators: "Les résultats sont affichés à l’administration à la fermeture du scrutin.",
       voters: "Les résultats sont affichés aux participants de la liste à la fermeture du scrutin.",
       anyone: "Les résultats sont publics à la fermeture du scrutin.",
     },
     live: {
+      owner: "Les résultats sont affichés en direct au titulaire du compte.",
       administrators: "Les résultats sont affichés en direct à l’administration.",
       voters: "Les résultats sont affichés en direct aux participants de la liste. Les totaux changent au fur et à mesure des bulletins.",
       anyone: "Les résultats sont publics et se mettent à jour en direct au fur et à mesure des bulletins.",
@@ -1404,6 +1421,7 @@ const fr: ConsoleMessages = {
     receipt_limit: "Le reçu a déjà été envoyé trois fois pour ce lien.",
     receipt_unavailable: "Cette installation ne peut pas envoyer de courriel.",
     receipt_failed: "Le courriel n’a pas pu être envoyé. Le code ci-dessus reste valide.",
+    reminder_needs_voters_known: "Les rappels automatiques exigent que la liste indique qui a voté. Choisir aucun rappel, ou laisser la liste indiquer qui a voté.",
     cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",
     not_open: "Ce scrutin n’est pas encore ouvert.",
     already_voted: "Un bulletin a déjà été déposé avec ce lien.",

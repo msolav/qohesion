@@ -22,7 +22,10 @@ export function setSessionCookie(cookies: Cookies, token: string, secure: boolea
 
 /** Who is looking at a poll's results: an administrator of its space, a member with a valid personal link, or anyone. */
 export function viewerFor(locals: App.Locals, poll: Poll, memberToken: string | null): Viewer {
-  if (locals.session?.administrator && locals.session.spaceId === poll.spaceId) return "administrator";
+  if (locals.session?.spaceId === poll.spaceId) {
+    if (locals.session.owner) return "owner";
+    if (locals.session.administrator) return "administrator";
+  }
   if (memberToken) {
     const member = service().viewerOfToken(memberToken);
     if (member && member.pollId === poll.id) return "voter";

@@ -7,8 +7,8 @@ import { summarize, type MemberStatus } from "@qohesion/roll";
 export const load: PageServerLoad = async ({ locals, params }) => {
   const session = needSession(locals);
   const entries = service().roll(session, params.id);
-  const counts = summarize(entries.map((e) => e.status as MemberStatus));
-  const results = service().resultsFor(params.id, "administrator");
+  const counts = summarize(entries.map((e): MemberStatus => (e.status === "hidden" ? "listed" : e.status)));
+  const results = service().resultsFor(params.id, session.owner ? "owner" : "administrator");
   const space = service().getSpace(needSession(locals).spaceId);
   return {
     rollSize: entries.length,

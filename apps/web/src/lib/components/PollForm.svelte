@@ -116,7 +116,17 @@
   // Email receipts follow the anonymity until the administrator sets them: on for a named poll, off for a secret one.
   let emailReceipt = $state(start?.emailReceipt ?? (start?.anonymity ?? "secret") === "named");
   let emailReceiptSet = $state(start?.emailReceipt !== undefined);
+  // Whether the roll shows who has voted. A new secret poll starts without it; the choice is made with the answers' privacy.
+  let showVoted = $state(start?.showVoted ?? false);
+  type Privacy = "anonymous" | "voters" | "named";
+  const privacy = $derived<Privacy>(anonymity === "named" ? "named" : showVoted ? "voters" : "anonymous");
+  function setPrivacy(value: Privacy): void {
+    anonymity = value === "named" ? "named" : "secret";
+    showVoted = value !== "anonymous";
+  }
   $effect(() => { if (!emailReceiptSet) emailReceipt = anonymity === "named"; });
+  // Reminders go to those who have not voted, which a roll that does not show who has voted cannot tell.
+  $effect(() => { if (privacy === "anonymous") autoReminder = "none"; });
   let lockCancel = $state(start?.lockCancel ?? false);
   let paged = $state(start?.paged ?? true);
   let lateRoll = $state(start?.lateRoll ?? false);
@@ -148,20 +158,20 @@
   /** A preset fills in the results settings in one choice. Each setting can still be changed afterwards. */
   function applyPreset(id: Preset): void {
     if (id === "open") {
-      timing = "live"; audience = "voters"; anonymity = "named"; encryption = "none"; publishCount = false; lockCancel = false; lateRoll = true;
+      timing = "live"; audience = "voters"; anonymity = "named"; showVoted = true; encryption = "none"; publishCount = false; lockCancel = false; lateRoll = true;
       discName = "full"; discEmail = "full";
     } else {
       lateRoll = false;
-      timing = "close"; anonymity = "secret"; encryption = "sealed";
+      timing = "close"; anonymity = "secret"; showVoted = false; encryption = "sealed";
       audience = id === "verifiable" ? "anyone" : "voters";
       publishCount = id === "verifiable"; lockCancel = id === "verifiable";
     }
   }
   /** The preset that the current settings match exactly, or null when they are custom. */
   const matchedPreset = $derived<Preset | null>(
-    timing === "close" && anonymity === "secret" && encryption === "sealed" && audience === "voters" && !publishCount && !lockCancel
+    timing === "close" && anonymity === "secret" && !showVoted && encryption === "sealed" && audience === "voters" && !publishCount && !lockCancel
       ? "secret"
-      : timing === "close" && anonymity === "secret" && encryption === "sealed" && audience === "anyone" && publishCount && lockCancel
+      : timing === "close" && anonymity === "secret" && !showVoted && encryption === "sealed" && audience === "anyone" && publishCount && lockCancel
         ? "verifiable"
         : timing === "live" && anonymity === "named" && encryption === "none" && audience === "voters" && !publishCount && !lockCancel
           ? "open"
@@ -206,6 +216,7 @@
     publishCount,
     lockCancel,
     emailReceipt,
+    showVoted,
     disclosure: { name: discName, email: discEmail },
     rules: previewRules,
     timeZone: zone,
@@ -229,6 +240,7 @@
       publishCount,
       lockCancel,
       emailReceipt,
+      showVoted,
       disclosure: { name: discName, email: discEmail },
       rules: previewRules,
       closes: closesAt ? closesAt.replace("T", " ") : null,
@@ -562,19 +574,21 @@
       </fieldset>
       <fieldset class="cx-field">
         <legend class="cx-label">{m.form.audience}</legend>
-        <div class="cx-choices cols-3">
+        <div class="cx-choices cols-4">
           {#each AUDIENCES as value (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="audience" {value} bind:group={audience} /><span><i class="ico"><UiIcon name={value === "administrators" ? "shield" : value === "voters" ? "users" : "globe"} /></i><b>{m.form.audienceNames.title[value]}</b><small>{m.form.audienceNames.text[value]}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="audience" {value} bind:group={audience} /><span><i class="ico"><UiIcon name={value === "owner" ? "key" : value === "administrators" ? "shield" : value === "voters" ? "users" : "globe"} /></i><b>{m.form.audienceNames.title[value]}</b><small>{m.form.audienceNames.text[value]}</small></span></label>
           {/each}
         </div>
       </fieldset>
       <fieldset class="cx-field">
-        <legend class="cx-label">{m.form.anonymityTitle} <GuideLink {locale} page="how" anchor={anonymity === "named" ? "named" : "secret"} label={g.props.learn} /></legend>
-        <div class="cx-choices cols-2">
-          {#each ["secret", "named"] as const as value (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="anonymity" {value} bind:group={anonymity} /><span><i class="ico"><UiIcon name={value === "secret" ? "lock" : "users"} /></i><b>{m.form.anonymityNames.title[value]}</b><small>{m.form.anonymityNames.text[value]}</small></span></label>
+        <legend class="cx-label">{m.form.anonymityTitle} <GuideLink {locale} page="how" anchor={privacy === "named" ? "named" : "secret"} label={g.props.learn} /></legend>
+        <div class="cx-choices cols-3">
+          {#each ["anonymous", "voters", "named"] as const as value (value)}
+            <label class="cx-choice has-ico"><input type="radio" name="privacy" {value} checked={privacy === value} onchange={() => setPrivacy(value)} /><span><i class="ico"><UiIcon name={value === "anonymous" ? "mask" : value === "voters" ? "ballot" : "users"} /></i><b>{m.form.anonymityNames.title[value]}</b><small>{m.form.anonymityNames.text[value]}</small></span></label>
           {/each}
         </div>
+        <input type="hidden" name="anonymity" value={anonymity} />
+        <input type="hidden" name="show_voted" value={showVoted ? "yes" : "no"} />
       </fieldset>
       {#if anonymity === "named"}
         <fieldset class="cx-field disclosure">
@@ -604,10 +618,10 @@
         <p class="cx-help">{m.seal.help}</p>
         <div class="cx-choices cols-2">
           <label class="cx-choice has-ico"><input type="radio" name="encryption" value="sealed" bind:group={encryption} disabled={timing === "live"} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
-          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><i class="ico"><UiIcon name="eye" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><i class="ico"><UiIcon name="unlock" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
         </div>
         {#if timing === "live"}<p class="cx-help" role="status">{m.seal.liveNote}</p>{/if}
-        {#if encryption === "sealed"}<div class="cx-notice warn gap" role="note"><b>{m.seal.riskTitle}.</b> {m.seal.riskText} <GuideLink {locale} page="how" anchor="counting-key" label={g.props.learn} /></div>{/if}
+        {#if encryption === "sealed"}<div class="cx-notice warn gap" role="note"><div><p><b>{m.seal.riskTitle}.</b> {m.seal.riskText}</p><p><GuideLink {locale} page="how" anchor="counting-key" label={g.props.learn} /></p></div></div>{/if}
       </fieldset>
       {#if encryption === "sealed"}
         <fieldset class="cx-field">
@@ -686,9 +700,10 @@
         <p class="cx-help">{m.form.reminderHelp}</p>
         <div class="cx-choices cols-3">
           {#each [["none", m.form.reminderNone], ["daily", m.form.reminderDaily], ["before_close", m.form.reminderBefore]] as const as [value, label] (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="auto_reminder" {value} bind:group={autoReminder} /><span><i class="ico"><UiIcon name="clock" /></i><b>{label}</b></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="auto_reminder" {value} bind:group={autoReminder} disabled={privacy === "anonymous" && value !== "none"} /><span><i class="ico"><UiIcon name="clock" /></i><b>{label}</b></span></label>
           {/each}
         </div>
+        {#if privacy === "anonymous"}<p class="cx-help" role="status">{m.form.reminderHidden}</p>{/if}
         {#if autoReminder !== "none"}
           <label class="cx-choice check"><input type="checkbox" name="reminder_permission" value="yes" bind:checked={reminderPermission} /><span><b>{m.mail.attest}</b></span></label>
         {/if}

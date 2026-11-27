@@ -3,8 +3,8 @@
 import { describe, expect, it } from "vitest";
 import { accessTo, liveResultsWarning, type ResultsAudience, type Viewer } from "./results-rules.js";
 
-const viewers: Viewer[] = ["administrator", "voter", "anyone"];
-const audiences: ResultsAudience[] = ["administrators", "voters", "anyone"];
+const viewers: Viewer[] = ["owner", "administrator", "voter", "anyone"];
+const audiences: ResultsAudience[] = ["owner", "administrators", "voters", "anyone"];
 
 describe("results visibility", () => {
   it("shows nothing in a draft", () => {
@@ -26,6 +26,15 @@ describe("results visibility", () => {
     expect(live("voters", "voter")).toBe(true);
     expect(live("voters", "anyone")).toBe(false);
     expect(live("anyone", "anyone")).toBe(true);
+  });
+
+  it("keeps an administrator out of results meant for the owner alone, and lets the owner into every audience", () => {
+    for (const audience of audiences) expect(accessTo({ status: "closed", timing: "close", audience }, "owner").totals).toBe(true);
+    expect(accessTo({ status: "closed", timing: "close", audience: "owner" }, "administrator").totals).toBe(false);
+    expect(accessTo({ status: "closed", timing: "close", audience: "administrators" }, "administrator").totals).toBe(true);
+    for (const viewer of ["voter", "anyone"] as const) expect(accessTo({ status: "closed", timing: "close", audience: "owner" }, viewer).totals).toBe(false);
+    expect(accessTo({ status: "open", timing: "live", audience: "owner" }, "administrator").totals).toBe(false);
+    expect(accessTo({ status: "open", timing: "close", audience: "owner" }, "administrator").turnout).toBe(true);
   });
 
   it("applies the audience to the final results of a closed poll, whatever the timing", () => {

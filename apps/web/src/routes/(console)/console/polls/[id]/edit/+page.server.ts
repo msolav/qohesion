@@ -41,6 +41,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       translations: poll.translations,
       ...(poll.disclosure ? { disclosure: poll.disclosure } : {}),
       emailReceipt: poll.emailReceipt,
+      showVoted: poll.showVoted,
     },
   };
 };
