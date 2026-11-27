@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import ConfirmAction from "#lib/components/ConfirmAction.svelte";
   import CopyButton from "#lib/components/CopyButton.svelte";
   import UiIcon from "#lib/components/UiIcon.svelte";
   import { consoleMessages, errorText } from "#lib/i18n/console.js";
@@ -18,12 +19,6 @@
   });
   const failedIn = (name: string) => (form && "form" in form && form.form === name ? form : null);
   const roleOf = (k: { owner: boolean; administrator: boolean }) => (k.owner && k.administrator ? m.role.both : k.owner ? m.role.owner : m.role.administrator);
-
-  function confirmWith(message: string) {
-    return ({ cancel }: { cancel: () => void }) => {
-      if (!confirm(message)) cancel();
-    };
-  }
 </script>
 
 <svelte:head><title>{m.space.title} · Qohesion</title><meta name="robots" content="noindex" /></svelte:head>
@@ -86,10 +81,8 @@
             <td>
               {#if key.revokedAt}<span class="cx-chip closed">{m.space.revoked}</span>
               {:else}
-                <form method="POST" action="?/revoke" use:enhance={confirmWith(m.space.confirmRevoke)}>
-                  <input type="hidden" name="key" value={key.id} />
-                  <button class="cx-btn danger small" type="submit">{m.space.revoke}</button>
-                </form>
+                <form id="f-revoke-{key.id}" method="POST" action="?/revoke" use:enhance><input type="hidden" name="key" value={key.id} /></form>
+                <ConfirmAction formId="f-revoke-{key.id}" label={m.space.revoke} title={m.space.revoke} message={m.space.confirmRevoke} backLabel={m.common.back} kind="danger" small />
               {/if}
             </td>
           </tr>
@@ -119,12 +112,12 @@
 <section class="cx-section" aria-labelledby="danger-h">
   <h2 id="danger-h">{m.space.danger}</h2>
   <p>{m.space.dangerText}</p>
-  <form class="cx-form gap" method="POST" action="?/deleteSpace" use:enhance={confirmWith(m.space.dangerText)}>
+  <form id="f-delete" class="cx-form gap" method="POST" action="?/deleteSpace" use:enhance>
     <div class="cx-field" class:invalid={failedIn("delete")}>
       <label for="confirm">{m.space.confirmName}</label>
       <input id="confirm" name="confirm" type="text" autocomplete="off" />
       {#if failedIn("delete")}<p class="cx-error" role="alert">{errorText(m, failedIn("delete")?.error)}</p>{/if}
     </div>
-    <div class="cx-actions"><button class="cx-btn danger" type="submit">{m.space.deleteSpace}</button></div>
   </form>
+  <div class="cx-actions gap"><ConfirmAction formId="f-delete" label={m.space.deleteSpace} message={m.space.dangerText} backLabel={m.common.back} kind="danger" /></div>
 </section>

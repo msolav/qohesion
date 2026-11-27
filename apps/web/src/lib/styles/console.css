@@ -96,6 +96,8 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 .cx-chip.open{border-color:var(--mint);color:var(--mint)}
 .cx-chip.closed{border-color:var(--dim);color:var(--dim)}
 .cx-chip.draft{border-color:var(--warn);color:var(--warn)}
+.cx-chip.cancelled{border-color:var(--danger);color:var(--danger)}
+.cx-chip.scheduled{border-color:var(--soft);color:var(--soft)}
 .cx-chip.late{border-color:var(--warn);color:var(--warn)}
 
 /* Forms */
@@ -439,3 +441,12 @@ html:has(.cx),body:has(.cx){background:#0F224C}
 @media (min-width:44rem){.cx-dates div{grid-template-columns:9rem minmax(0,1fr)}}
 .cx-dates dt{color:var(--dim);font-weight:700;font-size:.9rem}
 .cx-dates dd{margin:0}
+
+/* Questions asked before an action: a native dialog in the console's look */
+dialog.cx-dialog{width:min(30rem,calc(100vw - 2rem));padding:var(--space-5);background:var(--raised);color:var(--mist);border:1.5px solid var(--rule);border-radius:16px;box-shadow:0 30px 60px -20px rgba(4,10,28,.8)}
+dialog.cx-dialog::backdrop{background:rgba(5,12,30,.72)}
+dialog.cx-dialog[open]{animation:bld-in .18s cubic-bezier(.16,1,.3,1)}
+dialog.cx-dialog h2{font-size:1.25rem;margin:0 0 var(--space-3);color:#fff}
+dialog.cx-dialog p{margin:0 0 var(--space-5);color:var(--soft)}
+dialog.cx-dialog .cx-actions{justify-content:flex-end}
+@media (prefers-reduced-motion:reduce){dialog.cx-dialog[open]{animation:none}}

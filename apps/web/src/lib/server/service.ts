@@ -17,7 +17,7 @@ import { isColorId, isIconId } from "../option-style.js";
 import { DEFAULT_THEME, isTheme, type Theme } from "../theme.js";
 import { NO_RULES, closeReason, parseRules, ruleProblem, type CloseRules } from "../close-rules.js";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "../zoned.js";
-import { accessTo, isAudience, isTiming, type Access, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
+import { accessTo, isAnonymity, isAudience, isTiming, type Access, type Anonymity, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
@@ -100,6 +100,7 @@ export interface Poll {
   /** False for a sealed poll that closed and still waits for its counting key. */
   readonly counted: boolean;
   readonly markFill: boolean;
+  readonly anonymity: Anonymity;
   readonly createdAt: string;
   readonly openedAt: string | null;
   /** The deadline. Null only for a poll made before deadlines were required. */
@@ -144,6 +145,7 @@ export interface PollInput {
   readonly encrypted: boolean;
   /** One setting for every option: the colours fill the circle of each mark, or draw the icon and the outline. */
   readonly markFill: boolean;
+  readonly anonymity: Anonymity;
 }
 
 export type Problem = { readonly ok: false; readonly error: string };
@@ -166,6 +168,8 @@ export interface ResultsView {
   readonly turnout: number | null;
   readonly counts: Readonly<Record<string, number>> | null;
   readonly rollCount: number | null;
+  /** For a named poll, who gave which answer, to those who see the totals; null otherwise. */
+  readonly answers: readonly { readonly who: string; readonly choice: string }[] | null;
 }
 
 export interface LedgerView {
@@ -191,13 +195,13 @@ CREATE TABLE IF NOT EXISTS polls (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT NOT NULL,
   kind TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL, timing TEXT NOT NULL, audience TEXT NOT NULL, theme TEXT NOT NULL,
   close_after_hours INTEGER, opens_at TEXT, allow_change INTEGER NOT NULL DEFAULT 0, close_rules TEXT, created_at TEXT NOT NULL, opened_at TEXT, closes_at TEXT, closed_at TEXT, roll_code TEXT, roll_count INTEGER,
-  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0);
+  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0, anonymity TEXT NOT NULL DEFAULT 'secret');
 CREATE TABLE IF NOT EXISTS roll (
   id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, address TEXT NOT NULL,
   fingerprint TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL, late INTEGER NOT NULL, added_at TEXT NOT NULL,
   voted_on TEXT, invited_on TEXT, UNIQUE (poll_id, fingerprint));
 -- A ballot holds no reference to a voter, and the roll holds no reference to a ballot. Only the day of a vote is kept on the roll.
-CREATE TABLE IF NOT EXISTS ballots (poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, seq INTEGER NOT NULL, choice TEXT NOT NULL, entry TEXT NOT NULL, voter_tag TEXT, superseded INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (poll_id, seq));
+CREATE TABLE IF NOT EXISTS ballots (poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, seq INTEGER NOT NULL, choice TEXT NOT NULL, entry TEXT NOT NULL, voter_tag TEXT, superseded INTEGER NOT NULL DEFAULT 0, roll_id INTEGER, PRIMARY KEY (poll_id, seq));
 CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, at TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, detail TEXT NOT NULL);
 `;
 
@@ -236,6 +240,8 @@ export class Service {
       if (!existing.includes(column)) this.#db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     };
     const names = (table: string) => (this.#db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+    addIfMissing("polls", columns, "anonymity", "TEXT NOT NULL DEFAULT 'secret'");
+    addIfMissing("ballots", names("ballots"), "roll_id", "INTEGER");
     addIfMissing("polls", columns, "opens_at", "TEXT");
     addIfMissing("polls", columns, "allow_change", "INTEGER NOT NULL DEFAULT 0");
     addIfMissing("polls", columns, "close_rules", "TEXT");
@@ -424,7 +430,7 @@ export class Service {
       description: String(r["description"]),
       kind: r["kind"] === "choice" ? "choice" : "yes-no",
       options: JSON.parse(String(r["options"])) as PollOption[],
-      status: r["status"] === "open" ? "open" : r["status"] === "closed" ? "closed" : r["status"] === "scheduled" ? "scheduled" : "draft",
+      status: r["status"] === "open" ? "open" : r["status"] === "closed" ? "closed" : r["status"] === "scheduled" ? "scheduled" : r["status"] === "cancelled" ? "cancelled" : "draft",
       timing: r["timing"] === "live" ? "live" : "close",
       audience: isAudience(r["audience"]) ? r["audience"] : "voters",
       theme: isTheme(r["theme"]) ? r["theme"] : DEFAULT_THEME,
@@ -434,6 +440,7 @@ export class Service {
       encrypted: r["encrypted"] === 1,
       counted: r["counted"] !== 0,
       markFill: r["mark_fill"] === 1,
+      anonymity: isAnonymity(r["anonymity"]) ? r["anonymity"] : "secret",
       createdAt: String(r["created_at"]),
       openedAt: r["opened_at"] === null ? null : String(r["opened_at"]),
       closesAt: r["closes_at"] === null ? null : String(r["closes_at"]),
@@ -482,6 +489,7 @@ export class Service {
     if (input.description.length > 2000) return "description_too_long";
     if (!isTiming(input.timing) || !isAudience(input.audience)) return "invalid_results";
     if (input.encrypted && input.timing === "live") return "encryption_needs_close";
+    if (!isAnonymity(input.anonymity)) return "invalid_results";
     const closes = Date.parse(input.closesAt);
     if (Number.isNaN(closes)) return "closes_required";
     if (closes <= this.#now().getTime()) return "closes_past";
@@ -517,9 +525,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, this.#iso(),
       );
       this.#log(id, session, "created", "");
     });
@@ -535,8 +543,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ? WHERE id = ?",
-      input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, pollId,
+      "UPDATE polls SET title = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ? WHERE id = ?",
+      input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, pollId,
     );
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -752,6 +760,25 @@ export class Service {
     });
   }
 
+  /**
+   * Cancels a poll: its results are never revealed to anyone. The ballots are erased, so that they cannot be read later
+   * either. Possible while the poll is scheduled or open, or closed with sealed ballots not yet counted. A poll whose
+   * results have been published cannot be cancelled.
+   */
+  cancelPoll(session: Session, pollId: string): Result<Poll> {
+    return this.#transaction((): Result<Poll> => {
+      const poll = this.pollFor(session, pollId);
+      if (!poll) return problem("not_found");
+      const allowed = poll.status === "scheduled" || poll.status === "open" || (poll.status === "closed" && poll.encrypted && !poll.counted);
+      if (!allowed) return problem("locked");
+      this.#run("DELETE FROM ballots WHERE poll_id = ?", pollId);
+      this.#run("UPDATE polls SET status = 'cancelled', closed_at = ?, public_key = NULL WHERE id = ?", this.#iso(), pollId);
+      this.#log(pollId, session, "cancelled", "");
+      const next = this.getPoll(pollId);
+      return next ? ok(next) : problem("not_found");
+    });
+  }
+
   /** Counts the sealed ballots of a poll that closed by itself and waits for its key. */
   countPoll(session: Session, pollId: string, countingKey: string): Result<Poll> {
     return this.#transaction((): Result<Poll> => {
@@ -821,7 +848,7 @@ export class Service {
       const link = this.byToken(token);
       if (!link) return problem("unknown_link");
       const { poll } = link;
-      if (poll.status !== "open") return problem(poll.status === "closed" ? "closed" : "not_open");
+      if (poll.status !== "open") return problem(poll.status === "closed" ? "closed" : poll.status === "cancelled" ? "cancelled" : "not_open");
       const checked = validateForm(Service.form(poll), choice === undefined ? {} : { choice });
       if (!checked.ok || choice === undefined) return problem(checked.errors["choice"]?.[0]?.code ?? "invalid_type");
 
@@ -848,7 +875,8 @@ export class Service {
       // Only a poll that lets members change their vote ties a ballot to a pseudonym of its voter, so that the count can keep
       // the last one. The pseudonym shows who voted, never what, because such a poll is always sealed.
       const tag = poll.allowChange ? base32(createHmac("sha256", this.#secret).update(`tag\n${poll.id}\n${String(row["fingerprint"])}`).digest(), 26) : null;
-      this.#run("INSERT INTO ballots (poll_id, seq, choice, entry, voter_tag) VALUES (?, ?, ?, ?, ?)", poll.id, seq, poll.encrypted ? "" : choice, entry, tag);
+      // A named poll keeps the roll entry beside the ballot, to show who answered what; a secret one never does.
+      this.#run("INSERT INTO ballots (poll_id, seq, choice, entry, voter_tag, roll_id) VALUES (?, ?, ?, ?, ?, ?)", poll.id, seq, poll.encrypted ? "" : choice, entry, tag, poll.anonymity === "named" ? Number(row["id"]) : null);
       this.#closeIfRuleHolds(poll, "automatic");
       return ok({ receipt: receiptCode(toHex(hashLeaf(new TextEncoder().encode(entry)))) });
     });
@@ -885,7 +913,7 @@ export class Service {
   /** What a viewer may see of a poll's results, and nothing more. Every screen and the JSON address go through here. */
   resultsFor(pollId: string, viewer: Viewer): ResultsView | null {
     const poll = this.getPoll(pollId);
-    if (!poll || poll.status === "draft" || poll.status === "scheduled") return null;
+    if (!poll || poll.status === "draft" || poll.status === "scheduled" || poll.status === "cancelled") return null;
     const pending = poll.status === "closed" && !poll.counted;
     const allowed = accessTo(poll, viewer);
     const access = pending ? { turnout: allowed.turnout, totals: false } : allowed;
@@ -897,7 +925,16 @@ export class Service {
       turnout: access.turnout && totals ? totals.turnout : null,
       counts: access.totals && totals ? totals.counts : null,
       rollCount: poll.rollCount,
+      answers: access.totals && poll.anonymity === "named" ? this.#answers(poll, viewer) : null,
     };
+  }
+
+  /** Who answered what in a named poll. An anonymous viewer sees the addresses partly hidden. */
+  #answers(poll: Poll, viewer: Viewer): { who: string; choice: string }[] {
+    return this.#all(
+      "SELECT r.address AS address, b.choice AS choice FROM ballots b JOIN roll r ON r.id = b.roll_id WHERE b.poll_id = ? AND b.superseded = 0 AND b.choice != '' ORDER BY r.id",
+      poll.id,
+    ).map((r) => ({ who: viewer === "anyone" ? maskAddress(String(r["address"])) : String(r["address"]), choice: String(r["choice"]) }));
   }
 
   /** Who a member is, for the results page they opened with their link. */
@@ -949,4 +986,15 @@ export function safeEqual(a: string, b: string): boolean {
   const x = Buffer.from(a);
   const y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
+}
+
+/** "marie.tremblay@example.org" as "m***@e***.org": enough to recognise one's own, not to identify another. */
+export function maskAddress(address: string): string {
+  const at = address.lastIndexOf("@");
+  if (at < 1) return "***";
+  const domain = address.slice(at + 1);
+  const dot = domain.lastIndexOf(".");
+  const host = dot > 0 ? domain.slice(0, dot) : domain;
+  const tld = dot > 0 ? domain.slice(dot) : "";
+  return `${address[0]}***@${host[0] ?? ""}***${tld}`;
 }

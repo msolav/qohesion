@@ -42,6 +42,8 @@
     <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.votedTitle}</h2><p class="done__text">{m.voter.votedText}</p>{#if data.canSeeResults}<p class="done__next"><a href="/v/{token}/results">{m.voter.seeResults}</a></p>{/if}</section>
   {:else if data.state === "closed"}
     <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.closedTitle}</h2><p class="done__text">{m.voter.closedText}</p>{#if data.canSeeResults}<p class="done__next"><a href="/v/{token}/results">{m.voter.seeResults}</a></p>{/if}</section>
+  {:else if data.state === "cancelled"}
+    <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.cancelledTitle}</h2><p class="done__text">{m.voter.cancelledText}</p></section>
   {:else if data.state === "not_open"}
     <section class="done" aria-labelledby="t"><h2 id="t">{m.voter.notOpenTitle}</h2><p class="done__text">{data.poll?.opensAt ? fill(m.voter.opensOn, { date: formatMoment(data.poll.opensAt, data.locale, data.poll.timeZone) }) : m.voter.notOpenText}</p></section>
   {:else if data.poll}

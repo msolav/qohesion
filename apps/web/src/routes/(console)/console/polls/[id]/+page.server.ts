@@ -47,6 +47,11 @@ export const actions: Actions = {
     if (!result.ok) return fail(400, { error: result.error });
     redirect(303, `/console/polls/${params.id}`);
   },
+  cancel: ({ locals, params }) => {
+    const result = service().cancelPoll(needSession(locals), params.id);
+    if (!result.ok) return fail(400, { error: result.error });
+    redirect(303, `/console/polls/${params.id}`);
+  },
   remove: ({ locals, params }) => {
     const result = service().deletePoll(needSession(locals), params.id);
     if (!result.ok) return fail(400, { error: result.error });

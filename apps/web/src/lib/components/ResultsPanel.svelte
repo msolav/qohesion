@@ -122,5 +122,19 @@
   {:else}
     <div class="cx-notice warn gap"><div><b>{m.results.notAllowedTitle}</b><p>{m.results.notAllowedText}</p></div></div>
   {/if}
+  {#if view.answers && view.answers.length > 0}
+    <h3 class="gap">{m.results.answersTitle}</h3>
+    <div class="cx-wrap gap">
+      <table class="stack">
+        <thead><tr><th scope="col">{m.results.answersWho}</th><th scope="col">{m.results.answersChoice}</th></tr></thead>
+        <tbody>
+          {#each view.answers as a, i (i)}
+            {@const option = options.find((o) => o.id === a.choice)}
+            <tr><td class="addr">{a.who}</td><td>{option ? optionLabel(locale, option) : a.choice}</td></tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
   <p class="cx-help gap">{m.resultsStatement[timing][audience]}</p>
 </section>

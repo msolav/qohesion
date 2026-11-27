@@ -21,6 +21,7 @@
     readonly audience: ResultsAudience;
     readonly encrypted: boolean;
     readonly markFill: boolean;
+    readonly anonymity: "secret" | "named";
     readonly allowChange: boolean;
     readonly rules: CloseRules;
     readonly timeZone?: string;
@@ -60,8 +61,8 @@
     </div>
     <div>
       <dt>{m.voter.ballotType}</dt>
-      <dd>{m.voter.ballotValue}, {poll.encrypted ? m.seal.factSealed.toLowerCase() : m.seal.factPlain.toLowerCase()}</dd>
-      <dd class="note">{m.voter.ballotNote} {poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
+      <dd>{poll.anonymity === "named" ? m.voter.namedValue : m.voter.ballotValue}, {poll.encrypted ? m.seal.factSealed.toLowerCase() : m.seal.factPlain.toLowerCase()}</dd>
+      <dd class="note">{poll.anonymity === "named" ? fill(m.voter.namedNote, { who: m.voter.namedWho[poll.audience] }) : m.voter.ballotNote} {poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
     </div>
     <div>
       <dt>{m.voter.yourVote}</dt>

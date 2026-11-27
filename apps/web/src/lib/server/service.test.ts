@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { NO_RULES } from "../close-rules.js";
-import { Service, type PollInput, type Session } from "./service.js";
+import { Service, maskAddress, type PollInput, type Session } from "./service.js";
 
 let now = new Date("2026-12-01T15:00:00Z");
 let service: Service;
@@ -23,6 +23,7 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   allowChange: false,
   encrypted: false,
   markFill: false,
+  anonymity: "secret",
   ...over,
 });
 
@@ -213,7 +214,8 @@ describe("voting", () => {
     new Service(db, { secret: new Uint8Array(32).fill(1) });
     const columns = (table: string) => (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
     // A ballot never names its voter. Only a poll that lets members change their vote keeps a pseudonym (no readable choice: such a poll is sealed).
-    expect(columns("ballots")).toEqual(["poll_id", "seq", "choice", "entry", "voter_tag", "superseded"]);
+    expect(columns("ballots")).toEqual(["poll_id", "seq", "choice", "entry", "voter_tag", "superseded", "roll_id"]);
+    // roll_id is filled only for a poll that says on its ballot that answers are shown with names; the secret test above checks that it stays empty.
     expect(columns("roll").some((c) => /choice|ballot/.test(c))).toBe(false);
   });
 });
@@ -337,6 +339,74 @@ describe("dates, closing rules and changing a vote", () => {
     must(service.updateSpace(owner, { name: "Maple", locale: "en", theme: "standard", timeZone: "Europe/Paris" }));
     expect(service.getSpace(owner.spaceId)?.timeZone).toBe("Europe/Paris");
     expect(service.updateSpace(owner, { name: "Maple", locale: "en", theme: "standard", timeZone: "Mars/Olympus" })).toEqual({ ok: false, error: "invalid_time_zone" });
+  });
+});
+
+describe("cancelling and named answers", () => {
+  it("cancels an open poll: the ballots are erased, nobody sees results, nobody can vote", () => {
+    const { poll, tokens } = openedPoll({ timing: "live", audience: "anyone" });
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    must(service.cancelPoll(owner, poll.id));
+    expect(service.getPoll(poll.id)?.status).toBe("cancelled");
+    for (const viewer of ["administrator", "voter", "anyone"] as const) expect(service.resultsFor(poll.id, viewer)).toBeNull();
+    expect(service.castBallot(tokens[1] ?? "", "for")).toEqual({ ok: false, error: "cancelled" });
+    expect(service.ledger(poll.id)).toBeNull();
+    expect(service.history(owner, poll.id).some((h) => h.action === "cancelled")).toBe(true);
+    expect(service.cancelPoll(owner, poll.id)).toEqual({ ok: false, error: "locked" });
+  });
+
+  it("cannot cancel a poll whose results are published, but can one that waits for its count", () => {
+    const done = openedPoll();
+    must(service.closePoll(owner, done.poll.id));
+    expect(service.cancelPoll(owner, done.poll.id)).toEqual({ ok: false, error: "locked" });
+    const draft = must(service.createPoll(owner, input()));
+    expect(service.cancelPoll(owner, draft.id)).toEqual({ ok: false, error: "locked" });
+    const sealed = must(service.createPoll(owner, input({ encrypted: true, closesAt: "2026-12-01T16:00:00.000Z" })));
+    must(service.addToRoll(owner, sealed.id, "a@example.com"));
+    must(service.openPoll(owner, sealed.id));
+    now = new Date("2026-12-01T16:30:00Z");
+    expect(service.getPoll(sealed.id)).toMatchObject({ status: "closed", counted: false });
+    must(service.cancelPoll(owner, sealed.id));
+    expect(service.getPoll(sealed.id)?.status).toBe("cancelled");
+  });
+
+  it("shows who answered what in a named poll to those who see the results, with addresses hidden from the public", () => {
+    const { poll, tokens } = openedPoll({ anonymity: "named", timing: "live", audience: "anyone" }, "marie@example.org\njean@example.org");
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    must(service.castBallot(tokens[1] ?? "", "against"));
+    expect(service.resultsFor(poll.id, "administrator")?.answers).toEqual([{ who: "marie@example.org", choice: "for" }, { who: "jean@example.org", choice: "against" }]);
+    expect(service.resultsFor(poll.id, "voter")?.answers?.[0]?.who).toBe("marie@example.org");
+    expect(service.resultsFor(poll.id, "anyone")?.answers).toEqual([{ who: "m***@e***.org", choice: "for" }, { who: "j***@e***.org", choice: "against" }]);
+  });
+
+  it("shows nobody's answer in a secret poll, and keeps no link to the voter", () => {
+    const db = new DatabaseSync(":memory:");
+    const svc = new Service(db, { secret: new Uint8Array(32).fill(5) });
+    const o = svc.session(svc.signIn(must(svc.createSpace({ name: "S", locale: "en" })).key) ?? "") as Session;
+    const p = must(svc.createPoll(o, input({ timing: "live", audience: "anyone" })));
+    must(svc.addToRoll(o, p.id, "a@example.com"));
+    must(svc.openPoll(o, p.id));
+    must(svc.castBallot([...svc.voterTokens(o, p.id).values()][0] ?? "", "for"));
+    expect(svc.resultsFor(p.id, "administrator")?.answers).toBeNull();
+    expect(db.prepare("SELECT roll_id, voter_tag FROM ballots").get()).toEqual({ roll_id: null, voter_tag: null });
+  });
+
+  it("hides the answers of a named, sealed poll until the count, and counts only each member's last one", () => {
+    const poll = must(service.createPoll(owner, input({ anonymity: "named", encrypted: true, allowChange: true, audience: "voters" })));
+    must(service.addToRoll(owner, poll.id, "marie@example.org"));
+    const opened = must(service.openPoll(owner, poll.id));
+    const [t] = [...service.voterTokens(owner, poll.id).values()];
+    must(service.castBallot(t ?? "", "for"));
+    must(service.castBallot(t ?? "", "against"));
+    expect(service.resultsFor(poll.id, "administrator")?.answers).toBeNull();
+    must(service.closePoll(owner, poll.id, opened.countingKey ?? ""));
+    expect(service.resultsFor(poll.id, "voter")?.answers).toEqual([{ who: "marie@example.org", choice: "against" }]);
+  });
+
+  it("writes an address with most of it hidden", () => {
+    expect(maskAddress("marie.tremblay@example.org")).toBe("m***@e***.org");
+    expect(maskAddress("a@b.co")).toBe("a***@b***.co");
+    expect(maskAddress("nonsense")).toBe("***");
   });
 });
 

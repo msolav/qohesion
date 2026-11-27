@@ -5,7 +5,7 @@
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { COLOR_IDS, ICON_IDS, ICONS, COLORS, colorName, iconName } from "#lib/option-style.js";
-  import { AUDIENCES, TIMINGS, type ResultsAudience, type ResultsTiming } from "#lib/results-rules.js";
+  import { AUDIENCES, TIMINGS, type Anonymity, type ResultsAudience, type ResultsTiming } from "#lib/results-rules.js";
   import type { PollInput } from "#lib/server/service.js";
   import { THEMES, THEME_NAMES, type Theme } from "#lib/theme.js";
   import { DEFAULT_TIME_ZONE, utcToLocalInput, zonedToUtc } from "#lib/zoned.js";
@@ -43,6 +43,7 @@
   let rows = $state<Row[]>(start && start.options.length > 0 ? start.options.map((o) => row(o.label, o.icon ?? "", o.color ?? "")) : [row(), row(), row()]);
   let timing = $state<ResultsTiming>(start?.timing ?? "close");
   let audience = $state<ResultsAudience>(start?.audience ?? "voters");
+  let anonymity = $state<Anonymity>(start?.anonymity ?? "secret");
   let encryption = $state<"sealed" | "none">(start ? (start.encrypted ? "sealed" : "none") : "sealed");
   const zone = (() => timeZone)();
   let opensMode = $state<"manual" | "date">(start?.opensAt ? "date" : "manual");
@@ -100,6 +101,7 @@
     audience,
     encrypted: encryption === "sealed",
     markFill,
+    anonymity,
     allowChange,
     rules: previewRules,
     timeZone: zone,
@@ -327,6 +329,14 @@
         </div>
       </fieldset>
       <fieldset class="cx-field">
+        <legend class="cx-label">{m.form.anonymityTitle}</legend>
+        <div class="cx-choices cols-2">
+          {#each ["secret", "named"] as const as value (value)}
+            <label class="cx-choice has-ico"><input type="radio" name="anonymity" {value} bind:group={anonymity} /><span><i class="ico"><UiIcon name={value === "secret" ? "lock" : "users"} /></i><b>{m.form.anonymityNames.title[value]}</b><small>{m.form.anonymityNames.text[value]}</small></span></label>
+          {/each}
+        </div>
+      </fieldset>
+      <fieldset class="cx-field">
         <legend class="cx-label">{m.seal.title}</legend>
         <p class="cx-help">{m.seal.help}</p>
         <div class="cx-choices cols-2">
@@ -405,7 +415,7 @@
       <dl class="bld-review">
         <div><dt>{m.form.question}</dt><dd>{title || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.options}</dt><dd>{kind === "choice" ? labels.join(" · ") || "–" : m.form.kindYesNo}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>
-        <div><dt>{m.form.results}</dt><dd>{m.resultsStatement[timing][audience]}<br />{encryption === "sealed" ? m.seal.sealed.title : m.seal.none.title}</dd><dd><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}</button></dd></div>
+        <div><dt>{m.form.results}</dt><dd>{m.resultsStatement[timing][audience]}<br />{encryption === "sealed" ? m.seal.sealed.title : m.seal.none.title}<br />{m.form.anonymityNames.title[anonymity]}</dd><dd><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}</button></dd></div>
         <div><dt>{m.build.stepNames.closing}</dt><dd>{m.form.opening}: {opensMode === "date" && opensAt ? opensAt.replace("T", " ") : m.form.openManual}<br />{m.form.closeAt}: {closesAt ? closesAt.replace("T", " ") : "–"} · {THEME_NAMES[theme][locale]}</dd><dd><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}</button></dd></div>
       </dl>
     </section>

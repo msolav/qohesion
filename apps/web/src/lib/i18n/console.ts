@@ -7,7 +7,7 @@
  */
 
 import type { Locale } from "./negotiate";
-import type { ResultsAudience, ResultsTiming } from "../results-rules";
+import type { Anonymity, ResultsAudience, ResultsTiming } from "../results-rules";
 
 interface Names<K extends string> {
   readonly title: Readonly<Record<K, string>>;
@@ -21,7 +21,7 @@ export interface ConsoleMessages {
     readonly save: string; readonly cancel: string; readonly back: string; readonly copy: string; readonly copied: string; readonly delete: string;
     readonly open: string; readonly close: string; readonly none: string; readonly yes: string; readonly no: string; readonly optional: string;
   };
-  readonly status: Readonly<Record<"draft" | "scheduled" | "open" | "closed", string>>;
+  readonly status: Readonly<Record<"draft" | "scheduled" | "open" | "closed" | "cancelled", string>>;
   readonly member: Readonly<Record<"listed" | "requested" | "confirmed" | "voted" | "withdrawn" | "bounced" | "blocked", string>>;
   readonly role: { readonly owner: string; readonly administrator: string; readonly both: string };
   readonly start: {
@@ -40,6 +40,7 @@ export interface ConsoleMessages {
     readonly template: string; readonly templateSeed: string; readonly templateBallot: string;
     readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string;
     readonly rulesTitle: string; readonly rulesHelp: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleThresholdNone: string; readonly ruleThresholdMajority: string; readonly ruleThresholdPercent: string; readonly ruleNeedsReadable: string; readonly members: string; readonly percent: string;
+    readonly anonymityTitle: string; readonly anonymityNames: Names<Anonymity>;
     readonly changeTitle: string; readonly changeLabel: string; readonly changeHelp: string; readonly changeNeedsSealed: string; readonly timeZone: string;
     readonly preview: string; readonly locked: string; readonly create: string; readonly smallRoll: string;
   };
@@ -50,6 +51,7 @@ export interface ConsoleMessages {
     readonly openNow: string; readonly openNote: string; readonly openNeedsRoll: string; readonly closeNow: string; readonly closeNote: string; readonly deletePoll: string; readonly confirmDelete: string; readonly confirmOpen: string; readonly confirmClose: string;
     readonly edit: string; readonly draftNote: string; readonly openNote2: string; readonly closedNote: string;
     readonly settings: string; readonly resultsRule: string;
+    readonly cancelNow: string; readonly cancelNote: string; readonly confirmCancel: string; readonly cancelledNote: string;
     readonly scheduleNow: string; readonly scheduleNote: string; readonly unschedule: string; readonly scheduledNote: string; readonly openInstead: string; readonly opensOn: string; readonly closesRules: string; readonly noDeadline: string;
   };
   readonly roll: {
@@ -61,6 +63,7 @@ export interface ConsoleMessages {
   readonly results: {
     readonly title: string; readonly live: string; readonly updated: string; readonly updating: string; readonly turnout: string; readonly of: string; readonly votes: string; readonly total: string;
     readonly hiddenTitle: string; readonly hiddenText: string; readonly hiddenAdminText: string; readonly notAllowedTitle: string; readonly notAllowedText: string;
+    readonly answersTitle: string; readonly answersWho: string; readonly answersChoice: string;
     readonly finalTitle: string; readonly ledger: string; readonly ledgerText: string; readonly root: string; readonly size: string; readonly receipts: string;
     readonly check: string; readonly checkHelp: string; readonly checkSubmit: string; readonly checkFound: string; readonly checkNotFound: string; readonly checkPosition: string; readonly checkProof: string;
     readonly ledgerNotYet: string; readonly share: string; readonly winner: string; readonly tie: string; readonly noBallots: string;
@@ -74,6 +77,7 @@ export interface ConsoleMessages {
   };
   readonly voter: {
     readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollNote: string; readonly results: string;
+    readonly namedValue: string; readonly namedNote: string; readonly namedWho: Readonly<Record<ResultsAudience, string>>; readonly cancelledTitle: string; readonly cancelledText: string;
     readonly yourVote: string; readonly changeAllowed: string; readonly changeFinal: string; readonly opensOn: string; readonly alreadyVotedChange: string; readonly alsoCloses: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleEveryone: string; readonly ruleMajority: string; readonly rulePercent: string; readonly or: string;
     readonly ballotType: string; readonly ballotValue: string; readonly ballotNote: string; readonly submit: string; readonly legend: string; readonly problem: string;
     readonly doneTitle: string; readonly doneText: string; readonly doneLabel: string; readonly doneNote: string; readonly doneResults: string;
@@ -110,7 +114,7 @@ const en: ConsoleMessages = {
   },
   nav: { label: "Administration", polls: "Polls", space: "Organization", signOut: "Sign out", signIn: "Sign in" },
   common: { save: "Save", cancel: "Cancel", back: "Back", copy: "Copy", copied: "Copied", delete: "Delete", open: "Open", close: "Close", none: "None", yes: "Yes", no: "No", optional: "optional" },
-  status: { draft: "Draft", scheduled: "Scheduled", open: "Open", closed: "Closed" },
+  status: { draft: "Draft", scheduled: "Scheduled", open: "Open", closed: "Closed", cancelled: "Cancelled" },
   member: { listed: "Listed", requested: "Requested", confirmed: "Confirmed", voted: "Voted", withdrawn: "Withdrawn", bounced: "Bounced", blocked: "Blocked" },
   role: { owner: "Owner", administrator: "Administrator", both: "Owner and administrator" },
   start: {
@@ -193,6 +197,11 @@ const en: ConsoleMessages = {
     ruleNeedsReadable: "A threshold needs ballots that are not encrypted, since the totals must be readable while voting runs.",
     members: "members",
     percent: "% of the roll",
+    anonymityTitle: "Who can tell who voted what",
+    anonymityNames: {
+      title: { secret: "Fully anonymous", named: "Answers shown with names" },
+      text: { secret: "Nobody can tell who voted what. Members are only known to have voted.", named: "Each answer is shown with the address that gave it, to the people who see the results. Members are told before they vote." },
+    },
     changeTitle: "Changing a vote",
     changeLabel: "Members can change their vote until the poll closes",
     changeHelp: "Their last ballot is the one that counts. This needs encrypted ballots: a vote that can be replaced must be tied to its voter by a pseudonym, which shows who voted and never what.",
@@ -233,6 +242,10 @@ const en: ConsoleMessages = {
     closedNote: "Voting has ended.",
     settings: "Settings",
     resultsRule: "Results",
+    cancelNow: "Cancel the poll",
+    cancelNote: "Cancelling ends the poll and erases its ballots: the results are never revealed. This cannot be undone.",
+    confirmCancel: "Cancel this poll? Its ballots are erased and its results are never revealed.",
+    cancelledNote: "Cancelled. No result will be published.",
     scheduleNow: "Schedule the opening",
     scheduleNote: "The poll will open by itself on the date chosen. For encrypted ballots, the counting key is shown now.",
     unschedule: "Cancel the scheduling",
@@ -281,6 +294,9 @@ const en: ConsoleMessages = {
     hiddenAdminText: "Totals appear when the poll closes. Nobody sees them before, administrators included. The number of ballots cast is shown below.",
     notAllowedTitle: "Results are not available to you",
     notAllowedText: "The organization chose who sees the results of this poll.",
+    answersTitle: "Who answered what",
+    answersWho: "Address",
+    answersChoice: "Answer",
     finalTitle: "Final results",
     ledger: "Ledger",
     ledgerText: "Every ballot is recorded in an append-only list with a root that commits to all of them. The receipt code shown after voting finds a ballot here.",
@@ -303,7 +319,7 @@ const en: ConsoleMessages = {
   history: {
     title: "History",
     empty: "Nothing yet.",
-    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", links_sent: "Links sent by email", opened: "Poll opened (roll count and code)", closed: "Poll closed", scheduled: "Opening scheduled", unscheduled: "Scheduling cancelled", closed_auto: "Poll closed by a closing rule", counted: "Sealed ballots counted" },
+    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", links_sent: "Links sent by email", opened: "Poll opened (roll count and code)", closed: "Poll closed", scheduled: "Opening scheduled", unscheduled: "Scheduling cancelled", closed_auto: "Poll closed by a closing rule", cancelled: "Poll cancelled", counted: "Sealed ballots counted" },
   },
   space: {
     title: "Organization",
@@ -340,6 +356,11 @@ const en: ConsoleMessages = {
     rollValue: "{n} members",
     rollNote: "Identified by the code {code}.",
     results: "Results",
+    namedValue: "Named",
+    namedNote: "Your answer is recorded with your address and shown with it to {who}.",
+    namedWho: { administrators: "the administrators", voters: "the members on the roll", anyone: "anyone with the results address (the address is partly hidden)" },
+    cancelledTitle: "This poll was cancelled",
+    cancelledText: "No result will be published.",
     yourVote: "Your vote",
     changeAllowed: "You can change it until the poll closes. Your last ballot is the one that counts.",
     changeFinal: "It is final once submitted.",
@@ -482,6 +503,7 @@ const en: ConsoleMessages = {
     roll_empty: "Add at least one address before opening.",
     unknown_link: "This link is not valid.",
     closed: "This poll is closed.",
+    cancelled: "This poll was cancelled.",
     not_open: "This poll is not open yet.",
     already_voted: "A ballot was already submitted with this link.",
     not_allowed: "This link cannot vote now.",
@@ -510,7 +532,7 @@ const fr: ConsoleMessages = {
   },
   nav: { label: "Administration", polls: "Scrutins", space: "Organisation", signOut: "Se déconnecter", signIn: "Se connecter" },
   common: { save: "Enregistrer", cancel: "Annuler", back: "Retour", copy: "Copier", copied: "Copié", delete: "Supprimer", open: "Ouvrir", close: "Fermer", none: "Aucun", yes: "Oui", no: "Non", optional: "facultatif" },
-  status: { draft: "Brouillon", scheduled: "Planifié", open: "Ouvert", closed: "Fermé" },
+  status: { draft: "Brouillon", scheduled: "Planifié", open: "Ouvert", closed: "Fermé", cancelled: "Annulé" },
   member: { listed: "Inscrit à la liste", requested: "Demandé", confirmed: "Confirmé", voted: "A voté", withdrawn: "Retiré", bounced: "Adresse refusée", blocked: "Bloqué" },
   role: { owner: "Titulaire du compte", administrator: "Administration", both: "Titulaire et administration" },
   start: {
@@ -593,6 +615,11 @@ const fr: ConsoleMessages = {
     ruleNeedsReadable: "Un seuil exige des bulletins non chiffrés, puisque les totaux doivent être lisibles pendant le vote.",
     members: "membres",
     percent: "% de la liste",
+    anonymityTitle: "Qui peut savoir qui a voté quoi",
+    anonymityNames: {
+      title: { secret: "Entièrement anonyme", named: "Réponses affichées avec les noms" },
+      text: { secret: "Personne ne peut savoir qui a voté quoi. On sait seulement que les membres ont voté.", named: "Chaque réponse est affichée avec l’adresse qui l’a donnée, aux personnes qui voient les résultats. Les membres en sont informés avant de voter." },
+    },
     changeTitle: "Modifier son vote",
     changeLabel: "Les membres peuvent modifier leur vote jusqu’à la fermeture",
     changeHelp: "Leur dernier bulletin est celui qui compte. Cela exige des bulletins chiffrés: un vote qui peut être remplacé doit être lié à son votant par un pseudonyme, qui montre qui a voté et jamais quoi.",
@@ -633,6 +660,10 @@ const fr: ConsoleMessages = {
     closedNote: "Le vote est terminé.",
     settings: "Paramètres",
     resultsRule: "Résultats",
+    cancelNow: "Annuler le scrutin",
+    cancelNote: "L’annulation met fin au scrutin et efface ses bulletins: les résultats ne sont jamais dévoilés. Cette action est irréversible.",
+    confirmCancel: "Annuler ce scrutin? Ses bulletins sont effacés et ses résultats ne sont jamais dévoilés.",
+    cancelledNote: "Annulé. Aucun résultat ne sera publié.",
     scheduleNow: "Planifier l’ouverture",
     scheduleNote: "Le scrutin s’ouvrira de lui-même à la date choisie. Pour des bulletins chiffrés, la clé de dépouillement est affichée maintenant.",
     unschedule: "Annuler la planification",
@@ -681,6 +712,9 @@ const fr: ConsoleMessages = {
     hiddenAdminText: "Les totaux apparaissent à la fermeture du scrutin. Personne ne les voit avant, administration comprise. Le nombre de bulletins déposés est affiché plus bas.",
     notAllowedTitle: "Les résultats ne sont pas accessibles avec ce lien",
     notAllowedText: "L’organisation a choisi qui voit les résultats de ce scrutin.",
+    answersTitle: "Qui a répondu quoi",
+    answersWho: "Adresse",
+    answersChoice: "Réponse",
     finalTitle: "Résultats finaux",
     ledger: "Registre",
     ledgerText: "Chaque bulletin est inscrit dans une liste à ajout seulement, dont la racine engage tous les bulletins. Le code de reçu affiché après le vote permet d’y retrouver un bulletin.",
@@ -703,7 +737,7 @@ const fr: ConsoleMessages = {
   history: {
     title: "Historique",
     empty: "Rien pour l’instant.",
-    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", links_sent: "Liens envoyés par courriel", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé", scheduled: "Ouverture planifiée", unscheduled: "Planification annulée", closed_auto: "Scrutin fermé par une condition de fermeture", counted: "Bulletins chiffrés dépouillés" },
+    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", links_sent: "Liens envoyés par courriel", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé", scheduled: "Ouverture planifiée", unscheduled: "Planification annulée", closed_auto: "Scrutin fermé par une condition de fermeture", cancelled: "Scrutin annulé", counted: "Bulletins chiffrés dépouillés" },
   },
   space: {
     title: "Organisation",
@@ -740,6 +774,11 @@ const fr: ConsoleMessages = {
     rollValue: "{n} membres",
     rollNote: "Identifiée par le code {code}.",
     results: "Résultats",
+    namedValue: "Nominatif",
+    namedNote: "Votre réponse est enregistrée avec votre adresse et affichée avec elle à {who}.",
+    namedWho: { administrators: "l’administration", voters: "aux membres de la liste", anyone: "toute personne qui a l’adresse des résultats (l’adresse est en partie masquée)" },
+    cancelledTitle: "Ce scrutin a été annulé",
+    cancelledText: "Aucun résultat ne sera publié.",
     yourVote: "Votre vote",
     changeAllowed: "Vous pouvez le modifier jusqu’à la fermeture du scrutin. Votre dernier bulletin est celui qui compte.",
     changeFinal: "Il est définitif une fois déposé.",
@@ -882,6 +921,7 @@ const fr: ConsoleMessages = {
     roll_empty: "Ajouter au moins une adresse avant l’ouverture.",
     unknown_link: "Ce lien n’est pas valide.",
     closed: "Ce scrutin est fermé.",
+    cancelled: "Ce scrutin a été annulé.",
     not_open: "Ce scrutin n’est pas encore ouvert.",
     already_voted: "Un bulletin a déjà été déposé avec ce lien.",
     not_allowed: "Ce lien ne peut pas voter maintenant.",

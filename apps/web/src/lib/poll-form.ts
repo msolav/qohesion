@@ -61,6 +61,7 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     theme: isTheme(theme) ? theme : DEFAULT_THEME,
     encrypted: text(data, "encryption") === "sealed",
     markFill: text(data, "marks") === "fill",
+    anonymity: text(data, "anonymity") === "named" ? "named" : "secret",
     opensAt: text(data, "opens_mode") === "date" ? (zonedToUtc(text(data, "opens_at"), timeZone) ?? "invalid") : null,
     closesAt: zonedToUtc(text(data, "closes_at"), timeZone) ?? "",
     rules: parseRules(data),

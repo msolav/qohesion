@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import ConfirmAction from "#lib/components/ConfirmAction.svelte";
   import CopyButton from "#lib/components/CopyButton.svelte";
   import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
   import { optionLabel } from "#lib/option-labels.js";
@@ -12,12 +13,6 @@
   const poll = $derived(data.poll);
   const at = (iso: string) => formatMoment(iso, data.locale, data.timeZone);
   const warn = $derived(liveResultsWarning(poll.timing, data.rollSize));
-
-  function confirmWith(message: string) {
-    return ({ cancel }: { cancel: () => void }) => {
-      if (!confirm(message)) cancel();
-    };
-  }
 </script>
 
 {#if form?.countingKey}
@@ -35,7 +30,7 @@
 {#if form?.error && !form.step}<p class="cx-notice error" role="alert">{errorText(m, form.error)}</p>{/if}
 
 <p class="cx-notice" class:warn={poll.status === "draft"}>
-  {poll.status === "draft" ? m.poll.draftNote : poll.status === "scheduled" ? fill(m.poll.scheduledNote, { date: poll.opensAt ? at(poll.opensAt) : "" }) : poll.status === "open" ? m.poll.openNote2 : m.poll.closedNote}
+  {poll.status === "draft" ? m.poll.draftNote : poll.status === "cancelled" ? m.poll.cancelledNote : poll.status === "scheduled" ? fill(m.poll.scheduledNote, { date: poll.opensAt ? at(poll.opensAt) : "" }) : poll.status === "open" ? m.poll.openNote2 : m.poll.closedNote}
 </p>
 {#if warn}<p class="cx-notice warn" role="note">{m.form.smallRoll}</p>{/if}
 
@@ -84,25 +79,33 @@
     <div class="cx-actions gap">
       {#if data.rollSize > 0}
         {#if poll.opensAt}
-          <form method="POST" action="?/schedule" use:enhance><button class="cx-btn" type="submit">{m.poll.scheduleNow}</button></form>
-          <form method="POST" action="?/open" use:enhance={confirmWith(m.poll.confirmOpen)}><button class="cx-btn ghost" type="submit">{m.poll.openNow}</button></form>
+          <form id="f-schedule" method="POST" action="?/schedule" use:enhance></form>
+          <button class="cx-btn" type="submit" form="f-schedule">{m.poll.scheduleNow}</button>
+          <form id="f-open" method="POST" action="?/open" use:enhance></form>
+          <ConfirmAction formId="f-open" label={m.poll.openNow} message={m.poll.confirmOpen} backLabel={m.common.back} kind="ghost" />
         {:else}
-          <form method="POST" action="?/open" use:enhance={confirmWith(m.poll.confirmOpen)}><button class="cx-btn" type="submit">{m.poll.openNow}</button></form>
+          <form id="f-open" method="POST" action="?/open" use:enhance></form>
+          <ConfirmAction formId="f-open" label={m.poll.openNow} message={m.poll.confirmOpen} backLabel={m.common.back} />
         {/if}
       {:else}
         <p class="cx-notice warn">{m.poll.openNeedsRoll} <a href="/console/polls/{poll.id}/roll">{m.poll.roll}</a></p>
       {/if}
-      <form method="POST" action="?/remove" use:enhance={confirmWith(m.poll.confirmDelete)}><button class="cx-btn danger" type="submit">{m.poll.deletePoll}</button></form>
+      <form id="f-remove" method="POST" action="?/remove" use:enhance></form>
+      <ConfirmAction formId="f-remove" label={m.poll.deletePoll} message={m.poll.confirmDelete} backLabel={m.common.back} kind="danger" />
     </div>
   {:else if poll.status === "scheduled"}
     <p class="cx-help">{m.poll.scheduleNote}</p>
     <div class="cx-actions gap">
-      <form method="POST" action="?/open" use:enhance={confirmWith(m.poll.confirmOpen)}><button class="cx-btn ghost" type="submit">{m.poll.openInstead}</button></form>
-      <form method="POST" action="?/unschedule" use:enhance><button class="cx-btn danger" type="submit">{m.poll.unschedule}</button></form>
+      <form id="f-open" method="POST" action="?/open" use:enhance></form>
+      <ConfirmAction formId="f-open" label={m.poll.openInstead} title={m.poll.openNow} message={m.poll.confirmOpen} confirmLabel={m.poll.openNow} backLabel={m.common.back} kind="ghost" />
+      <form id="f-unschedule" method="POST" action="?/unschedule" use:enhance></form>
+      <button class="cx-btn ghost" type="submit" form="f-unschedule">{m.poll.unschedule}</button>
+      <form id="f-cancel" method="POST" action="?/cancel" use:enhance></form>
+      <ConfirmAction formId="f-cancel" label={m.poll.cancelNow} message={m.poll.confirmCancel} backLabel={m.common.back} kind="danger" />
     </div>
   {:else if poll.status === "open"}
     <p class="cx-help">{m.poll.closeNote}</p>
-    <form class="cx-form gap" method="POST" action="?/close" use:enhance={confirmWith(m.poll.confirmClose)}>
+    <form id="f-close" class="cx-form gap" method="POST" action="?/close" use:enhance>
       {#if poll.encrypted}
         <div class="cx-field" class:invalid={form?.step === "close"}>
           <label for="close-key">{m.seal.closeKeyLabel}</label>
@@ -111,11 +114,15 @@
           {#if form?.step === "close"}<p class="cx-error" id="close-key-error" role="alert">{errorText(m, form.error)}</p>{/if}
         </div>
       {/if}
-      <div class="cx-actions">
-        <button class="cx-btn" type="submit">{m.poll.closeNow}</button>
-        <a class="cx-btn ghost" href="/console/polls/{poll.id}/roll">{m.poll.roll}</a>
-      </div>
     </form>
+    <div class="cx-actions gap">
+      <ConfirmAction formId="f-close" label={m.poll.closeNow} message={m.poll.confirmClose} backLabel={m.common.back} />
+      <form id="f-cancel" method="POST" action="?/cancel" use:enhance></form>
+      <ConfirmAction formId="f-cancel" label={m.poll.cancelNow} message={m.poll.confirmCancel} backLabel={m.common.back} kind="danger" />
+    </div>
+    <p class="cx-help gap">{m.poll.cancelNote}</p>
+  {:else if poll.status === "cancelled"}
+    <p class="cx-help">{m.poll.cancelledNote}</p>
   {:else if poll.encrypted && !poll.counted}
     <h2>{m.seal.countTitle}</h2>
     <p class="cx-help">{m.seal.countText}</p>
@@ -127,6 +134,8 @@
       </div>
       <div class="cx-actions"><button class="cx-btn" type="submit">{m.seal.countSubmit}</button></div>
     </form>
+    <form id="f-cancel" method="POST" action="?/cancel" use:enhance></form>
+    <div class="cx-actions gap"><ConfirmAction formId="f-cancel" label={m.poll.cancelNow} message={m.poll.confirmCancel} backLabel={m.common.back} kind="danger" /></div>
   {:else}
     <div class="cx-actions"><a class="cx-btn" href="/console/polls/{poll.id}/results">{m.poll.results}</a></div>
   {/if}

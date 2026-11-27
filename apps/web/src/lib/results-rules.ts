@@ -5,7 +5,9 @@
  * Who sees what of a poll's results, and when (ADR 0007, section 2). Pure rules, shared by the server and the screens.
  */
 
-export type PollStatus = "draft" | "scheduled" | "open" | "closed";
+export type PollStatus = "draft" | "scheduled" | "open" | "closed" | "cancelled";
+/** `secret`: nobody can tell who voted what. `named`: each answer is shown with the address that gave it, to those who see the results. */
+export type Anonymity = "secret" | "named";
 /** `close`: totals appear when the poll closes. `live`: totals appear as ballots arrive. */
 export type ResultsTiming = "close" | "live";
 /** Who may see the results: the administrators only, the members on the roll, or anyone with the address. */
@@ -38,7 +40,7 @@ export function inAudience(audience: ResultsAudience, viewer: Viewer): boolean {
 }
 
 export function accessTo(poll: ResultsSettings, viewer: Viewer): Access {
-  if (poll.status === "draft" || poll.status === "scheduled") return NOTHING;
+  if (poll.status === "draft" || poll.status === "scheduled" || poll.status === "cancelled") return NOTHING;
   if (poll.status === "closed") {
     const allowed = inAudience(poll.audience, viewer);
     return { turnout: allowed, totals: allowed };
@@ -64,3 +66,5 @@ export function isTiming(value: unknown): value is ResultsTiming {
 export function isAudience(value: unknown): value is ResultsAudience {
   return value === "administrators" || value === "voters" || value === "anyone";
 }
+
+export const isAnonymity = (value: unknown): value is Anonymity => value === "secret" || value === "named";
