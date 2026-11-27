@@ -25,6 +25,7 @@
     readonly markFill: boolean;
     readonly anonymity: "secret" | "named";
     readonly allowChange: boolean;
+    readonly lateRoll: boolean;
     readonly rules: CloseRules;
     readonly timeZone?: string;
     readonly closesAt: string | null;
@@ -119,6 +120,7 @@
       <dt>{m.voter.roll}</dt>
       <dd>{poll.rollCount === null ? "—" : poll.rollCount === 1 ? m.voter.rollOne : fill(m.voter.rollValue, { n: poll.rollCount })}</dd>
       {#if poll.rollCode}<dd class="note">{fill(m.voter.rollNote, { code: poll.rollCode })}</dd>{/if}
+      <dd class="note">{poll.lateRoll ? m.voter.rollLate : m.voter.rollFixed}</dd>
     </div>
     <div>
       <dt>{m.voter.ballotType}</dt>

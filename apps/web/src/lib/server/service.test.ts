@@ -29,6 +29,7 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   keyThreshold: 1,
   lockCancel: false,
   paged: true,
+  lateRoll: true,
   encrypted: false,
   markFill: false,
   anonymity: "secret",
@@ -590,6 +591,48 @@ describe("sending links", () => {
     expect(service.invitees(other, poll.id, "new")).toEqual([]);
     must(service.closePoll(owner, poll.id));
     expect(service.invitees(owner, poll.id, "new")).toEqual([]);
+  });
+});
+
+describe("the roll as the administrator reads it", () => {
+  it("keeps an address as typed, dots included, and still counts a Gmail address once", () => {
+    const poll = must(service.createPoll(owner, input()));
+    const r = must(service.addToRoll(owner, poll.id, "lkvm.studio@gmail.com\nlkvmstudio@gmail.com"));
+    expect(r).toMatchObject({ added: 1, duplicates: 1 });
+    expect(service.roll(owner, poll.id).map((e) => e.address)).toEqual(["lkvm.studio@gmail.com"]);
+  });
+
+  it("counts the links sent: the first day, the latest day, and how many in all", () => {
+    const { poll } = openedPoll({}, "a@example.com");
+    const id = service.roll(owner, poll.id)[0]?.id ?? 0;
+    service.markInvited(owner, poll.id, [id]);
+    now = new Date("2026-12-03T15:00:00Z");
+    service.markInvited(owner, poll.id, [id]);
+    expect(service.roll(owner, poll.id)[0]).toMatchObject({ invites: 2, firstInvitedOn: "2026-12-01", invitedOn: "2026-12-03" });
+  });
+
+  it("treats links sent before the exact moment was kept as sent, so a reminder is offered rather than a first link", () => {
+    const db = new DatabaseSync(":memory:");
+    const secret = new Uint8Array(32).fill(7);
+    const first = new Service(db, { secret, now: () => now });
+    const created = must(first.createSpace({ name: "Old Org", locale: "en" }));
+    const session = first.session(first.signIn(created.key) ?? "") as Session;
+    const poll = must(first.createPoll(session, input()));
+    must(first.addToRoll(session, poll.id, "a@example.com"));
+    must(first.openPoll(session, poll.id));
+    db.exec("UPDATE roll SET invited_on = '2026-11-30', invited_at = NULL, invite_count = 0, first_invited_on = NULL");
+    now = new Date("2026-12-02T15:00:00Z");
+    const later = new Service(db, { secret, now: () => now });
+    expect(later.invitees(session, poll.id, "new")).toHaveLength(0);
+    expect(later.invitees(session, poll.id, "reminder")).toHaveLength(1);
+    expect(later.roll(session, poll.id)[0]).toMatchObject({ invites: 1, firstInvitedOn: "2026-11-30" });
+  });
+
+  it("refuses new participants after opening when the poll says the roll is fixed", () => {
+    const fixed = openedPoll({ lateRoll: false }).poll;
+    expect(service.addToRoll(owner, fixed.id, "late@example.com")).toEqual({ ok: false, error: "roll_locked" });
+    const open = openedPoll({ lateRoll: true }).poll;
+    expect(must(service.addToRoll(owner, open.id, "late@example.com")).added).toBe(1);
   });
 });
 

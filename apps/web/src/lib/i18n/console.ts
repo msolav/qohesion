@@ -38,6 +38,7 @@ export interface ConsoleMessages {
     readonly options: string; readonly optionsHelp: string; readonly optionN: string; readonly addOption: string;
     readonly results: string; readonly resultsHelp: string; readonly timing: string; readonly audience: string; readonly timingNames: Names<ResultsTiming>; readonly audienceNames: Names<ResultsAudience>;
     readonly template: string; readonly templateSeed: string; readonly templateBallot: string;
+    readonly lateRollLabel: string; readonly lateRollHelp: string;
     readonly pagedLabel: string; readonly pagedHelp: string;
     readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
     readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "transparent" | "open">; readonly presetCustom: string;
@@ -64,7 +65,7 @@ export interface ConsoleMessages {
     readonly title: string; readonly add: string; readonly addHelp: string; readonly addPlaceholder: string; readonly addSubmit: string;
     readonly added: string; readonly duplicates: string; readonly rejected: string; readonly reasonInvalid: string; readonly reasonDisposable: string;
     readonly address: string; readonly status: string; readonly link: string; readonly late: string; readonly remove: string; readonly empty: string;
-    readonly linksTitle: string; readonly linksText: string; readonly copyLink: string; readonly copyAll: string; readonly lateNote: string; readonly votedNote: string; readonly day: string;
+    readonly fixedRoll: string; readonly linksTitle: string; readonly linksText: string; readonly copyLink: string; readonly copyAll: string; readonly lateNote: string; readonly votedNote: string; readonly day: string;
   };
   readonly results: {
     readonly title: string; readonly live: string; readonly updated: string; readonly updating: string; readonly turnout: string; readonly of: string; readonly votes: string; readonly total: string;
@@ -85,7 +86,7 @@ export interface ConsoleMessages {
   readonly voter: {
     readonly lede: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollOne: string; readonly rollNote: string; readonly results: string;
     readonly cancelledDetail: string; readonly cancelledDetailNone: string; readonly doneChange: string;
-    readonly stepOf: string; readonly start: string; readonly rulesTitle: string; readonly agree: string; readonly next: string; readonly back: string; readonly confirmTitle: string; readonly confirmChoice: string; readonly confirmFinal: string; readonly confirmSubmit: string; readonly showAll: string; readonly pickFirst: string; readonly doneDeadline: string; readonly addToCalendar: string; readonly calendarSummary: string; readonly calendarAlarm: string; readonly calendarNote: string; readonly introClose: string;
+    readonly rollFixed: string; readonly rollLate: string; readonly stepOf: string; readonly start: string; readonly rulesTitle: string; readonly agree: string; readonly next: string; readonly back: string; readonly confirmTitle: string; readonly confirmChoice: string; readonly confirmFinal: string; readonly confirmSubmit: string; readonly showAll: string; readonly pickFirst: string; readonly doneDeadline: string; readonly addToCalendar: string; readonly calendarSummary: string; readonly calendarAlarm: string; readonly calendarNote: string; readonly introClose: string;
     readonly namedValue: string; readonly namedNote: string; readonly namedWho: Readonly<Record<ResultsAudience, string>>; readonly cancelledTitle: string; readonly cancelledText: string;
     readonly yourVote: string; readonly changeAllowed: string; readonly changeFinal: string; readonly opensOn: string; readonly alreadyVotedChange: string; readonly alsoCloses: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleEveryone: string; readonly ruleMajority: string; readonly rulePercent: string; readonly or: string;
     readonly ballotType: string; readonly ballotValue: string; readonly ballotNote: string; readonly submit: string; readonly legend: string; readonly problem: string;
@@ -103,7 +104,7 @@ export interface ConsoleMessages {
   };
   readonly mail: {
     readonly title: string; readonly text: string; readonly notConfigured: string; readonly attest: string; readonly sendNew: string; readonly sendAll: string; readonly sendOne: string;
-    readonly reportOne: string; readonly reminderWait: string;
+    readonly reportOne: string; readonly reminderWait: string; readonly reminderOne: string; readonly reminderMany: string;
     readonly report: string; readonly reportFailed: string; readonly sentOn: string; readonly notYet: string; readonly onlyOpen: string; readonly nothingToSend: string;
   };
   readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
@@ -195,6 +196,8 @@ const en: ConsoleMessages = {
     template: "Ballot template",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    lateRollLabel: "Allow adding participants after the poll opens",
+    lateRollHelp: "Off: the roll is fixed when voting opens. On: administrators can keep adding people, who are marked as late in the roll. Voters see this rule.",
     pagedLabel: "Show the ballot one page at a time",
     pagedHelp: "An introduction, then the rules with an acknowledgement, then the question, then a check before sending. Turn it off to show everything on one page.",
     keyModeTitle: "Who can open the ballots",
@@ -322,7 +325,8 @@ const en: ConsoleMessages = {
     remove: "Remove",
     empty: "No address yet.",
     linksTitle: "Personal links",
-    linksText: "Each participant votes with their own link. In the test edition nothing is sent by email: copy each link and send it yourself. A link works once.",
+    fixedRoll: "The roll is fixed: this poll does not allow adding participants after it opens. Voters are told so.",
+    linksText: "Each participant votes with their own link. Copy a link to send it yourself, or send it by email when sending is set up. A link works once.",
     copyLink: "Copy link",
     copyAll: "Copy all links",
     lateNote: "Added after the poll opened.",
@@ -416,6 +420,8 @@ const en: ConsoleMessages = {
     results: "Results",
     cancelledDetail: "Cancelled on {date} by {who}. {n} ballots had been cast.",
     cancelledDetailNone: "Cancelled on {date} by {who}. No ballot had been cast.",
+    rollFixed: "No one can be added after voting opens.",
+    rollLate: "Participants can be added while voting is open. They are marked as late and are not in the code above.",
     stepOf: "Step {n} of {total}",
     start: "Start",
     rulesTitle: "Before you vote",
@@ -463,7 +469,7 @@ const en: ConsoleMessages = {
     doneLabel: "Receipt code",
     doneResults: "See the results",
     votedTitle: "A ballot was already submitted with this link",
-    votedText: "Each link counts once. The receipt code was shown when the ballot was recorded.",
+    votedText: "Each link counts once. The receipt code was shown once, when the ballot was recorded, and is not shown again. If you kept it, you can look it up in the ledger after the poll closes, to confirm your ballot is in the count.",
     closedTitle: "This poll is closed",
     closedText: "Voting has ended. The results are shown to the audience the organization chose.",
     notOpenTitle: "This poll is not open yet",
@@ -514,6 +520,8 @@ const en: ConsoleMessages = {
     sendAll: "Send a reminder ({n})",
     sendOne: "Send by email",
     reportOne: "1 email was sent.",
+    reminderOne: "1 reminder, last on {day}",
+    reminderMany: "{n} reminders, last on {day}",
     reminderWait: "A reminder can be sent 24 hours after the last message, from {date}.",
     report: "{n} emails were sent.",
     reportFailed: "{n} not sent. First problem:",
@@ -591,6 +599,7 @@ const en: ConsoleMessages = {
     unknown_link: "This link is not valid.",
     closed: "This poll is closed.",
     cancelled: "This poll was cancelled.",
+    roll_locked: "This poll does not allow adding participants after it opens.",
     cancel_locked: "This poll can no longer be cancelled: voting has begun and the poll was set to run to its end.",
     not_open: "This poll is not open yet.",
     already_voted: "A ballot was already submitted with this link.",
@@ -692,6 +701,8 @@ const fr: ConsoleMessages = {
     template: "Modèle de bulletin",
     templateSeed: "Seed Packet",
     templateBallot: "Ballot Paper",
+    lateRollLabel: "Permettre d’ajouter des participants après l’ouverture",
+    lateRollHelp: "Désactivé: la liste est fixée à l’ouverture du vote. Activé: les administrateurs peuvent continuer d’ajouter des personnes, marquées comme tardives dans la liste. Les personnes qui votent voient cette règle.",
     pagedLabel: "Afficher le bulletin une page à la fois",
     pagedHelp: "Une introduction, puis les règles avec une reconnaissance, puis la question, puis une vérification avant l’envoi. Désactiver pour tout afficher sur une seule page.",
     keyModeTitle: "Qui peut ouvrir les bulletins",
@@ -819,7 +830,8 @@ const fr: ConsoleMessages = {
     remove: "Retirer",
     empty: "Aucune adresse pour l’instant.",
     linksTitle: "Liens personnels",
-    linksText: "Chaque participant vote avec son propre lien. Dans l’édition de test, rien n’est envoyé par courriel: copier chaque lien et l’envoyer soi-même. Un lien sert une seule fois.",
+    fixedRoll: "La liste est fixée: ce scrutin ne permet pas d’ajouter des participants après son ouverture. Les personnes qui votent en sont informées.",
+    linksText: "Chaque participant vote avec son propre lien. Copier un lien pour l’envoyer soi-même, ou l’envoyer par courriel quand l’envoi est configuré. Un lien sert une seule fois.",
     copyLink: "Copier le lien",
     copyAll: "Copier tous les liens",
     lateNote: "Ajoutée après l’ouverture du scrutin.",
@@ -913,6 +925,8 @@ const fr: ConsoleMessages = {
     results: "Résultats",
     cancelledDetail: "Annulé le {date} par {who}. {n} bulletins avaient été déposés.",
     cancelledDetailNone: "Annulé le {date} par {who}. Aucun bulletin n’avait été déposé.",
+    rollFixed: "Personne ne peut être ajouté après l’ouverture du vote.",
+    rollLate: "Des participants peuvent être ajoutés pendant le vote. Ils sont marqués comme tardifs et ne figurent pas dans le code ci-dessus.",
     stepOf: "Étape {n} de {total}",
     start: "Commencer",
     rulesTitle: "Avant de voter",
@@ -960,7 +974,7 @@ const fr: ConsoleMessages = {
     doneLabel: "Code de reçu",
     doneResults: "Voir les résultats",
     votedTitle: "Un bulletin a déjà été déposé avec ce lien",
-    votedText: "Chaque lien compte une seule fois. Le code de reçu a été affiché au moment de l’enregistrement.",
+    votedText: "Chaque lien compte une seule fois. Le code de reçu a été affiché une seule fois, à l’enregistrement du bulletin, et n’est pas affiché de nouveau. Si le code a été conservé, il permet de retrouver le bulletin dans le registre après la fermeture, pour confirmer qu’il fait partie du décompte.",
     closedTitle: "Ce scrutin est fermé",
     closedText: "Le vote est terminé. Les résultats sont affichés au public choisi par l’organisation.",
     notOpenTitle: "Ce scrutin n’est pas encore ouvert",
@@ -1011,6 +1025,8 @@ const fr: ConsoleMessages = {
     sendAll: "Envoyer un rappel ({n})",
     sendOne: "Envoyer par courriel",
     reportOne: "1 courriel a été envoyé.",
+    reminderOne: "1 rappel, dernier le {day}",
+    reminderMany: "{n} rappels, dernier le {day}",
     reminderWait: "Un rappel peut être envoyé 24 heures après le dernier message, à partir du {date}.",
     report: "{n} courriels ont été envoyés.",
     reportFailed: "{n} non envoyé(s). Premier problème:",
@@ -1088,6 +1104,7 @@ const fr: ConsoleMessages = {
     unknown_link: "Ce lien n’est pas valide.",
     closed: "Ce scrutin est fermé.",
     cancelled: "Ce scrutin a été annulé.",
+    roll_locked: "Ce scrutin ne permet pas d’ajouter des participants après son ouverture.",
     cancel_locked: "Ce scrutin ne peut plus être annulé: le vote a commencé et le scrutin a été réglé pour aller à son terme.",
     not_open: "Ce scrutin n’est pas encore ouvert.",
     already_voted: "Un bulletin a déjà été déposé avec ce lien.",

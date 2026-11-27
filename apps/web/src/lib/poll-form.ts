@@ -108,6 +108,7 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     publishCount: text(data, "publish_count") === "yes",
     lockCancel: text(data, "lock_cancel") === "yes",
     paged: text(data, "paged") === "yes",
+    lateRoll: text(data, "late_roll") === "yes",
     keyThreshold: text(data, "key_mode") === "shared" ? whole(text(data, "key_threshold")) : 1,
   };
 }

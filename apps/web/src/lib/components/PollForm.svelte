@@ -74,6 +74,7 @@
   let publishCount = $state(start?.publishCount ?? false);
   let lockCancel = $state(start?.lockCancel ?? false);
   let paged = $state(start?.paged ?? true);
+  let lateRoll = $state(start?.lateRoll ?? false);
   let autoReminder = $state<"none" | "daily" | "before_close">(start?.autoReminder ?? "none");
   let reminderPermission = $state(start?.reminderPermission ?? false);
   let theme = $state<Theme>(start?.theme ?? (() => defaultTheme)());
@@ -102,8 +103,9 @@
   /** A preset fills in the results settings in one choice. Each setting can still be changed afterwards. */
   function applyPreset(id: Preset): void {
     if (id === "open") {
-      timing = "live"; audience = "voters"; anonymity = "named"; encryption = "none"; publishCount = false; lockCancel = false;
+      timing = "live"; audience = "voters"; anonymity = "named"; encryption = "none"; publishCount = false; lockCancel = false; lateRoll = true;
     } else {
+      lateRoll = false;
       timing = "close"; anonymity = "secret"; encryption = "sealed";
       audience = id === "transparent" ? "anyone" : "voters";
       publishCount = id === "transparent"; lockCancel = id === "transparent";
@@ -154,6 +156,7 @@
     markFill,
     anonymity,
     allowChange,
+    lateRoll,
     rules: previewRules,
     timeZone: zone,
     closesAt: zonedToUtc(closesAt, zone),
@@ -534,6 +537,10 @@
         {#if autoReminder !== "none"}
           <label class="cx-choice check"><input type="checkbox" name="reminder_permission" value="yes" bind:checked={reminderPermission} /><span><b>{m.mail.attest}</b></span></label>
         {/if}
+      </fieldset>
+
+      <fieldset class="cx-field">
+        <label class="cx-choice check has-ico"><input type="checkbox" name="late_roll" value="yes" bind:checked={lateRoll} /><span><i class="ico"><UiIcon name="users" /></i><b>{m.form.lateRollLabel}</b><small>{m.form.lateRollHelp}</small></span></label>
       </fieldset>
 
       <fieldset class="cx-field">

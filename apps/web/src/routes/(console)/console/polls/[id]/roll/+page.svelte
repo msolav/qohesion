@@ -21,7 +21,12 @@
   const reasons = $derived({ invalid: m.roll.reasonInvalid, disposable: m.roll.reasonDisposable });
 </script>
 
-{#if poll.status !== "closed"}
+{#if poll.status === "open" && !poll.lateRoll}
+  <section aria-labelledby="add-h">
+    <h2 id="add-h">{m.roll.add}</h2>
+    <p class="cx-notice gap" role="note">{m.roll.fixedRoll}</p>
+  </section>
+{:else if poll.status !== "closed"}
   <section aria-labelledby="add-h">
     <h2 id="add-h">{m.roll.add}</h2>
     <form class="cx-form gap" method="POST" action="?/add" use:enhance>
@@ -95,7 +100,7 @@
         <tbody>
           {#each data.entries as entry (entry.id)}
             <tr>
-              <td class="addr">{entry.address}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.invitedOn }) : m.mail.notYet}</span>{/if}</td>
+              <td class="addr">{entry.address}{#if poll.status === "open" && entry.status !== "voted"}<br /><span class="cx-help">{entry.invitedOn ? fill(m.mail.sentOn, { day: entry.firstInvitedOn ?? entry.invitedOn }) : m.mail.notYet}{#if entry.invites > 1} · {fill(entry.invites === 2 ? m.mail.reminderOne : m.mail.reminderMany, { n: entry.invites - 1, day: entry.invitedOn ?? "" })}{/if}</span>{/if}</td>
               <td>
                 <span class="cx-chip {entry.status === 'voted' ? 'open' : ''}">{m.member[entry.status]}</span>
                 {#if entry.late}<span class="cx-chip late" title={m.roll.lateNote}>{m.roll.late}</span>{/if}

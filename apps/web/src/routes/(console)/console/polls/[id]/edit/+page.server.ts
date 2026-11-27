@@ -34,6 +34,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       publishCount: poll.publishCount,
       lockCancel: poll.lockCancel,
       paged: poll.paged,
+      lateRoll: poll.lateRoll,
       keyThreshold: poll.keyThreshold,
       reminderPermission: poll.autoReminder !== "none",
       translations: poll.translations,

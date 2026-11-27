@@ -11,7 +11,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 import { DatabaseSync } from "node:sqlite";
 import { defineForm, validateForm, type Form } from "@qohesion/engine";
 import { MerkleLog, hashLeaf, receiptCode, toHex, normalizeReceiptCode, verifyInclusion } from "@qohesion/ledger";
-import { addressFingerprint, applyEvent, checkAddress, freezeRoll, type MemberStatus } from "@qohesion/roll";
+import { addressFingerprint, applyEvent, checkAddress, freezeRoll, parseAddress, type MemberStatus } from "@qohesion/roll";
 import { generateCountingKeyBytes, generateCountingKeys, keyFromInput, keyMatches, open as openSealed, seal, shareSecret, formatCountingKey } from "./seal.js";
 import { isColorId, isIconId } from "../option-style.js";
 import { DEFAULT_THEME, isTheme, type Theme } from "../theme.js";
@@ -116,6 +116,8 @@ export interface Poll {
   readonly lockCancel: boolean;
   /** The ballot is shown one page at a time (introduction, rules, question, check) rather than all on one page. */
   readonly paged: boolean;
+  /** Administrators may keep adding participants after the poll opens (they are marked as late). Stated to voters. */
+  readonly lateRoll: boolean;
   /** Set when the poll was cancelled: when, by which key, and how many ballots had been cast. */
   readonly cancelled: { readonly by: string; readonly ballots: number } | null;
   /** The content in the languages offered. The columns title, description and options hold the default language. */
@@ -138,6 +140,9 @@ export interface RollEntry {
   readonly votedOn: string | null;
   /** The day a link was last sent by email, or null. */
   readonly invitedOn: string | null;
+  /** The day of the first link, and how many times a link was sent (the first one included). */
+  readonly firstInvitedOn: string | null;
+  readonly invites: number;
 }
 
 export interface OptionInput {
@@ -171,6 +176,7 @@ export interface PollInput {
   readonly keyThreshold: number;
   readonly lockCancel: boolean;
   readonly paged: boolean;
+  readonly lateRoll: boolean;
   /** The administrator confirmed permission to contact the participants, which automatic reminders need. */
   readonly reminderPermission: boolean;
   /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
@@ -273,6 +279,7 @@ export class Service {
     addIfMissing("polls", columns, "publish_count", "INTEGER NOT NULL DEFAULT 0");
     addIfMissing("polls", columns, "lock_cancel", "INTEGER NOT NULL DEFAULT 0");
     addIfMissing("polls", columns, "paged", "INTEGER NOT NULL DEFAULT 1");
+    addIfMissing("polls", columns, "late_roll", "INTEGER NOT NULL DEFAULT 1");
     addIfMissing("polls", columns, "published_key", "TEXT");
     addIfMissing("polls", columns, "cancelled_by", "TEXT");
     addIfMissing("polls", columns, "cancelled_ballots", "INTEGER");
@@ -280,6 +287,12 @@ export class Service {
     addIfMissing("polls", columns, "auto_reminder_by", "TEXT");
     addIfMissing("polls", columns, "last_auto_reminder_on", "TEXT");
     addIfMissing("roll", rollColumns, "invited_at", "TEXT");
+    addIfMissing("roll", rollColumns, "invite_count", "INTEGER NOT NULL DEFAULT 0");
+    addIfMissing("roll", rollColumns, "first_invited_on", "TEXT");
+    // Links sent before the exact moment was kept count as sent, at the latest by the end of that day or now, so that a
+    // reminder is not offered too early. Their count is one.
+    this.#db.prepare("UPDATE roll SET invited_at = MIN(invited_on || 'T23:59:59.000Z', ?) WHERE invited_on IS NOT NULL AND invited_at IS NULL").run(this.#iso());
+    this.#db.exec("UPDATE roll SET invite_count = 1, first_invited_on = invited_on WHERE invited_on IS NOT NULL AND invite_count = 0");
     addIfMissing("polls", columns, "question", "TEXT NOT NULL DEFAULT ''");
     addIfMissing("polls", columns, "i18n", "TEXT");
     addIfMissing("polls", columns, "anonymity", "TEXT NOT NULL DEFAULT 'secret'");
@@ -489,6 +502,7 @@ export class Service {
       keyThreshold: Number(r["key_threshold"] ?? 1),
       lockCancel: r["lock_cancel"] === 1,
       paged: r["paged"] !== 0,
+      lateRoll: r["late_roll"] !== 0,
       cancelled: r["cancelled_by"] === null || r["cancelled_by"] === undefined ? null : { by: String(r["cancelled_by"]), ballots: Number(r["cancelled_ballots"] ?? 0) },
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
       createdAt: String(r["created_at"]),
@@ -586,9 +600,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, publish_count, lock_cancel, key_threshold, paged, late_roll, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, this.#iso(),
       );
       this.#log(id, session, "created", "");
     });
@@ -604,8 +618,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ? WHERE id = ?",
-      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, pollId,
+      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ?, publish_count = ?, lock_cancel = ?, key_threshold = ?, paged = ?, late_roll = ? WHERE id = ?",
+      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, input.publishCount ? 1 : 0, input.lockCancel ? 1 : 0, input.keyThreshold, input.paged ? 1 : 0, input.lateRoll ? 1 : 0, pollId,
     );
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -644,6 +658,7 @@ export class Service {
     const poll = this.pollFor(session, pollId);
     if (!poll) return problem("not_found");
     if (poll.status === "closed") return problem("locked");
+    if (poll.status === "open" && !poll.lateRoll) return problem("roll_locked");
     const lines = text.split(/[\n\r,;]+/).map((l) => l.trim()).filter((l) => l.length > 0);
     if (lines.length === 0) return problem("nothing_entered");
     if (lines.length > MAX_ROLL) return problem("too_many_addresses");
@@ -659,6 +674,9 @@ export class Service {
           rejected.push({ line, reason: check.issue?.code === "disposable" ? "disposable" : "invalid" });
           continue;
         }
+        // The address is kept as typed, for display and for sending. The normalized form only decides who is the same person.
+        const parsed = parseAddress(line);
+        const shown = parsed ? `${parsed.local.toLowerCase()}@${parsed.domain}` : check.normalized;
         const fingerprint = this.#fingerprint(check.normalized);
         if (this.#one("SELECT 1 AS x FROM roll WHERE poll_id = ? AND fingerprint = ?", pollId, fingerprint)) {
           duplicates++;
@@ -671,7 +689,7 @@ export class Service {
         room--;
         this.#run(
           "INSERT INTO roll (poll_id, address, fingerprint, token_hash, status, late, added_at) VALUES (?, ?, ?, ?, 'listed', ?, ?)",
-          pollId, check.normalized, fingerprint, sha256hex(this.#token(pollId, fingerprint)), poll.status === "open" ? 1 : 0, this.#iso(),
+          pollId, shown, fingerprint, sha256hex(this.#token(pollId, fingerprint)), poll.status === "open" ? 1 : 0, this.#iso(),
         );
         added++;
       }
@@ -699,6 +717,8 @@ export class Service {
       addedAt: String(r["added_at"]),
       votedOn: r["voted_on"] === null ? null : String(r["voted_on"]),
       invitedOn: r["invited_on"] === null ? null : String(r["invited_on"]),
+      firstInvitedOn: r["first_invited_on"] === null || r["first_invited_on"] === undefined ? null : String(r["first_invited_on"]),
+      invites: Number(r["invite_count"] ?? 0),
     }));
   }
 
@@ -750,7 +770,7 @@ export class Service {
   #markSent(pollId: string, ids: readonly number[], who: Session | string, action: string): void {
     const at = this.#iso();
     this.#transaction(() => {
-      for (const id of ids) this.#run("UPDATE roll SET invited_on = ?, invited_at = ? WHERE id = ? AND poll_id = ?", at.slice(0, 10), at, id, pollId);
+      for (const id of ids) this.#run("UPDATE roll SET invited_on = ?, invited_at = ?, invite_count = invite_count + 1, first_invited_on = COALESCE(first_invited_on, ?) WHERE id = ? AND poll_id = ?", at.slice(0, 10), at, at.slice(0, 10), id, pollId);
       this.#log(pollId, who, action, String(ids.length));
     });
   }

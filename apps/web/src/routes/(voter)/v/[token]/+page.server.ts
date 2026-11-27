@@ -14,7 +14,7 @@ export const load: PageServerLoad = ({ params, locals, url }) => {
   const text = localize(poll, locals.locale);
   const base = {
     organization: space?.name ?? null,
-    poll: { id: poll.id, title: text.title, question: text.question, description: text.description, options: text.options, timing: poll.timing, audience: poll.audience, closesAt: poll.closesAt, rollCount: poll.rollCount, rollCode: poll.rollCode, encrypted: poll.encrypted, markFill: poll.markFill, anonymity: poll.anonymity, allowChange: poll.allowChange, paged: poll.paged && url.searchParams.get("view") !== "all", rules: poll.rules, cancelled: poll.cancelled, closedAt: poll.closedAt, timeZone: space?.timeZone ?? "America/Toronto", opensAt: poll.opensAt },
+    poll: { id: poll.id, title: text.title, question: text.question, description: text.description, options: text.options, timing: poll.timing, audience: poll.audience, closesAt: poll.closesAt, rollCount: poll.rollCount, rollCode: poll.rollCode, encrypted: poll.encrypted, markFill: poll.markFill, anonymity: poll.anonymity, allowChange: poll.allowChange, lateRoll: poll.lateRoll, paged: poll.paged && url.searchParams.get("view") !== "all", rules: poll.rules, cancelled: poll.cancelled, closedAt: poll.closedAt, timeZone: space?.timeZone ?? "America/Toronto", opensAt: poll.opensAt },
     canSeeResults: accessTo(poll, "voter").totals || poll.status === "closed",
   };
   if (poll.status === "cancelled") return { state: "cancelled" as const, ...base };
