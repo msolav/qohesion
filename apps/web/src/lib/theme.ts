@@ -1,5 +1,14 @@
-export const THEMES = ["seed-packet", "ballot-paper"] as const;
+export const THEMES = ["seed-packet", "ballot-paper", "boarding-pass", "guide-map", "standard"] as const;
 export type Theme = (typeof THEMES)[number];
+
+/** Display names of the templates, in each language. */
+export const THEME_NAMES: Record<Theme, { readonly fr: string; readonly en: string }> = {
+  "seed-packet": { fr: "Seed Packet", en: "Seed Packet" },
+  "ballot-paper": { fr: "Ballot Paper", en: "Ballot Paper" },
+  "boarding-pass": { fr: "Boarding Pass", en: "Boarding Pass" },
+  "guide-map": { fr: "Guide Map", en: "Guide Map" },
+  standard: { fr: "Standard", en: "Standard" },
+};
 export const DEFAULT_THEME: Theme = "seed-packet";
 
 export function isTheme(value: unknown): value is Theme {

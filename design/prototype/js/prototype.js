@@ -9,7 +9,10 @@
   if (query.get("embed") === "1") root.classList.add("embed");
   var DEFAULTS = {
     "seed-packet": { brand: "#1F5C46", accent: "#C63A22" },
-    "ballot-paper": { brand: "#1F5C46", accent: "#14151A" }
+    "ballot-paper": { brand: "#1F5C46", accent: "#14151A" },
+    "boarding-pass": { brand: "#B3390A", accent: "#111111" },
+    "guide-map": { brand: "#1F5C46", accent: "#1B1D1A" },
+    "standard": { brand: "#1D4ED8", accent: "#1D4ED8" }
   };
   var WHITE = "#FFFFFF", INK = "#14151A";
   var lang = "fr";

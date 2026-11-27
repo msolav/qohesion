@@ -2,6 +2,7 @@
   import { enhance } from "$app/forms";
   import CopyButton from "#lib/components/CopyButton.svelte";
   import { consoleMessages, errorText } from "#lib/i18n/console.js";
+  import { THEMES, THEME_NAMES } from "#lib/theme.js";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -38,8 +39,7 @@
       <div class="cx-field">
         <label for="theme">{m.space.template}</label>
         <select id="theme" name="theme">
-          <option value="ballot-paper" selected={data.space?.theme === "ballot-paper"}>{m.form.templateBallot}</option>
-          <option value="seed-packet" selected={data.space?.theme === "seed-packet"}>{m.form.templateSeed}</option>
+          {#each THEMES as value (value)}<option {value} selected={data.space?.theme === value}>{THEME_NAMES[value][data.locale]}</option>{/each}
         </select>
       </div>
     </div>

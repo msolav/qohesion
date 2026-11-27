@@ -23,8 +23,10 @@ Terms used in the interface, the emails and the documentation, with the French f
 | assurance level | niveau de garantie | Informal, formal or reinforced: what the setup of administrators and keys allows to be checked. |
 | threshold key | clé à seuil | A key split among administrators, of which a set number must act together to open the count (for example 2 of 3). |
 | verification email | courriel de vérification | The message sent on request to confirm that an address belongs to the member who entered it. |
+| sealed ballot | bulletin chiffré | A ballot encrypted as soon as it is received, readable only with the counting key. |
+| counting key | clé de dépouillement | The private key, shown once to an administrator, that opens the sealed ballots when the poll closes. |
 | template | modèle | The visual treatment of the ballot screen (Seed Packet, Ballot Paper). |
 | light mode | mode léger | The mode with no account, for informal polls and consultations. |
 | full web mode | mode web complet | The mode with an account for the organization, on the hosted service. |
 | self-hosted mode | mode auto-hébergé | The mode in which the organization runs the software on its own server. |
-| event pass | forfait par scrutin | One payment that covers one poll with its roll, priced by the size of the roll. |
+| poll pass | forfait par scrutin | One payment that covers one poll with its roll, priced by the size of the roll. |

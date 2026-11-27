@@ -24,7 +24,7 @@ export const PAGES = [
     title: { fr: "Tarifs", en: "Pricing" },
     description: {
       fr: "Les offres de Qohesion: gratuit pour les petits sondages, forfait par scrutin au-delà, ou auto-hébergement.",
-      en: "The Qohesion offers: free for small polls, an event pass beyond that, or self-hosting.",
+      en: "The Qohesion offers: free for small polls, a poll pass beyond that, or self-hosting.",
     },
     surface: "night",
     wide: true,

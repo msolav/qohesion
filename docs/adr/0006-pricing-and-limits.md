@@ -36,12 +36,12 @@ No comparator was found for 1,000 voters or more.
 
 ## Decision (proposed)
 
-1. **Two offers at launch: Free and Event pass.** No subscription at launch.
+1. **Two offers at launch: Free and Poll pass.** No subscription at launch.
 2. **Free.** Small polls within the monthly allowance of verification emails (ADR 0003 section 7), with the target of up to 50 participants a poll.
-3. **Event pass.** One payment per voting event, priced by the size band of the roll. An event is one vote or poll with its roll, open for at most [30 days]. A pass includes the verification email for each participant, the receipts and the export of results.
+3. **Poll pass.** One payment per poll, priced by the size band of the roll. A poll is one vote or consultation with its roll, open for at most [30 days]. A pass includes the verification email for each participant, the receipts and the export of results.
 4. **Starting prices, in Canadian dollars before tax.** They are a starting point to adjust after the first customers, not a validated figure.
 
-   | Roll size | Event pass |
+   | Roll size | Poll pass |
    |---|---|
    | up to 100 | 19 |
    | up to 300 | 39 |
@@ -52,13 +52,13 @@ No comparator was found for 1,000 voters or more.
    The first two bands sit at or just above the cheapest self-service comparator, so the service is neither the lowest price nor an outlier. The two upper bands have no comparator and rest on judgment.
 5. **Not at launch.** An annual plan (added when organizations ask for it or repeat use shows it is wanted), metering by voter beyond the band, and any form of price by feature (never).
 6. **Self-hosted** stays free. Installation, support and custom work are quoted, and custom features are published under the AGPL (ADR 0003 section 7).
-7. **Changes to prices** are announced at least [60 days] ahead (terms of use section 7) and never apply to an event already paid for.
+7. **Changes to prices** are announced at least [60 days] ahead (terms of use section 7) and never apply to a poll already paid for.
 
 ## Consequences
 
-- Section 8 of the terms of use can be completed once the prices and the definition of an event are confirmed.
+- Section 8 of the terms of use can be completed once the prices and the definition of a poll are confirmed.
 - A payment processor, the tax treatment (GST and QST) and the refund rule must be chosen, and the terms of sale reviewed by counsel before the first payment. Counsel also reviews consumer-law rules if an annual plan is added later.
-- With 50 of the 300 daily emails reserved for service emails (ADR 0003 section 9), a vote of more than about 250 members cannot send all its verification emails in one day on the free plan. The first event pass above that size needs a paid sending plan (Brevo Starter at CA$20 a month, or another provider). The 300-member pass price covers it.
+- With 50 of the 300 daily emails reserved for service emails (ADR 0003 section 9), a vote of more than about 250 members cannot send all its verification emails in one day on the free plan. The first poll pass above that size needs a paid sending plan (Brevo Starter at CA$20 a month, or another provider). The 300-member pass price covers it.
 - The hosted service does not open before ballots can be encrypted and counted, so no price is published yet.
 
 ## Open questions
@@ -66,6 +66,6 @@ No comparator was found for 1,000 voters or more.
 - Whether a band is fixed at payment or moves up if late additions exceed it.
 - A discount for volunteer-run groups, and what proves eligibility.
 - Display of taxes, and whether to show a US-dollar price.
-- What is included in a reminder email for paid events (ADR 0003 section 7 leaves reminders to the administrator in the free lane).
+- What is included in a reminder email for paid polls (ADR 0003 section 7 leaves reminders to the administrator in the free lane).
 - When the annual plan is added.
-- The French name of the event pass, to add to the [glossary](../glossary.md).
+- The French name of the poll pass, to add to the [glossary](../glossary.md).

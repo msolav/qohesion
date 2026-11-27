@@ -65,8 +65,8 @@
             </div>
             <div>
               <dt>{m.voter.ballotType}</dt>
-              <dd>{m.voter.ballotValue}</dd>
-              <dd class="note">{m.voter.ballotNote}</dd>
+              <dd>{m.voter.ballotValue}, {data.poll.encrypted ? m.seal.factSealed.toLowerCase() : m.seal.factPlain.toLowerCase()}</dd>
+              <dd class="note">{m.voter.ballotNote} {data.poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
             </div>
             <div>
               <dt>{m.voter.results}</dt>

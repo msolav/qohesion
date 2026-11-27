@@ -49,7 +49,7 @@ Undecided: licensing of translations contributed by third parties, the list of s
 
 - Name: **Qohesion**, domain `qohesion.app`. Tagline: "Decide together" / "Décidons ensemble" (brand register only; all interface text, emails and terms follow the functional register in `docs/content-style.md`).
 - Logo: a circle (the Q) whose tail is a check mark rising as a slash, so the name reads Q/ohesion. Assets and rules are in `brand/`. The wordmark is set in Outfit Medium.
-- The name and mark are fixed. The visual world is set out in `DESIGN.md` (north star "The Labelled Slip", two ballot templates, Seed Packet and Ballot Paper), confirmed on 2026-11-26 and open to revision.
+- The name and mark are fixed. The visual world is set out in `DESIGN.md` (north star "The Labelled Slip", five ballot templates: Seed Packet, Ballot Paper, Boarding Pass, Guide Map and Standard), confirmed on 2026-11-26 and open to revision.
 
 ## Evidence on Hand
 

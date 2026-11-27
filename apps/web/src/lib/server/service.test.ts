@@ -17,6 +17,7 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   audience: "voters",
   theme: "ballot-paper",
   closeAfterHours: null,
+  encrypted: false,
   ...over,
 });
 
@@ -118,7 +119,7 @@ describe("polls and the roll", () => {
     const poll = must(service.createPoll(owner, input()));
     expect(service.openPoll(owner, poll.id)).toEqual({ ok: false, error: "roll_empty" });
     must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com"));
-    const opened = must(service.openPoll(owner, poll.id));
+    const opened = must(service.openPoll(owner, poll.id)).poll;
     expect(opened.status).toBe("open");
     expect(opened.rollCount).toBe(2);
     expect(opened.rollCode).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
@@ -217,6 +218,78 @@ describe("results visibility", () => {
     must(service.closePoll(owner, poll.id));
     expect(service.resultsFor(poll.id, "voter")?.counts).toEqual({ for: 1, against: 0, abstain: 0 });
     expect(service.resultsFor(poll.id, "anyone")?.counts).toBeNull();
+  });
+});
+
+describe("sealed ballots", () => {
+  function sealedPoll(addresses = "a@example.com\nb@example.com\nc@example.com") {
+    const poll = must(service.createPoll(owner, input({ encrypted: true })));
+    must(service.addToRoll(owner, poll.id, addresses));
+    const opened = must(service.openPoll(owner, poll.id));
+    return { poll, key: opened.countingKey ?? "", tokens: [...service.voterTokens(owner, poll.id).values()] };
+  }
+
+  it("refuses sealed ballots with live results", () => {
+    expect(service.createPoll(owner, input({ encrypted: true, timing: "live" }))).toEqual({ ok: false, error: "encryption_needs_close" });
+  });
+
+  it("gives the counting key at opening for a sealed poll, and none for an open one", () => {
+    expect(sealedPoll().key).toMatch(/^QC-/);
+    const plain = must(service.createPoll(owner, input()));
+    must(service.addToRoll(owner, plain.id, "z@example.com"));
+    expect(must(service.openPoll(owner, plain.id)).countingKey).toBeNull();
+  });
+
+  it("stores no readable choice before the count, and no plaintext in the ledger entry", () => {
+    const db = new DatabaseSync(":memory:");
+    const svc = new Service(db, { secret: new Uint8Array(32).fill(3) });
+    const o = svc.session(svc.signIn(must(svc.createSpace({ name: "S", locale: "en" })).key) ?? "") as Session;
+    const p = must(svc.createPoll(o, input({ encrypted: true })));
+    must(svc.addToRoll(o, p.id, "a@example.com"));
+    must(svc.openPoll(o, p.id));
+    const token = [...svc.voterTokens(o, p.id).values()][0] ?? "";
+    must(svc.castBallot(token, "against"));
+    const row = db.prepare("SELECT choice, entry FROM ballots").get() as { choice: string; entry: string };
+    expect(row.choice).toBe("");
+    expect(row.entry).not.toContain("against");
+    expect(row.entry).toContain("sealed");
+  });
+
+  it("keeps totals hidden from everyone until the counting key is given, then shows them", () => {
+    const { poll, key, tokens } = sealedPoll();
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    must(service.castBallot(tokens[1] ?? "", "for"));
+    must(service.castBallot(tokens[2] ?? "", "against"));
+    expect(service.resultsFor(poll.id, "administrator")).toMatchObject({ turnout: 3, counts: null });
+    expect(service.closePoll(owner, poll.id)).toEqual({ ok: false, error: "wrong_counting_key" });
+    expect(service.closePoll(owner, poll.id, "QC-0000-0000")).toEqual({ ok: false, error: "wrong_counting_key" });
+    expect(service.getPoll(poll.id)?.status).toBe("open");
+    must(service.closePoll(owner, poll.id, key.toLowerCase().replaceAll("-", " ")));
+    expect(service.resultsFor(poll.id, "voter")).toMatchObject({ pending: false, counts: { for: 2, against: 1, abstain: 0 } });
+    expect(service.getPoll(poll.id)).toMatchObject({ status: "closed", counted: true });
+  });
+
+  it("closes by itself without the key and waits for it", () => {
+    const { poll, key, tokens } = (() => {
+      const poll = must(service.createPoll(owner, input({ encrypted: true, closeAfterHours: 1 })));
+      must(service.addToRoll(owner, poll.id, "a@example.com"));
+      const opened = must(service.openPoll(owner, poll.id));
+      return { poll, key: opened.countingKey ?? "", tokens: [...service.voterTokens(owner, poll.id).values()] };
+    })();
+    must(service.castBallot(tokens[0] ?? "", "abstain"));
+    now = new Date("2026-12-01T16:30:00Z");
+    expect(service.getPoll(poll.id)).toMatchObject({ status: "closed", counted: false });
+    expect(service.resultsFor(poll.id, "administrator")).toMatchObject({ pending: true, turnout: 1, counts: null });
+    expect(service.countPoll(owner, poll.id, "QC-AAAA")).toEqual({ ok: false, error: "wrong_counting_key" });
+    must(service.countPoll(owner, poll.id, key));
+    expect(service.resultsFor(poll.id, "administrator")).toMatchObject({ pending: false, counts: { for: 0, against: 0, abstain: 1 } });
+  });
+
+  it("still publishes a ledger and checks receipts for a sealed poll", () => {
+    const { poll, key, tokens } = sealedPoll();
+    const receipt = must(service.castBallot(tokens[0] ?? "", "for")).receipt;
+    must(service.closePoll(owner, poll.id, key));
+    expect(service.checkReceipt(poll.id, receipt)?.valid).toBe(true);
   });
 });
 

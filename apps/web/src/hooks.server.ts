@@ -1,7 +1,8 @@
 import type { Handle } from "@sveltejs/kit/hooks";
 import { isLocale, negotiateLocale } from "#lib/i18n/negotiate.js";
 import { themeFrom, isTheme } from "#lib/theme.js";
-import { isTestEdition, service } from "#lib/server/runtime.js";
+import { isTestEdition, service, gatePassword, serverSecret } from "#lib/server/runtime.js";
+import { gateAllows, gateCookieValue, passwordMatches } from "#lib/server/gate.js";
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -19,6 +20,15 @@ export const handle: Handle = async ({ event, resolve }) => {
   event.locals.theme = themeFrom(event.url.searchParams.get("theme"));
   event.locals.session = null;
 
+  const password = gatePassword();
+  if (password && !gateAllows(event.url.pathname)) {
+    const proof = event.cookies.get("qg");
+    if (!proof || !passwordMatches(proof, gateCookieValue(serverSecret(), password))) {
+      const next = `${event.url.pathname}${event.url.search}`;
+      return new Response(null, { status: 303, headers: { location: `/gate?next=${encodeURIComponent(next)}`, "cache-control": "no-store" } });
+    }
+  }
+
   if (isTestEdition()) {
     const sessionToken = event.cookies.get("qs");
     if (sessionToken) event.locals.session = service().session(sessionToken);
@@ -35,7 +45,9 @@ export const handle: Handle = async ({ event, resolve }) => {
   event.setHeaders({
     vary: "Accept-Language, Cookie",
     "x-content-type-options": "nosniff",
-    "referrer-policy": "no-referrer",
+    // "same-origin", not "no-referrer": a browser sends "Origin: null" with a form post under no-referrer, and the framework's
+    // cross-site check then refuses the post. Nothing is sent to other sites either way, so personal links do not leak.
+    "referrer-policy": "same-origin",
     "x-frame-options": "DENY",
     "permissions-policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
   });

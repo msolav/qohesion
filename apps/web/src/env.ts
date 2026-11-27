@@ -11,6 +11,10 @@ export const variables = defineEnvVars({
     schema: (value) => ((value ?? "").trim() === "test" ? "test" : "standard"),
     description: 'Set to "test" to enable the test edition: spaces, polls, voting and results with unencrypted ballots (ADR 0007).',
   },
+  QOHESION_GATE_PASSWORD: {
+    schema: (value) => (value ?? "").trim(),
+    description: "Optional password in front of the whole test edition. Empty means no password. Use it when a test server is shared with chosen people.",
+  },
   QOHESION_DATA_DIR: {
     schema: (value) => ((value ?? "").trim() === "" ? "./data" : (value ?? "").trim()),
     description: "Folder of the test edition's database and server secret. It must be writable and kept private.",

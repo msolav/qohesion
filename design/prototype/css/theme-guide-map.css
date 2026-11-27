@@ -1,0 +1,83 @@
+/* Template: Guide Map.
+   A cream ground with a large pale-green disc behind the question, a heavy
+   rounded headline, and full-width pills with a large round mark at the right.
+   The meaning of an option is carried by its mark and colour, never by
+   decoration alone: green with a check, coral with a cross, yellow with a dash;
+   any other option is a white pill with a numbered ring. The chosen option
+   shows its mark in a filled dark circle and a thicker outline.
+   Contrast (WCAG 2.x), text: ink on disc 12.8:1, on cream 15.0:1, on white 17.0:1,
+   on the green pill 9.5:1, on the coral pill 6.3:1, on the yellow pill 12.8:1;
+   grey note text on cream 9.5:1 and on the disc 8.1:1; cast button cream on ink
+   15.0:1. Marks: ink ring and glyph on each pill at least 6.3:1 (same figures);
+   the chosen mark is the pill colour on ink, same figures. */
+
+[data-theme="guide-map"]{
+  --font:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --bg:#F5F1E4;
+  --surface:#FFFFFF;
+  --hover:#FFFFFF;
+  --ink:#1B1D1A;
+  --ink-2:#3A4036;
+  --line-soft:rgba(27,29,26,.16);
+  --brand:#1F5C46;
+  --on-brand:#FFFFFF;
+  --accent:#1B1D1A;
+  --on-accent:#F5F1E4;
+  --focus:#1F5C46;
+  --danger:#A3231B;
+  --radius:99px;
+  --tint:#CFE8B4;
+}
+
+/* The disc bleeds past the screen edges; it is clipped sideways so that nothing scrolls. */
+[data-theme="guide-map"] .app{overflow-x:clip}
+@supports not (overflow:clip){[data-theme="guide-map"] body{overflow-x:hidden}}
+[data-theme="guide-map"] .bar{position:relative;z-index:1}
+[data-theme="guide-map"] .lang a[aria-current="true"]{background:var(--ink);color:var(--bg)}
+[data-theme="guide-map"] .slip{position:relative;isolation:isolate}
+
+[data-theme="guide-map"] .ballot__head{position:relative;padding:var(--space-5) var(--space-2) var(--space-4)}
+[data-theme="guide-map"] .ballot__head::before{
+  content:"";position:absolute;z-index:-1;left:50%;top:40%;
+  width:max(120%,22rem);aspect-ratio:1;transform:translate(-50%,-50%);
+  border-radius:50%;background:var(--tint);
+}
+[data-theme="guide-map"] .ballot__head h1{font-size:clamp(1.9rem,8.4vw,2.5rem);line-height:1;font-weight:900;letter-spacing:-.03em}
+[data-theme="guide-map"] .lede{font-size:1.05rem;font-weight:500}
+[data-theme="guide-map"] .steps li{border-width:2px}
+[data-theme="guide-map"] .steps li[aria-current="step"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+[data-theme="guide-map"] .facts{margin-top:var(--space-5);padding:0 var(--space-2)}
+[data-theme="guide-map"] .facts>div{padding:var(--space-3) 0}
+[data-theme="guide-map"] .facts>div+div{border-top:1.5px solid var(--line-soft)}
+
+/* Pills */
+[data-theme="guide-map"] .choices{counter-reset:opt;gap:var(--space-3);margin-top:var(--space-4)}
+[data-theme="guide-map"] .choice{counter-increment:opt}
+[data-theme="guide-map"] .choice label{
+  flex-direction:row-reverse;justify-content:space-between;gap:var(--space-3);
+  min-height:4.5rem;padding:var(--space-3) var(--space-2) var(--space-3) 1.75rem;
+  background:var(--pill,#FFFFFF);border:2px solid var(--ink);border-radius:2.25rem;
+  font-size:1.15rem;font-weight:800;letter-spacing:-.005em;overflow-wrap:anywhere;
+  transition:filter .15s ease-out,box-shadow .15s ease-out;
+}
+[data-theme="guide-map"] .choice input[value="for"]+label{--pill:#8ED462;--gl:1}
+[data-theme="guide-map"] .choice input[value="against"]+label{--pill:#FF705D;--gl:1}
+[data-theme="guide-map"] .choice input[value="abstain"]+label{--pill:#F5E211;--gl:1}
+[data-theme="guide-map"] .choice:hover label{filter:brightness(.95)}
+[data-theme="guide-map"] .choice input:checked+label{box-shadow:inset 0 0 0 2px var(--ink);background:var(--pill,var(--tint))}
+
+/* The mark: a ring with its glyph, or with the option number for options that have no fixed meaning */
+[data-theme="guide-map"] .mark{
+  width:2.9rem;height:2.9rem;border:2.5px solid var(--ink);color:var(--ink);
+  font-size:1.15rem;font-weight:800;line-height:1;transition:background .15s ease-out,color .15s ease-out;
+}
+[data-theme="guide-map"] .mark::before{content:counter(opt);grid-area:1/1;opacity:calc(1 - var(--gl,0))}
+[data-theme="guide-map"] .mark svg{grid-area:1/1;width:1.6rem;height:1.6rem;color:inherit;opacity:var(--gl,0)}
+[data-theme="guide-map"] .choice input:checked+label .mark{background:var(--ink);color:var(--pill,#FFFFFF)}
+[data-theme="guide-map"] .choice input:checked+label .mark::before{opacity:0}
+[data-theme="guide-map"] .choice input:checked+label .mark svg{opacity:1}
+
+[data-theme="guide-map"] .error{margin-top:var(--space-4);padding:0 var(--space-2)}
+[data-theme="guide-map"] .receipt{padding:0 var(--space-2)}
+[data-theme="guide-map"] .cast{font-size:1.15rem;letter-spacing:-.005em}

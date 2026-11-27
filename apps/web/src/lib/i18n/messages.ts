@@ -57,6 +57,9 @@ export interface Messages {
     readonly templates: string;
     readonly templateSeedPacket: string;
     readonly templateBallotPaper: string;
+    readonly templateBoardingPass: string;
+    readonly templateGuideMap: string;
+    readonly templateStandard: string;
     readonly doneTitle: string;
     readonly doneText: string;
     readonly doneLabel: string;
@@ -86,7 +89,7 @@ const en: Messages = {
     statement: "Qohesion is open-source software for holding votes and polls in groups such as associations, unions and councils.",
     state: "Alpha version. Voting is not available yet: this build contains the ballot screen preview and the version information.",
     previewLink: "Ballot screen preview",
-    previewNote: "One question with three choices, in two templates. No ballot is recorded.",
+    previewNote: "One question with three choices, in five templates. No ballot is recorded.",
     versionLink: "Version information",
     versionNote: "Version, release channel, commit and build date, as JSON.",
   },
@@ -121,6 +124,9 @@ const en: Messages = {
     templates: "Template",
     templateSeedPacket: "Seed Packet",
     templateBallotPaper: "Ballot Paper",
+    templateBoardingPass: "Boarding Pass",
+    templateGuideMap: "Guide Map",
+    templateStandard: "Standard",
     doneTitle: "The choice is valid",
     doneText: "In this preview no ballot is recorded. In a real vote, a receipt code is displayed at this point. The code allows checking later that the ballot is included in the count. It does not reveal the choice made.",
     doneLabel: "Receipt code",
@@ -163,7 +169,7 @@ const fr: Messages = {
     statement: "Qohesion est un logiciel libre pour tenir des votes et des sondages dans des groupes tels que des associations, des syndicats et des conseils.",
     state: "Version alpha. Le vote n’est pas encore disponible : cette version contient l’aperçu du bulletin de vote et les informations de version.",
     previewLink: "Aperçu du bulletin de vote",
-    previewNote: "Une question à trois choix, dans deux modèles. Aucun bulletin n’est enregistré.",
+    previewNote: "Une question à trois choix, dans cinq modèles. Aucun bulletin n’est enregistré.",
     versionLink: "Informations de version",
     versionNote: "Version, canal de publication, commit et date de compilation, en JSON.",
   },
@@ -198,6 +204,9 @@ const fr: Messages = {
     templates: "Modèle",
     templateSeedPacket: "Seed Packet",
     templateBallotPaper: "Ballot Paper",
+    templateBoardingPass: "Boarding Pass",
+    templateGuideMap: "Guide Map",
+    templateStandard: "Standard",
     doneTitle: "Le choix est valide",
     doneText: "Dans cet aperçu, aucun bulletin n’est enregistré. Dans un vote réel, un code de reçu est affiché à cette étape. Le code permet de vérifier plus tard que le bulletin figure dans le décompte. Il ne révèle pas le choix exprimé.",
     doneLabel: "Code de reçu",

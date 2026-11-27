@@ -8,7 +8,8 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build, sitePageOut } from "../build.mjs";
-import { HARDENING, HOME } from "../home.mjs";
+import { HARDENING, HOME, TEMPLATES } from "../home.mjs";
+import { escapeHtml } from "../lib.mjs";
 import { PAGES, SOCIAL } from "../site.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -58,7 +59,7 @@ test("every other document in docs/ has a documentation page, and the documents 
 
 test("each page shows one language only, and the switch leads to the same page in the other language", () => {
   const forbidden = {
-    pricing: { fr: ["Event pass", "The offers"], en: ["Forfait par scrutin", "Les offres"] },
+    pricing: { fr: ["Poll pass", "The offers"], en: ["Forfait par scrutin", "Les offres"] },
     terms: { fr: ["Full terms", "In short"], en: ["Conditions complètes", "En bref"] },
     brand: { fr: ["Permitted without asking", "What this covers"], en: ["Permis sans demande", "Ce que couvre"] },
     home: { fr: ["Ballot screen templates", "Install on your own server"], en: ["Des modèles d’écran de vote", "S’installer sur son propre serveur"] },
@@ -115,15 +116,18 @@ test("the home page opens with the brand line, runs the real ballot screen and o
     const html = read(sitePageOut(page("home"), lang));
     assert.ok(html.includes(`<h1 id="top-title">${h1}</h1>`), `${lang}: the brand line is missing`);
     const frames = [...html.matchAll(/<iframe src="([^"]+)" title="([^"]+)"([^>]*)>/g)];
-    assert.equal(frames.length, 3, `${lang}: one frame in the hero and one per template`);
+    assert.equal(frames.length, TEMPLATES.length + 1, `${lang}: one frame in the hero and one per template`);
     assert.ok(frames[0]?.[1]?.includes(`theme=seed-packet&amp;lang=${lang}&amp;embed=1`), `${lang}: hero frame`);
-    assert.ok(frames[1]?.[1]?.includes(`theme=ballot-paper&amp;lang=${lang}&amp;embed=1`), `${lang}: first template frame`);
-    assert.ok(frames[2]?.[1]?.includes(`theme=seed-packet&amp;lang=${lang}&amp;embed=1`), `${lang}: second template frame`);
-    assert.ok(!frames[0]?.[3]?.includes("lazy") && frames[1]?.[3]?.includes('loading="lazy"') && frames[2]?.[3]?.includes('loading="lazy"'), `${lang}: only the hero frame loads at once`);
+    TEMPLATES.forEach((tpl, i) => {
+      assert.ok(frames[i + 1]?.[1]?.includes(`theme=${tpl.id}&amp;lang=${lang}&amp;embed=1`), `${lang}: frame of the ${tpl.id} template`);
+      assert.ok(frames[i + 1]?.[3]?.includes('loading="lazy"'), `${lang}: the ${tpl.id} frame is not lazy`);
+      assert.ok(html.includes(`<h3>${tpl.name}</h3>`) && html.includes(escapeHtml(tpl.text[lang])), `${lang}: the ${tpl.id} slide has no name or text`);
+    });
+    assert.ok(!frames[0]?.[3]?.includes("lazy"), `${lang}: only the hero frame loads at once`);
     assert.ok(frames.every((f) => (f[2] ?? "").length > 10), `${lang}: a frame has no name`);
     assert.ok(html.includes('href="https://github.com/msolav/qohesion"') && html.includes('href="https://www.instagram.com/qohesion/"'), `${lang}: source and Instagram links`);
     assert.equal((html.match(/<section /g) ?? []).length, 7, `${lang}: expected seven sections`);
-    assert.ok(html.includes("data-carousel") && html.includes("data-controls hidden") && (html.match(/aria-roledescription="slide"/g) ?? []).length === 2, `${lang}: the carousel is incomplete`);
+    assert.ok(html.includes("data-carousel") && html.includes("data-controls hidden") && (html.match(/aria-roledescription="slide"/g) ?? []).length === TEMPLATES.length, `${lang}: the carousel is incomplete`);
     assert.equal((html.match(/<li><svg class="glyph"/g) ?? []).length, 5, `${lang}: the safety diagram has five steps`);
     assert.ok(html.includes('<ol class="flow">'), `${lang}: the steps are not an ordered list`);
   }

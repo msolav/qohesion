@@ -14,12 +14,21 @@ Showing running results conflicts with the secret-ballot defaults of ADR 0003 (t
 
 ### 1. A test edition, labelled as such
 
-- The test edition stores ballots **without encryption**, in a local SQLite file. It is for trying the product, not for decisions that need secrecy or an audit.
-- Every screen shows a "Test edition" notice. The notice is a property of the build (`QOHESION_EDITION=test`), not of a page, and its text says that ballots are not encrypted and that data may be erased.
+- The test edition stores ballots in a local SQLite file. Encryption is **optional, chosen per poll before it opens, and stated on the ballot screen** (section 1a). It is for trying the product, not for decisions that need an audited secret ballot.
+- Every screen shows a "Test edition" notice. The notice is a property of the build (`QOHESION_EDITION=test`), not of a page, and its text says that data may be erased and that the edition is not audited.
 - Votes are still recorded in the real ledger (Merkle tree, receipt code), so the receipt and verification screens are the final ones.
 - The ballot is stored apart from the voter: the table that records who voted holds no choice, and the table of ballots holds no voter. The link remains weak (timing, and anyone with database access), which is why the edition is not for secret decisions.
 - No email is sent. Where the product sends a message, the test edition shows the link on screen instead, to the person who would receive it (an administrator copying personal links, or a member who asks for theirs).
 - The edition is removed when the audited scheme replaces it (issue for ADR 0002's open question). Nothing in the data model depends on the missing encryption: the ballot column holds an opaque value that later holds a ciphertext.
+
+### 1a. Sealed ballots (optional encryption)
+
+- A poll is either **sealed** or **not encrypted**, chosen while it is a draft and locked when it opens. The ballot screen says which, in plain words, before the member chooses.
+- A sealed poll gets a key pair when it opens. Each ballot is encrypted to the public key as soon as the server receives it (X25519, HKDF-SHA-256, AES-256-GCM, a new ephemeral key per ballot). The private half, the **counting key**, is shown once to the administrator and kept nowhere. Without it nobody, the administrators and the database included, can read a ballot.
+- Closing a sealed poll needs the counting key. The server reads every ballot with it, in memory, records the totals, and does not keep the key. A wrong key changes nothing. A sealed poll that closes by itself at its set time waits, closed, until an administrator enters the key. A lost key means the ballots can never be counted, and the screen says so when the key is shown.
+- Sealed ballots cannot show live totals, because nobody can read them before the count. Choosing live results turns encryption off, and the form says why.
+- The ledger works the same way for both kinds. For a sealed poll the ledger entries are the ciphertexts.
+- What this does not give: the server sees a choice for the instant it encrypts it, and at the count it reads them all. A single key holder is trusted. The audited scheme with a threshold key (ADR 0002) removes both limits. This is why the edition is still labelled a test.
 
 ### 2. Results visibility is a poll setting, fixed at opening
 
@@ -50,12 +59,14 @@ Results update by polling a JSON address every few seconds while the page is vis
 
 ### 5. Scope of the first test
 
-Included: space creation, keys, poll creation with one single-choice question (in favour, against, abstention, or custom options), the roll with personal links, opening and closing, voting with receipt, results with the visibility settings, a ledger page.
+Included: space creation, keys, poll creation with one single-choice question (in favour, against, abstention, or custom options), the roll with personal links, opening and closing, voting with receipt, optional sealed ballots with a counting key, results with the visibility settings, a ledger page, an optional password in front of the whole edition.
 
-Not included: encryption and threshold keys, email, domain verification, payment, several questions per poll, ranked choice.
+Not included: threshold keys and the audited scheme, email, domain verification, payment, several questions per poll, ranked choice.
 
 ## Consequences
 
+- A test server can be put behind one shared password (`QOHESION_GATE_PASSWORD`), so it can be shown to chosen people.
+- The pages send `Referrer-Policy: same-origin`. `no-referrer` makes browsers send `Origin: null` with a form post, which the framework's cross-site check refuses; `same-origin` still sends nothing to other sites, so personal voting links do not leak.
 - The test edition can be run by anyone, locally or on a server, with `QOHESION_EDITION=test`. Without that variable the application refuses to enable these routes.
 - Results visibility becomes part of what a voter agrees to, so it is shown in the poll's facts block on the ballot screen.
 - The roll's and the ledger's packages are used as they are.

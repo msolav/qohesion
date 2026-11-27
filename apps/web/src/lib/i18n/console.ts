@@ -75,6 +75,14 @@ export interface ConsoleMessages {
     readonly votedTitle: string; readonly votedText: string; readonly closedTitle: string; readonly closedText: string; readonly notOpenTitle: string; readonly notOpenText: string;
     readonly unknownTitle: string; readonly unknownText: string; readonly seeResults: string; readonly publicResults: string;
   };
+  readonly gate: { readonly title: string; readonly lede: string; readonly label: string; readonly submit: string; readonly invalid: string };
+  readonly seal: {
+    readonly title: string; readonly help: string; readonly sealed: { readonly title: string; readonly text: string }; readonly none: { readonly title: string; readonly text: string }; readonly liveNote: string;
+    readonly factSealed: string; readonly factPlain: string; readonly ballotSealed: string; readonly ballotPlain: string;
+    readonly keyTitle: string; readonly keyText: string; readonly keyWarn: string; readonly keyDone: string;
+    readonly closeKeyLabel: string; readonly closeKeyHelp: string; readonly countTitle: string; readonly countText: string; readonly countSubmit: string;
+    readonly pendingTitle: string; readonly pendingText: string; readonly protection: string;
+  };
   readonly resultsStatement: Readonly<Record<ResultsTiming, Readonly<Record<ResultsAudience, string>>>>;
   readonly errors: Readonly<Record<string, string>>;
 }
@@ -82,7 +90,7 @@ export interface ConsoleMessages {
 const en: ConsoleMessages = {
   edition: {
     label: "Test edition",
-    text: "Ballots are stored without encryption and data may be erased. Do not use it for decisions that need a secret ballot.",
+    text: "Not audited, and data may be erased. Do not use it for decisions that need an audited secret ballot. Each poll states whether its ballots are encrypted.",
   },
   nav: { label: "Administration", polls: "Polls", space: "Organization", signOut: "Sign out", signIn: "Sign in", start: "Create an organization" },
   common: { save: "Save", cancel: "Cancel", back: "Back", copy: "Copy", copied: "Copied", delete: "Delete", open: "Open", close: "Close", none: "None", yes: "Yes", no: "No", optional: "optional" },
@@ -257,7 +265,7 @@ const en: ConsoleMessages = {
   history: {
     title: "History",
     empty: "Nothing yet.",
-    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", opened: "Poll opened (roll count and code)", closed: "Poll closed" },
+    actions: { created: "Poll created", roll_added: "Addresses added to the roll", roll_added_late: "Addresses added after opening", opened: "Poll opened (roll count and code)", closed: "Poll closed", counted: "Sealed ballots counted" },
   },
   space: {
     title: "Organization",
@@ -295,7 +303,7 @@ const en: ConsoleMessages = {
     results: "Results",
     ballotType: "Ballot",
     ballotValue: "Secret",
-    ballotNote: "The ballot is recorded without your name. This test edition stores it without encryption.",
+    ballotNote: "The ballot is recorded without your name.",
     submit: "Submit the ballot",
     legend: "Your choice",
     problem: "The ballot was not recorded.",
@@ -314,6 +322,30 @@ const en: ConsoleMessages = {
     unknownText: "Check the link in the message you received, or ask an administrator for a new one.",
     seeResults: "Results",
     publicResults: "Results of this poll",
+  },
+  gate: { title: "Private test", lede: "This test is shared with chosen people. Enter the password to continue.", label: "Password", submit: "Continue", invalid: "This password is not correct." },
+  seal: {
+    title: "Ballot protection",
+    help: "Decided before opening and shown to members on the ballot.",
+    sealed: { title: "Encrypted until the count", text: "Each ballot is encrypted as soon as it is received. Nobody can read the choices, administrators and the database included, until the counting key is used when the poll closes. Totals stay hidden until then." },
+    none: { title: "Not encrypted", text: "Choices are stored readable, without names. This is needed to show live totals. Anyone with access to the database can read them." },
+    liveNote: "Live results need ballots that are not encrypted.",
+    factSealed: "Encrypted",
+    factPlain: "Not encrypted",
+    ballotSealed: "It is encrypted as soon as it is received and can be read only with the counting key, held by an administrator, when the poll closes.",
+    ballotPlain: "It is not encrypted: choices are stored readable, without names, and anyone with access to the database can read them.",
+    keyTitle: "Counting key",
+    keyText: "This key opens the sealed ballots when the poll closes. It is shown once and kept nowhere else. If it is lost, the ballots cannot be counted. Keep it where only the administrators can read it.",
+    keyWarn: "Without this key the votes cannot be counted.",
+    keyDone: "I have saved the counting key",
+    closeKeyLabel: "Counting key",
+    closeKeyHelp: "Needed to close a sealed poll. The server reads the ballots with it, counts them, and does not keep the key.",
+    countTitle: "Count the ballots",
+    countText: "This poll closed by itself. Enter the counting key to read and count the sealed ballots.",
+    countSubmit: "Count the ballots",
+    pendingTitle: "Waiting for the count",
+    pendingText: "The poll is closed. Totals appear once an administrator enters the counting key.",
+    protection: "Ballot protection",
   },
   resultsStatement: {
     close: {
@@ -358,13 +390,15 @@ const en: ConsoleMessages = {
     required: "Choose one option.",
     unknown_option: "This option does not exist. Choose one from the list.",
     invalid_type: "The answer is not valid.",
+    encryption_needs_close: "Live results need ballots that are not encrypted. Choose one or the other.",
+    wrong_counting_key: "This counting key does not open the ballots of this poll. Check it and try again.",
   },
 };
 
 const fr: ConsoleMessages = {
   edition: {
     label: "Édition de test",
-    text: "Les bulletins sont conservés sans chiffrement et les données peuvent être effacées. Ne pas l’utiliser pour une décision qui exige un scrutin secret.",
+    text: "Non audité, et les données peuvent être effacées. Ne pas l’utiliser pour une décision qui exige un scrutin secret audité. Chaque scrutin indique si ses bulletins sont chiffrés.",
   },
   nav: { label: "Administration", polls: "Scrutins", space: "Organisation", signOut: "Se déconnecter", signIn: "Se connecter", start: "Créer une organisation" },
   common: { save: "Enregistrer", cancel: "Annuler", back: "Retour", copy: "Copier", copied: "Copié", delete: "Supprimer", open: "Ouvrir", close: "Fermer", none: "Aucun", yes: "Oui", no: "Non", optional: "facultatif" },
@@ -539,7 +573,7 @@ const fr: ConsoleMessages = {
   history: {
     title: "Historique",
     empty: "Rien pour l’instant.",
-    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé" },
+    actions: { created: "Scrutin créé", roll_added: "Adresses ajoutées à la liste", roll_added_late: "Adresses ajoutées après l’ouverture", opened: "Scrutin ouvert (nombre et code de la liste)", closed: "Scrutin fermé", counted: "Bulletins chiffrés dépouillés" },
   },
   space: {
     title: "Organisation",
@@ -577,7 +611,7 @@ const fr: ConsoleMessages = {
     results: "Résultats",
     ballotType: "Bulletin",
     ballotValue: "Secret",
-    ballotNote: "Le bulletin est enregistré sans votre nom. Cette édition de test le conserve sans chiffrement.",
+    ballotNote: "Le bulletin est enregistré sans votre nom.",
     submit: "Déposer le bulletin",
     legend: "Votre choix",
     problem: "Le bulletin n’a pas été enregistré.",
@@ -596,6 +630,30 @@ const fr: ConsoleMessages = {
     unknownText: "Vérifier le lien dans le message reçu, ou demander un nouveau lien à l’administration.",
     seeResults: "Résultats",
     publicResults: "Résultats de ce scrutin",
+  },
+  gate: { title: "Test privé", lede: "Ce test est partagé avec des personnes choisies. Saisir le mot de passe pour continuer.", label: "Mot de passe", submit: "Continuer", invalid: "Ce mot de passe n’est pas correct." },
+  seal: {
+    title: "Protection des bulletins",
+    help: "Décidée avant l’ouverture et affichée aux membres sur le bulletin.",
+    sealed: { title: "Chiffrés jusqu’au dépouillement", text: "Chaque bulletin est chiffré dès sa réception. Personne ne peut lire les choix, administration et base de données comprises, tant que la clé de dépouillement n’est pas utilisée à la fermeture du scrutin. Les totaux restent cachés jusque-là." },
+    none: { title: "Non chiffrés", text: "Les choix sont conservés lisibles, sans nom. C’est nécessaire pour afficher des totaux en direct. Toute personne qui a accès à la base de données peut les lire." },
+    liveNote: "Les résultats en direct exigent des bulletins non chiffrés.",
+    factSealed: "Chiffré",
+    factPlain: "Non chiffré",
+    ballotSealed: "Il est chiffré dès sa réception et ne peut être lu qu’avec la clé de dépouillement, détenue par l’administration, à la fermeture du scrutin.",
+    ballotPlain: "Il n’est pas chiffré: les choix sont conservés lisibles, sans nom, et toute personne qui a accès à la base de données peut les lire.",
+    keyTitle: "Clé de dépouillement",
+    keyText: "Cette clé ouvre les bulletins chiffrés à la fermeture du scrutin. Elle est affichée une seule fois et n’est conservée nulle part ailleurs. Si elle est perdue, les bulletins ne peuvent pas être comptés. La garder à un endroit que seule l’administration peut lire.",
+    keyWarn: "Sans cette clé, les votes ne peuvent pas être comptés.",
+    keyDone: "La clé de dépouillement est conservée",
+    closeKeyLabel: "Clé de dépouillement",
+    closeKeyHelp: "Nécessaire pour fermer un scrutin chiffré. Le serveur lit les bulletins avec elle, les compte, et ne conserve pas la clé.",
+    countTitle: "Dépouiller les bulletins",
+    countText: "Ce scrutin s’est fermé de lui-même. Saisir la clé de dépouillement pour lire et compter les bulletins chiffrés.",
+    countSubmit: "Dépouiller les bulletins",
+    pendingTitle: "En attente du dépouillement",
+    pendingText: "Le scrutin est fermé. Les totaux apparaissent quand l’administration saisit la clé de dépouillement.",
+    protection: "Protection des bulletins",
   },
   resultsStatement: {
     close: {
@@ -640,6 +698,8 @@ const fr: ConsoleMessages = {
     required: "Choisir une option.",
     unknown_option: "Cette option n’existe pas. En choisir une dans la liste.",
     invalid_type: "La réponse n’est pas valide.",
+    encryption_needs_close: "Les résultats en direct exigent des bulletins non chiffrés. Choisir l’un ou l’autre.",
+    wrong_counting_key: "Cette clé de dépouillement n’ouvre pas les bulletins de ce scrutin. La vérifier et réessayer.",
   },
 };
 

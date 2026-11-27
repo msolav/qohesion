@@ -6,17 +6,17 @@ Amounts are in Canadian dollars, before tax.
 
 ### The offers
 
-| | Free | Event pass | Self-hosted |
+| | Free | Poll pass | Self-hosted |
 |---|---|---|---|
-| Price | $0 | From $19 per voting event, by size | $0 for the software |
+| Price | $0 | From $19 per poll, by size | $0 for the software |
 | Used for | Small polls | A vote or poll on the hosted service, up to 5,000 addresses on the roll | Running the software on the organization's own server |
 | Roll size | Up to 50 participants a poll | Up to the size paid for | No limit set by the software |
-| Events | As many as the monthly allowance of verification emails permits | One event per pass | No limit set by the software |
+| Polls | As many as the monthly allowance of verification emails permits | One poll per pass | No limit set by the software |
 | Verification emails | One per participant, within the monthly allowance | One per participant, included | Sent through the organization's own SMTP service |
 | Features | All | All | All |
 | Support | Public issue tracker | Email | Public issue tracker. Paid support is quoted |
 
-### Event pass sizes
+### Poll pass sizes
 
 The size is the number of addresses on the roll.
 
@@ -34,9 +34,9 @@ The size is the number of addresses on the roll.
 - The licence: the code is under the AGPL-3.0-or-later, and the [terms of use](terms-of-use.md) allow an organization to close its account and export all of its data at any time.
 - Receipt codes and verification of the result.
 
-### What counts as an event
+### What counts as a poll
 
-An event is one vote or poll with its roll, open for at most 30 days. A second vote with the same roll is a second event.
+A poll is one vote or consultation with its roll, open for at most 30 days. A second vote with the same roll is a second poll, and needs its own pass.
 
 ---
 

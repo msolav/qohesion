@@ -25,6 +25,7 @@ export function parsePollForm(data: FormData): PollInput {
     timing: isTiming(timing) ? timing : "close",
     audience: isAudience(audience) ? audience : "voters",
     theme: isTheme(theme) ? theme : "ballot-paper",
+    encrypted: text(data, "encryption") === "sealed",
     closeAfterHours: byHours ? (/^\d+$/.test(hours) ? Number(hours) : Number.NaN) : null,
   };
 }

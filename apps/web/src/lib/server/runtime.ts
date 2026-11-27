@@ -6,10 +6,11 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
-import { QOHESION_DATA_DIR, QOHESION_EDITION } from "$app/env/private";
+import { QOHESION_DATA_DIR, QOHESION_EDITION, QOHESION_GATE_PASSWORD } from "$app/env/private";
 import { Service } from "./service.js";
 
 let instance: Service | undefined;
+let secret: Uint8Array | undefined;
 
 export function isTestEdition(): boolean {
   return QOHESION_EDITION === "test";
@@ -30,7 +31,17 @@ export function loadSecret(dir: string): Uint8Array {
 export function service(): Service {
   if (!isTestEdition()) throw new Error("The test edition is not enabled (QOHESION_EDITION=test)");
   if (!instance) {
-    instance = Service.open(path.join(QOHESION_DATA_DIR, "qohesion.sqlite"), { secret: loadSecret(QOHESION_DATA_DIR) });
+    instance = Service.open(path.join(QOHESION_DATA_DIR, "qohesion.sqlite"), { secret: serverSecret() });
   }
   return instance;
+}
+
+export function serverSecret(): Uint8Array {
+  secret ??= loadSecret(QOHESION_DATA_DIR);
+  return secret;
+}
+
+/** The password in front of the test edition, or an empty string when there is none. */
+export function gatePassword(): string {
+  return isTestEdition() ? QOHESION_GATE_PASSWORD : "";
 }

@@ -32,7 +32,7 @@ Qohesion is open-source software (AGPL-3.0-or-later) for holding votes and polls
 
 ### B. Before anyone is charged
 
-6. **Terms of sale.** Refunds, the event pass, and the payment processor's terms, as proposed in ADR 0006. If an annual plan is added later, which consumer-law rules on renewal apply?
+6. **Terms of sale.** Refunds, the poll pass, and the payment processor's terms, as proposed in ADR 0006. If an annual plan is added later, which consumer-law rules on renewal apply?
 7. **Taxes.** Registration thresholds and treatment of GST and QST. This may be a question for an accountant instead.
 8. **Trademark.** Review of the [draft policy](trademark-policy.md); who should own the marks (the operator or an individual); when and where to register; and how to handle a look-alike service.
 

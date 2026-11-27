@@ -11,7 +11,7 @@ export const load: PageServerLoad = ({ params }) => {
   const space = service().getSpace(poll.spaceId);
   const base = {
     organization: space?.name ?? null,
-    poll: { id: poll.id, title: poll.title, description: poll.description, options: poll.options, timing: poll.timing, audience: poll.audience, closesAt: poll.closesAt, rollCount: poll.rollCount, rollCode: poll.rollCode },
+    poll: { id: poll.id, title: poll.title, description: poll.description, options: poll.options, timing: poll.timing, audience: poll.audience, closesAt: poll.closesAt, rollCount: poll.rollCount, rollCode: poll.rollCode, encrypted: poll.encrypted },
     canSeeResults: accessTo(poll, "voter").totals || poll.status === "closed",
   };
   if (poll.status === "draft") return { state: "not_open" as const, ...base };

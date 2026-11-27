@@ -93,5 +93,27 @@ check("the closed poll shows its ledger", ledger.text.includes(receipt ?? "?"));
 const checked = await admin.send(`/console/polls/${pollId}/results?/check`, { method: "POST", form: { receipt: receipt?.toLowerCase() ?? "" } });
 check("a receipt is checked against the ledger", checked.status === 200);
 
+// A sealed poll: ballots are encrypted, totals stay hidden, and the count needs the counting key.
+const sealed = await admin.send("/console/polls/new", { method: "POST", form: { title: "Sealed question", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", duration: "manual", encryption: "sealed" } });
+const sealedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(sealed.location)?.[1];
+check("a sealed poll is created", Boolean(sealedId), sealed.location);
+await admin.send(`/console/polls/${sealedId}/roll?/add`, { method: "POST", form: { addresses: "s1@example.com\ns2@example.com" } });
+const sealedTokens = [...new Set([...(await admin.send(`/console/polls/${sealedId}/roll`)).text.matchAll(/\/v\/([0-9A-Z]{24})/g)].map((m) => m[1]))];
+const sealedOpen = await admin.send(`/console/polls/${sealedId}?/open`, { method: "POST", form: {} });
+const countingKey = /QC(?:-[0-9A-Z]{1,4}){13}/.exec(sealedOpen.text)?.[0];
+check("opening a sealed poll shows the counting key once", Boolean(countingKey));
+const sealedBallot = await anonymous.send(`/v/${sealedTokens[0]}`);
+check("the ballot says it is encrypted", sealedBallot.text.includes("encrypted") || sealedBallot.text.includes("chiffré"));
+await anonymous.send(`/v/${sealedTokens[0]}`, { method: "POST", form: { choice: "for" } });
+await anonymous.send(`/v/${sealedTokens[1]}`, { method: "POST", form: { choice: "for" } });
+const hidden = JSON.parse((await admin.send(`/api/results/${sealedId}`)).text);
+check("a sealed poll shows turnout but no totals while open", hidden.turnout === 2 && hidden.counts === null, JSON.stringify(hidden));
+const wrong = await admin.send(`/console/polls/${sealedId}?/close`, { method: "POST", form: { countingKey: "QC-0000-0000" } });
+check("a wrong counting key does not close the poll", wrong.status === 400);
+const right = await admin.send(`/console/polls/${sealedId}?/close`, { method: "POST", form: { countingKey } });
+check("the right counting key closes and counts", right.status === 303);
+const counted = JSON.parse((await admin.send(`/api/results/${sealedId}`)).text);
+check("totals appear after the count", counted.counts?.for === 2, JSON.stringify(counted));
+
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

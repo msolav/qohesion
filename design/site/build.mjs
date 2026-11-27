@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { HOME_PATH, renderHome } from "./home.mjs";
+import { HOME_PATH, renderHome, TEMPLATES } from "./home.mjs";
 import { docOutPath, escapeHtml, pageUrl, renderDocument, splitLanguage, statusLine } from "./lib.mjs";
 import { DOC_DESCRIPTIONS, DOC_GROUPS, LANGS, PAGES, SOCIAL, STRINGS, WIDE_DOCS } from "./site.mjs";
 
@@ -214,8 +214,8 @@ export function build({ repoRoot, outDir, commit, builtAt, origin = DEFAULT_ORIG
       return docPages.includes(repoPath) ? docOutPath(repoPath) : null;
     },
     siteLink: (name) => {
-      // prototype, prototype-ballot-paper, prototype-embed, prototype-ballot-paper-embed
-      const m = /^prototype(?:-(seed-packet|ballot-paper))?(-embed)?$/.exec(name);
+      // prototype, prototype-<template id>, prototype-embed, prototype-<template id>-embed
+      const m = new RegExp(`^prototype(?:-(${TEMPLATES.map((t) => t.id).join("|")}))?(-embed)?$`).exec(name);
       if (!m) return null;
       return `prototype/?theme=${m[1] ?? "seed-packet"}&lang=${lang}${m[2] ? "&embed=1" : ""}`;
     },

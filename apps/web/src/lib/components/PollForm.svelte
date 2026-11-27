@@ -3,7 +3,7 @@
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { AUDIENCES, TIMINGS, type ResultsAudience, type ResultsTiming } from "#lib/results-rules.js";
   import type { PollInput } from "#lib/server/service.js";
-  import type { Theme } from "#lib/theme.js";
+  import { THEMES, THEME_NAMES, type Theme } from "#lib/theme.js";
 
   let {
     locale,
@@ -18,6 +18,11 @@
   const start = (() => initial)();
   let kind = $state<"yes-no" | "choice">(start?.kind ?? "yes-no");
   let timing = $state<ResultsTiming>(start?.timing ?? "close");
+  let encryption = $state<"sealed" | "none">(start ? (start.encrypted ? "sealed" : "none") : "sealed");
+  // Live totals need readable ballots, so choosing them turns encryption off.
+  $effect(() => {
+    if (timing === "live") encryption = "none";
+  });
   let audience = $state<ResultsAudience>(start?.audience ?? "voters");
   let byHours = $state(start?.closeAfterHours != null);
   let options = $state<string[]>(start && start.options.length > 0 ? [...start.options] : ["", "", ""]);
@@ -96,7 +101,17 @@
     </div>
   </fieldset>
 
-  <div class="cx-preview" aria-live="polite"><b>{m.form.preview}</b>{statement}</div>
+  <fieldset class="cx-field">
+    <legend class="cx-label">{m.seal.title}</legend>
+    <p class="cx-help">{m.seal.help}</p>
+    <div class="cx-choices cols-2">
+      <label class="cx-choice"><input type="radio" name="encryption" value="sealed" bind:group={encryption} disabled={timing === "live"} /><span><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
+      <label class="cx-choice"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
+    </div>
+    {#if timing === "live"}<p class="cx-help" role="status">{m.seal.liveNote}</p>{/if}
+  </fieldset>
+
+  <div class="cx-preview" aria-live="polite"><b>{m.form.preview}</b>{statement}<br />{m.voter.ballotType}: {encryption === "sealed" ? m.seal.factSealed : m.seal.factPlain}.</div>
 
   <fieldset class="cx-field">
     <legend class="cx-label">{m.form.duration}</legend>
@@ -114,9 +129,10 @@
 
   <fieldset class="cx-field">
     <legend class="cx-label">{m.form.template}</legend>
-    <div class="cx-choices cols-2">
-      <label class="cx-choice"><input type="radio" name="theme" value="ballot-paper" checked={(start?.theme ?? defaultTheme) === "ballot-paper"} /><span><b>{m.form.templateBallot}</b></span></label>
-      <label class="cx-choice"><input type="radio" name="theme" value="seed-packet" checked={(start?.theme ?? defaultTheme) === "seed-packet"} /><span><b>{m.form.templateSeed}</b></span></label>
+    <div class="cx-choices cols-3">
+      {#each THEMES as value (value)}
+        <label class="cx-choice"><input type="radio" name="theme" {value} checked={(start?.theme ?? defaultTheme) === value} /><span><b>{THEME_NAMES[value][locale]}</b></span></label>
+      {/each}
     </div>
   </fieldset>
 

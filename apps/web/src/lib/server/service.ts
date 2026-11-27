@@ -12,6 +12,8 @@ import { DatabaseSync } from "node:sqlite";
 import { defineForm, validateForm, type Form } from "@qohesion/engine";
 import { MerkleLog, hashLeaf, receiptCode, toHex, normalizeReceiptCode, verifyInclusion } from "@qohesion/ledger";
 import { addressFingerprint, applyEvent, checkAddress, freezeRoll, type MemberStatus } from "@qohesion/roll";
+import { generateCountingKeys, keyMatches, open as openSealed, seal } from "./seal.js";
+import { isTheme, type Theme } from "../theme.js";
 import { accessTo, isAudience, isTiming, type Access, type PollStatus, type ResultsAudience, type ResultsTiming, type Viewer } from "../results-rules.js";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -34,7 +36,7 @@ function base32(bytes: Uint8Array, length: number): string {
 
 const sha256hex = (text: string): string => createHash("sha256").update(text).digest("hex");
 
-export type ThemeName = "seed-packet" | "ballot-paper";
+export type ThemeName = Theme;
 export type Locale = "fr" | "en";
 export type PollKind = "yes-no" | "choice";
 
@@ -80,6 +82,10 @@ export interface Poll {
   readonly audience: ResultsAudience;
   readonly theme: ThemeName;
   readonly closeAfterHours: number | null;
+  /** Ballots are sealed with the poll's public key and read only with the counting key. */
+  readonly encrypted: boolean;
+  /** False for a sealed poll that closed and still waits for its counting key. */
+  readonly counted: boolean;
   readonly createdAt: string;
   readonly openedAt: string | null;
   readonly closesAt: string | null;
@@ -107,6 +113,7 @@ export interface PollInput {
   readonly audience: ResultsAudience;
   readonly theme: ThemeName;
   readonly closeAfterHours: number | null;
+  readonly encrypted: boolean;
 }
 
 export type Problem = { readonly ok: false; readonly error: string };
@@ -123,6 +130,8 @@ export interface Totals {
 
 export interface ResultsView {
   readonly status: PollStatus;
+  /** The poll closed but its sealed ballots are not counted yet. */
+  readonly pending: boolean;
   readonly access: Access;
   readonly turnout: number | null;
   readonly counts: Readonly<Record<string, number>> | null;
@@ -151,7 +160,8 @@ CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, key_id TEXT NOT NULL
 CREATE TABLE IF NOT EXISTS polls (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT NOT NULL,
   kind TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL, timing TEXT NOT NULL, audience TEXT NOT NULL, theme TEXT NOT NULL,
-  close_after_hours INTEGER, created_at TEXT NOT NULL, opened_at TEXT, closes_at TEXT, closed_at TEXT, roll_code TEXT, roll_count INTEGER);
+  close_after_hours INTEGER, created_at TEXT NOT NULL, opened_at TEXT, closes_at TEXT, closed_at TEXT, roll_code TEXT, roll_count INTEGER,
+  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS roll (
   id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, address TEXT NOT NULL,
   fingerprint TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL, late INTEGER NOT NULL, added_at TEXT NOT NULL,
@@ -184,6 +194,15 @@ export class Service {
     this.#now = options.now ?? (() => new Date());
     db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
     db.exec(SCHEMA);
+    this.#migrate();
+  }
+
+  /** Adds the columns that databases made by an earlier build lack. */
+  #migrate(): void {
+    const columns = (this.#db.prepare("PRAGMA table_info(polls)").all() as { name: string }[]).map((c) => c.name);
+    if (!columns.includes("encrypted")) this.#db.exec("ALTER TABLE polls ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0");
+    if (!columns.includes("public_key")) this.#db.exec("ALTER TABLE polls ADD COLUMN public_key TEXT");
+    if (!columns.includes("counted")) this.#db.exec("ALTER TABLE polls ADD COLUMN counted INTEGER NOT NULL DEFAULT 1");
   }
 
   static open(file: string, options: ServiceOptions): Service {
@@ -253,7 +272,7 @@ export class Service {
 
   getSpace(spaceId: string): Space | null {
     const r = this.#one("SELECT * FROM spaces WHERE id = ?", spaceId);
-    return r ? { id: String(r["id"]), name: String(r["name"]), locale: r["locale"] === "en" ? "en" : "fr", theme: r["theme"] === "seed-packet" ? "seed-packet" : "ballot-paper" } : null;
+    return r ? { id: String(r["id"]), name: String(r["name"]), locale: r["locale"] === "en" ? "en" : "fr", theme: isTheme(r["theme"]) ? r["theme"] : "ballot-paper" } : null;
   }
 
   updateSpace(session: Session, input: { name: string; locale: Locale; theme: ThemeName }): Result<Space> {
@@ -359,8 +378,10 @@ export class Service {
       status: r["status"] === "open" ? "open" : r["status"] === "closed" ? "closed" : "draft",
       timing: r["timing"] === "live" ? "live" : "close",
       audience: isAudience(r["audience"]) ? r["audience"] : "voters",
-      theme: r["theme"] === "seed-packet" ? "seed-packet" : "ballot-paper",
+      theme: isTheme(r["theme"]) ? r["theme"] : "ballot-paper",
       closeAfterHours: r["close_after_hours"] === null ? null : Number(r["close_after_hours"]),
+      encrypted: r["encrypted"] === 1,
+      counted: r["counted"] !== 0,
       createdAt: String(r["created_at"]),
       openedAt: r["opened_at"] === null ? null : String(r["opened_at"]),
       closesAt: r["closes_at"] === null ? null : String(r["closes_at"]),
@@ -372,7 +393,8 @@ export class Service {
 
   /** Closes a poll whose time has come. Called on every read, so no timer is needed. */
   #expire(pollId: string): void {
-    this.#run("UPDATE polls SET status = 'closed', closed_at = closes_at WHERE id = ? AND status = 'open' AND closes_at IS NOT NULL AND closes_at <= ?", pollId, this.#iso());
+    // A sealed poll that closes by itself waits for its counting key (counted stays 0 until the key is given).
+    this.#run("UPDATE polls SET status = 'closed', closed_at = closes_at, counted = CASE WHEN encrypted = 1 THEN 0 ELSE 1 END WHERE id = ? AND status = 'open' AND closes_at IS NOT NULL AND closes_at <= ?", pollId, this.#iso());
   }
 
   getPoll(pollId: string): Poll | null {
@@ -401,6 +423,7 @@ export class Service {
     if (title.length > 140) return "title_too_long";
     if (input.description.length > 2000) return "description_too_long";
     if (!isTiming(input.timing) || !isAudience(input.audience)) return "invalid_results";
+    if (input.encrypted && input.timing === "live") return "encryption_needs_close";
     if (input.closeAfterHours !== null && (!Number.isInteger(input.closeAfterHours) || input.closeAfterHours < 1 || input.closeAfterHours > 24 * 30)) return "invalid_duration";
     if (input.kind === "choice") {
       const labels = input.options.map((o) => o.trim()).filter((o) => o.length > 0);
@@ -424,9 +447,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, description, kind, options, status, timing, audience, theme, close_after_hours, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.closeAfterHours, this.#iso(),
+        `INSERT INTO polls (id, space_id, title, description, kind, options, status, timing, audience, theme, close_after_hours, encrypted, counted, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.closeAfterHours, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, this.#iso(),
       );
       this.#log(id, session, "created", "");
     });
@@ -442,8 +465,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, close_after_hours = ? WHERE id = ?",
-      input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.closeAfterHours, pollId,
+      "UPDATE polls SET title = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, close_after_hours = ?, encrypted = ?, counted = ? WHERE id = ?",
+      input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.closeAfterHours, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, pollId,
     );
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -549,7 +572,9 @@ export class Service {
 
   // ---- Opening and closing ----
 
-  openPoll(session: Session, pollId: string): Result<Poll> {
+  /** Opens a poll. For a sealed poll the counting key is returned here, once, and kept nowhere. */
+  openPoll(session: Session, pollId: string): Result<{ poll: Poll; countingKey: string | null }> {
+    let countingKey: string | null = null;
     const result = this.#transaction((): Result<null> => {
       const poll = this.pollFor(session, pollId);
       if (!poll) return problem("not_found");
@@ -559,23 +584,70 @@ export class Service {
       const frozen = freezeRoll(fingerprints);
       const opened = this.#now();
       const closesAt = poll.closeAfterHours === null ? null : new Date(opened.getTime() + poll.closeAfterHours * 3_600_000).toISOString();
-      this.#run("UPDATE polls SET status = 'open', opened_at = ?, closes_at = ?, roll_code = ?, roll_count = ? WHERE id = ?", opened.toISOString(), closesAt, frozen.code, frozen.count, pollId);
-      this.#log(pollId, session, "opened", `${frozen.count} · ${frozen.code}`);
+      let publicKey: string | null = null;
+      if (poll.encrypted) {
+        const keys = generateCountingKeys();
+        publicKey = keys.publicKey;
+        countingKey = keys.countingKey;
+      }
+      this.#run("UPDATE polls SET status = 'open', opened_at = ?, closes_at = ?, roll_code = ?, roll_count = ?, public_key = ? WHERE id = ?", opened.toISOString(), closesAt, frozen.code, frozen.count, publicKey, pollId);
+      this.#log(pollId, session, "opened", `${frozen.count} · ${frozen.code}${poll.encrypted ? " · sealed" : ""}`);
       return ok(null);
     });
     if (!result.ok) return result;
     const poll = this.getPoll(pollId);
-    return poll ? ok(poll) : problem("not_found");
+    return poll ? ok({ poll, countingKey }) : problem("not_found");
   }
 
-  closePoll(session: Session, pollId: string): Result<Poll> {
-    const poll = this.pollFor(session, pollId);
-    if (!poll) return problem("not_found");
-    if (poll.status !== "open") return problem("locked");
-    this.#run("UPDATE polls SET status = 'closed', closed_at = ? WHERE id = ?", this.#iso(), pollId);
-    this.#log(pollId, session, "closed", "");
-    const next = this.getPoll(pollId);
-    return next ? ok(next) : problem("not_found");
+  /** Closes an open poll. A sealed poll needs its counting key, and stays open if the key is wrong. */
+  closePoll(session: Session, pollId: string, countingKey?: string): Result<Poll> {
+    return this.#transaction((): Result<Poll> => {
+      const poll = this.pollFor(session, pollId);
+      if (!poll) return problem("not_found");
+      if (poll.status !== "open") return problem("locked");
+      if (poll.encrypted) {
+        const counted = this.#count(poll, countingKey ?? "");
+        if (!counted.ok) return counted;
+      }
+      this.#run("UPDATE polls SET status = 'closed', closed_at = ? WHERE id = ?", this.#iso(), pollId);
+      this.#log(pollId, session, "closed", poll.encrypted ? "counted" : "");
+      const next = this.getPoll(pollId);
+      return next ? ok(next) : problem("not_found");
+    });
+  }
+
+  /** Counts the sealed ballots of a poll that closed by itself and waits for its key. */
+  countPoll(session: Session, pollId: string, countingKey: string): Result<Poll> {
+    return this.#transaction((): Result<Poll> => {
+      const poll = this.pollFor(session, pollId);
+      if (!poll) return problem("not_found");
+      if (poll.status !== "closed" || !poll.encrypted || poll.counted) return problem("locked");
+      const counted = this.#count(poll, countingKey);
+      if (!counted.ok) return counted;
+      this.#log(pollId, session, "counted", "");
+      const next = this.getPoll(pollId);
+      return next ? ok(next) : problem("not_found");
+    });
+  }
+
+  /**
+   * Reads every sealed ballot with the counting key, in memory, and records the choices. All or nothing: a wrong key
+   * or a ballot that does not open changes nothing. The ledger entries stay as they were, sealed.
+   */
+  #count(poll: Poll, countingKey: string): Result<null> {
+    const row = this.#one("SELECT public_key FROM polls WHERE id = ?", poll.id);
+    if (!row || typeof row["public_key"] !== "string" || !keyMatches(countingKey, row["public_key"])) return problem("wrong_counting_key");
+    const valid = new Set(poll.options.map((o) => o.id));
+    const updates: { seq: number; choice: string }[] = [];
+    for (const r of this.#all("SELECT seq, entry FROM ballots WHERE poll_id = ? ORDER BY seq", poll.id)) {
+      const entry = JSON.parse(String(r["entry"])) as { sealed?: string };
+      const choice = entry.sealed ? openSealed(countingKey, entry.sealed) : null;
+      if (choice === null || !valid.has(choice)) return problem("wrong_counting_key");
+      updates.push({ seq: Number(r["seq"]), choice });
+    }
+    for (const u of updates) this.#run("UPDATE ballots SET choice = ? WHERE poll_id = ? AND seq = ?", u.choice, poll.id, u.seq);
+    this.#run("UPDATE polls SET counted = 1 WHERE id = ?", poll.id);
+    return ok(null);
   }
 
   // ---- Voting ----
@@ -624,8 +696,12 @@ export class Service {
       this.#run("UPDATE roll SET status = ?, voted_on = ? WHERE id = ?", status, this.#iso().slice(0, 10), Number(row["id"]));
 
       const seq = Number(this.#one("SELECT COUNT(*) AS n FROM ballots WHERE poll_id = ?", poll.id)?.["n"] ?? 0);
-      const entry = JSON.stringify({ v: 1, poll: poll.id, seq, choice, nonce: randomBytes(12).toString("base64url") });
-      this.#run("INSERT INTO ballots (poll_id, seq, choice, entry) VALUES (?, ?, ?, ?)", poll.id, seq, choice, entry);
+      // A sealed ballot is encrypted before it is stored: the table keeps no readable choice until the count.
+      const publicKey = poll.encrypted ? String(this.#one("SELECT public_key FROM polls WHERE id = ?", poll.id)?.["public_key"] ?? "") : "";
+      const entry = poll.encrypted
+        ? JSON.stringify({ v: 1, poll: poll.id, seq, sealed: seal(publicKey, choice) })
+        : JSON.stringify({ v: 1, poll: poll.id, seq, choice, nonce: randomBytes(12).toString("base64url") });
+      this.#run("INSERT INTO ballots (poll_id, seq, choice, entry) VALUES (?, ?, ?, ?)", poll.id, seq, poll.encrypted ? "" : choice, entry);
       return ok({ receipt: receiptCode(toHex(hashLeaf(new TextEncoder().encode(entry)))) });
     });
   }
@@ -637,8 +713,9 @@ export class Service {
     for (const o of poll.options) counts[o.id] = 0;
     let turnout = 0;
     for (const r of this.#all("SELECT choice, COUNT(*) AS n FROM ballots WHERE poll_id = ? GROUP BY choice", poll.id)) {
-      counts[String(r["choice"])] = Number(r["n"]);
       turnout += Number(r["n"]);
+      // Sealed ballots have no readable choice until they are counted.
+      if (String(r["choice"]) !== "") counts[String(r["choice"])] = Number(r["n"]);
     }
     return { turnout, counts };
   }
@@ -647,10 +724,13 @@ export class Service {
   resultsFor(pollId: string, viewer: Viewer): ResultsView | null {
     const poll = this.getPoll(pollId);
     if (!poll || poll.status === "draft") return null;
-    const access = accessTo(poll, viewer);
+    const pending = poll.status === "closed" && !poll.counted;
+    const allowed = accessTo(poll, viewer);
+    const access = pending ? { turnout: allowed.turnout, totals: false } : allowed;
     const totals = access.turnout || access.totals ? this.#totals(poll) : null;
     return {
       status: poll.status,
+      pending,
       access,
       turnout: access.turnout && totals ? totals.turnout : null,
       counts: access.totals && totals ? totals.counts : null,

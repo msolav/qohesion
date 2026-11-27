@@ -27,7 +27,13 @@
     url.searchParams.set("theme", theme);
     return `${url.pathname}${url.search}`;
   }
-  const templateNames = $derived({ "seed-packet": p.templateSeedPacket, "ballot-paper": p.templateBallotPaper });
+  const templateNames = $derived({
+    "seed-packet": p.templateSeedPacket,
+    "ballot-paper": p.templateBallotPaper,
+    "boarding-pass": p.templateBoardingPass,
+    "guide-map": p.templateGuideMap,
+    standard: p.templateStandard,
+  });
 </script>
 
 <svelte:head>

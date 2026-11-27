@@ -70,7 +70,7 @@ describe("handle", () => {
     expect(headers["vary"]).toBe("Accept-Language, Cookie");
     expect(headers["x-content-type-options"]).toBe("nosniff");
     expect(headers["x-frame-options"]).toBe("DENY");
-    expect(headers["referrer-policy"]).toBe("no-referrer");
+    expect(headers["referrer-policy"]).toBe("same-origin");
     expect(headers["permissions-policy"]).toContain("camera=()");
   });
 });

@@ -1,0 +1,100 @@
+/* Template: Boarding Pass.
+   A ticket on a grey ground: a coloured status strip carrying the step and the
+   closing time, dashed dividers, mono small-caps labels (system monospace, no
+   font file), numbered square badges for the options, a chosen option that
+   fills black and a receipt strip with a decorative bar motif.
+   Contrast (WCAG 2.x), text: ink on slip 17.8:1, grey note text on slip 8.4:1
+   and on the page ground 7.1:1, strip text white on #B3390A 6.0:1, chosen row
+   white on black 18.9:1, cast button white on black 18.9:1, error on slip 6.2:1.
+   Marks (chosen badge is white): check green 7.8:1, cross red 6.5:1, dash grey 8.6:1. */
+
+[data-theme="boarding-pass"]{
+  --font:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --bg:#E6E6E2;
+  --surface:#F8F8F6;
+  --hover:#EDEDE9;
+  --ink:#111111;
+  --ink-2:#4A4A46;
+  --line-soft:rgba(17,17,17,.16);
+  --brand:#B3390A;
+  --on-brand:#FFFFFF;
+  --accent:#111111;
+  --on-accent:#FFFFFF;
+  --focus:#B3390A;
+  --danger:#B3261E;
+  --radius:10px;
+}
+
+[data-theme="boarding-pass"] .lang{border-radius:4px;font-family:var(--mono);font-weight:500}
+[data-theme="boarding-pass"] .lang a[aria-current="true"]{background:var(--ink);color:var(--surface)}
+
+/* The ticket */
+[data-theme="boarding-pass"] .slip{
+  margin-top:var(--space-2);overflow:hidden;
+  background:var(--surface);border:1.5px solid var(--ink);border-radius:14px;
+}
+
+/* Head: the step and closing time are shown as the status strip, above the question */
+[data-theme="boarding-pass"] .ballot__head{display:flex;flex-direction:column;border-bottom:1.5px dashed var(--ink)}
+[data-theme="boarding-pass"] .ballot__head>:not(.when){margin-inline:var(--space-4)}
+[data-theme="boarding-pass"] .ballot__head h1{margin-top:var(--space-4);font-size:clamp(1.45rem,6vw,1.85rem);line-height:1.12;font-weight:700}
+[data-theme="boarding-pass"] .lede{margin-top:var(--space-2);margin-bottom:var(--space-4);color:var(--ink-2)}
+[data-theme="boarding-pass"] .when{
+  order:-1;margin:0;padding:var(--space-2) var(--space-4);gap:var(--space-1) var(--space-3);
+  background:var(--brand);color:var(--on-brand);
+  font:700 .75rem/1.3 var(--mono);letter-spacing:.04em;text-transform:uppercase;
+}
+[data-theme="boarding-pass"] .steps li{width:1.6rem;height:1.6rem;border-radius:5px;font-size:.75rem}
+[data-theme="boarding-pass"] .steps li[aria-current="step"]{background:var(--on-brand);color:var(--brand);border-color:var(--on-brand)}
+
+/* Facts: mono labels; stacked rows by default */
+[data-theme="boarding-pass"] .facts>div{padding:var(--space-3) var(--space-4);grid-template-columns:auto minmax(0,1fr)}
+[data-theme="boarding-pass"] .facts>div+div{border-top:1.5px dashed var(--ink)}
+[data-theme="boarding-pass"] .facts dt{font:500 .72rem/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+[data-theme="boarding-pass"] .facts dd{font-family:var(--mono);font-size:.95rem;overflow-wrap:anywhere}
+[data-theme="boarding-pass"] .facts dd.note{font-family:var(--font);font-size:.82rem;font-weight:400;color:var(--ink-2)}
+
+/* Exactly three facts: three dashed cells side by side, as on a ticket.
+   Other counts, or a very narrow screen, keep the stacked rows. */
+@media (min-width:21rem){
+  [data-theme="boarding-pass"] .facts:has(>div:nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+  [data-theme="boarding-pass"] .facts:has(>div:nth-child(3):last-child)>div{grid-template-columns:minmax(0,1fr);align-content:start;padding:var(--space-3) var(--space-3)}
+  [data-theme="boarding-pass"] .facts:has(>div:nth-child(3):last-child)>div+div{border-top:0;border-left:1.5px dashed var(--ink)}
+  [data-theme="boarding-pass"] .facts:has(>div:nth-child(3):last-child) dd{text-align:left}
+  [data-theme="boarding-pass"] .facts:has(>div:nth-child(3):last-child) dd.note{font-size:.78rem;line-height:1.35}
+}
+
+/* Options: numbered square badges. The badge shows the number until the option is chosen,
+   then the mark that carries its meaning (check, cross, dash) in its colour. */
+[data-theme="boarding-pass"] .choices{counter-reset:opt;gap:var(--space-2);padding:var(--space-3);border-top:1.5px dashed var(--ink)}
+[data-theme="boarding-pass"] .choice{counter-increment:opt}
+[data-theme="boarding-pass"] .choice label{
+  gap:var(--space-3);padding:var(--space-3);
+  background:#FFFFFF;border:1.5px solid var(--ink);border-radius:10px;font-size:1.05rem;
+  transition:background .15s ease-out,color .15s ease-out;
+}
+[data-theme="boarding-pass"] .choice:hover label{background:var(--hover)}
+[data-theme="boarding-pass"] .mark{
+  width:1.9rem;height:1.9rem;border-width:1.5px;border-radius:6px;
+  font:700 .85rem/1 var(--mono);transition:background .15s ease-out,border-color .15s ease-out;
+}
+[data-theme="boarding-pass"] .mark::before{content:counter(opt);grid-area:1/1}
+[data-theme="boarding-pass"] .mark svg{grid-area:1/1;width:1.1rem;height:1.1rem;color:var(--opt,var(--ink));opacity:0}
+[data-theme="boarding-pass"] .choice input:checked+label{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+[data-theme="boarding-pass"] .choice input:checked+label .mark{background:#FFFFFF;border-color:#FFFFFF}
+[data-theme="boarding-pass"] .choice input:checked+label .mark::before{content:none}
+[data-theme="boarding-pass"] .choice input:checked+label .mark svg{opacity:1}
+
+[data-theme="boarding-pass"] .error{margin:0;padding:var(--space-3) var(--space-4)}
+
+/* Receipt strip: the note, then a dashed divider and a decorative bar motif.
+   The motif is a repeating pattern drawn by the stylesheet. It has no content and encodes nothing. */
+[data-theme="boarding-pass"] .slip .receipt{margin:0;padding:var(--space-3) var(--space-4);border-top:1.5px dashed var(--ink)}
+[data-theme="boarding-pass"] .slip::after{
+  content:"";display:block;height:3.25rem;border-top:1.5px dashed var(--ink);
+  background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 13px) var(--space-4) center / 9.75rem 1.75rem no-repeat;
+}
+
+[data-theme="boarding-pass"] .cast{letter-spacing:.01em}
+[data-theme="boarding-pass"] .done__code{font-family:var(--mono);border-style:dashed}

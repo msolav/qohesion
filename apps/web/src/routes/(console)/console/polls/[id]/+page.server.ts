@@ -16,11 +16,22 @@ export const actions: Actions = {
   open: ({ locals, params }) => {
     const result = service().openPoll(needSession(locals), params.id);
     if (!result.ok) return fail(400, { error: result.error });
+    // The counting key of a sealed poll exists only in this answer. It is not stored.
+    if (result.value.countingKey) return { countingKey: result.value.countingKey };
     redirect(303, `/console/polls/${params.id}`);
   },
-  close: ({ locals, params }) => {
-    const result = service().closePoll(needSession(locals), params.id);
-    if (!result.ok) return fail(400, { error: result.error });
+  close: async ({ request, locals, params }) => {
+    const data = await request.formData().catch(() => undefined);
+    const key = typeof data?.get("countingKey") === "string" ? String(data?.get("countingKey")) : "";
+    const result = service().closePoll(needSession(locals), params.id, key);
+    if (!result.ok) return fail(400, { error: result.error, step: "close" as const });
+    redirect(303, `/console/polls/${params.id}/results`);
+  },
+  count: async ({ request, locals, params }) => {
+    const data = await request.formData().catch(() => undefined);
+    const key = typeof data?.get("countingKey") === "string" ? String(data?.get("countingKey")) : "";
+    const result = service().countPoll(needSession(locals), params.id, key);
+    if (!result.ok) return fail(400, { error: result.error, step: "count" as const });
     redirect(303, `/console/polls/${params.id}/results`);
   },
   remove: ({ locals, params }) => {

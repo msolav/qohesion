@@ -23,7 +23,8 @@ describe("messages", () => {
 
   it("differ between languages, except for names and codes that are the same in both", () => {
     const same = new Set(["brand.name", "shell.build", "shell.licence", "shell.languageFr", "shell.languageEn", "home.title",
-      "shell.version", "preview.organization", "preview.ballotTypeValue", "preview.quorum", "preview.templateSeedPacket", "preview.templateBallotPaper"]);
+      "shell.version", "preview.organization", "preview.ballotTypeValue", "preview.quorum", "preview.templateSeedPacket", "preview.templateBallotPaper",
+      "preview.templateBoardingPass", "preview.templateGuideMap", "preview.templateStandard"]);
     en.forEach(([key, text], i) => {
       if (!same.has(key)) expect(fr[i]?.[1], key).not.toBe(text);
     });

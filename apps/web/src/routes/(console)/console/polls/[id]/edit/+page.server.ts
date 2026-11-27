@@ -19,6 +19,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       audience: poll.audience,
       theme: poll.theme,
       closeAfterHours: poll.closeAfterHours,
+      encrypted: poll.encrypted,
     },
   };
 };

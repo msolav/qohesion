@@ -112,6 +112,8 @@
       </ul>
       <p class="cx-help gap">{m.results.total}: {total}{#if leaders > 1} · {m.results.tie}{/if}</p>
     {/if}
+  {:else if view.pending}
+    <div class="cx-notice gap"><div><b>{m.seal.pendingTitle}</b><p>{m.seal.pendingText}</p></div></div>
   {:else if blocked === "timing"}
     <div class="cx-notice gap"><div><b>{m.results.hiddenTitle}</b><p>{view.access.turnout ? m.results.hiddenAdminText : m.results.hiddenText}</p></div></div>
   {:else}

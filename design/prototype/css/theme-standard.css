@@ -1,0 +1,70 @@
+/* Template: Standard.
+   The conventional look: a light grey ground, a white rounded card, radio rows
+   with a blue selected state and a solid blue submit button, in the system font.
+   Contrast (WCAG 2.x), text: ink on white 17.7:1, grey text on white 7.6:1 and on
+   the page ground 6.9:1, submit button white on blue #1D4ED8 6.7:1, blue on the
+   selected tint 6.2:1, error on white 6.5:1. Marks: radio ring #6B7280 on white
+   4.8:1; the chosen mark is white on its colour, green 8.0:1, red 6.5:1,
+   grey 8.6:1, blue 6.7:1. */
+
+[data-theme="standard"]{
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --bg:#F3F4F6;
+  --surface:#FFFFFF;
+  --hover:#F9FAFB;
+  --ink:#111827;
+  --ink-2:#4B5563;
+  --line-soft:#E5E7EB;
+  --brand:#1D4ED8;
+  --on-brand:#FFFFFF;
+  --accent:#1D4ED8;
+  --on-accent:#FFFFFF;
+  --focus:#1D4ED8;
+  --danger:#B3261E;
+  --radius:12px;
+  --tint:#EFF6FF;
+}
+@supports (background:color-mix(in srgb,red,blue)){
+  [data-theme="standard"]{--tint:color-mix(in srgb,var(--brand) 8%,#FFFFFF)}
+}
+
+[data-theme="standard"] .org{font-weight:600}
+[data-theme="standard"] .lang{border-color:#C7CCD4;border-radius:10px;background:var(--surface);font-weight:600}
+[data-theme="standard"] .lang a[aria-current="true"]{background:var(--brand);color:var(--on-brand)}
+[data-theme="standard"] .lang a:hover:not([aria-current="true"]){background:var(--hover)}
+
+[data-theme="standard"] .slip{padding:var(--space-5) var(--space-4);background:var(--surface);border-radius:16px;box-shadow:0 1px 3px rgba(17,24,39,.14)}
+
+[data-theme="standard"] .ballot__head h1{font-size:clamp(1.4rem,5.8vw,1.65rem);line-height:1.2;font-weight:700;letter-spacing:0}
+[data-theme="standard"] .lede{margin-top:var(--space-2);color:var(--ink-2)}
+[data-theme="standard"] .when{margin-top:var(--space-3);font-size:.9rem;font-weight:500;color:var(--ink-2)}
+[data-theme="standard"] .steps li{width:1.6rem;height:1.6rem;font-size:.8rem;font-weight:600;border-color:#9CA3AF}
+[data-theme="standard"] .steps li[aria-current="step"]{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+
+[data-theme="standard"] .facts{margin-top:var(--space-4);border-top:1px solid var(--line-soft)}
+[data-theme="standard"] .facts>div{padding:var(--space-3) 0}
+[data-theme="standard"] .facts dt{font-weight:600;color:var(--ink-2)}
+[data-theme="standard"] .facts dd{font-weight:600;font-size:.95rem}
+[data-theme="standard"] .facts dd.note{font-weight:400;font-size:.85rem}
+
+[data-theme="standard"] .choices{gap:var(--space-3);margin-top:var(--space-3)}
+[data-theme="standard"] .choice label{
+  gap:var(--space-3);padding:var(--space-3) var(--space-4);
+  background:var(--surface);border:2px solid #D1D5DB;border-radius:12px;font-size:1rem;font-weight:600;
+  transition:background .15s ease-out,border-color .15s ease-out;
+}
+[data-theme="standard"] .choice:hover label{background:var(--hover);border-color:#9CA3AF}
+[data-theme="standard"] .mark{
+  width:1.5rem;height:1.5rem;border:2px solid #6B7280;background:var(--surface);
+  transition:background .15s ease-out,border-color .15s ease-out;
+}
+[data-theme="standard"] .mark svg{width:.9rem;height:.9rem;color:#FFFFFF;opacity:0}
+/* Chosen: blue row; the radio takes the colour of the option (green, red, grey) or blue, with its glyph */
+[data-theme="standard"] .choice input:checked+label{background:var(--tint);border-color:var(--brand)}
+[data-theme="standard"] .choice input:checked+label .mark{background:var(--opt,var(--brand));border-color:var(--opt,var(--brand))}
+[data-theme="standard"] .choice input:checked+label .mark svg{opacity:1}
+
+[data-theme="standard"] .error{margin-top:var(--space-4)}
+[data-theme="standard"] .receipt{margin-top:var(--space-4)}
+[data-theme="standard"] .cast{font-size:1rem;font-weight:600}
+[data-theme="standard"] .done__code{border-color:#9CA3AF;background:var(--surface)}
