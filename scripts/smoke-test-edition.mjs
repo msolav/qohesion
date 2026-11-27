@@ -141,13 +141,14 @@ check("a calendar file gives the closing time with an alarm 24 hours before", ic
 check("the calendar file holds no personal link", !ics.text.includes(pagedLinks[0] ?? "?"));
 
 // A poll with several questions: one page of answers each, one ballot, one receipt.
-const manyForm = [["title", "Two questions"], ["question", "Do you agree?"], ["kind", "yes-no"], ["timing", "close"], ["audience", "voters"], ["theme", "ballot-paper"], ["closes_at", closing], ["question_order", "2"], ["q2_kind", "choice"], ["q2_question", "Who chairs?"], ["q2_option", "Ana"], ["q2_option", "Ben"], ["q2_option_icon", ""], ["q2_option_color", ""], ["q2_option_icon", ""], ["q2_option_color", ""]];
+const manyForm = [["title", "Two questions"], ["question", "Do you agree?"], ["kind", "yes-no"], ["timing", "close"], ["audience", "voters"], ["theme", "ballot-paper"], ["closes_at", closing], ["paged", "yes"], ["question_order", "2"], ["q2_kind", "choice"], ["q2_question", "Who chairs?"], ["q2_option", "Ana"], ["q2_option", "Ben"], ["q2_option_icon", ""], ["q2_option_color", ""], ["q2_option_icon", ""], ["q2_option_color", ""]];
 const many = await admin.send("/console/polls/new", { method: "POST", form: manyForm });
 const manyId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(many.location)?.[1];
 check("a poll with two questions is created", Boolean(manyId), many.location);
 await admin.send(`/console/polls/${manyId}/roll?/add`, { method: "POST", form: { addresses: "m1@example.com\nm2@example.com" } });
 const manyTokens = [...new Set([...(await admin.send(`/console/polls/${manyId}/roll`)).text.matchAll(/\/v\/([0-9A-Z]{24})/g)].map((m) => m[1]))];
 await admin.send(`/console/polls/${manyId}?/open`, { method: "POST", form: {} });
+if (process.env.SMOKE_PRINT_LINK) console.log(`MANY ${base}/v/${manyTokens[1]}`);
 const manyBallot = await anonymous.send(`/v/${manyTokens[0]}?view=all`);
 check("the ballot shows a group of choices for each question", manyBallot.text.includes('name="a_q1"') && manyBallot.text.includes('name="a_q2"') && manyBallot.text.includes("Who chairs?"));
 const partial = await anonymous.send(`/v/${manyTokens[0]}`, { method: "POST", form: { a_q1: "for" } });

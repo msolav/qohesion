@@ -192,7 +192,7 @@
         <div>
           <dt>{q.prompt}</dt>
           <dd class="picked">{labelOf(q)}</dd>
-          {#if step === "summary"}<dd><button class="linklike" type="button" onclick={() => onedit(q.id)}>{m.voter.changeAnswer}<span class="sr-only"> · {q.prompt}</span></button></dd>{/if}
+          {#if step === "summary"}<dd class="change"><button class="linklike" type="button" onclick={() => onedit(q.id)}>{m.voter.changeAnswer}<span class="sr-only"> · {q.prompt}</span></button></dd>{/if}
         </div>
       {/each}
     </dl>

@@ -140,3 +140,5 @@ a.cast{display:flex;align-items:center;justify-content:center;text-decoration:no
 html{scroll-padding-bottom:10rem}
 
 .linklike{padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:.2em;cursor:pointer;min-height:2.75rem}
+
+.facts dd.change{grid-column:1/-1;justify-self:start;margin:0;text-align:left}
