@@ -10,7 +10,16 @@ export const load: PageServerLoad = ({ locals, params, url }) => {
   const session = needSession(locals);
   const tokens = service().voterTokens(session, params.id);
   const entries = service().roll(session, params.id).map((e) => ({ ...e, link: `${url.origin}/v/${tokens.get(e.id) ?? ""}` }));
-  return { entries, mailConfigured: mailConfigured(), canSend: open && mailConfigured() };
+  const wait = service().reminderWait(session, params.id);
+  return {
+    entries,
+    mailConfigured: mailConfigured(),
+    canSend: open && mailConfigured(),
+    // How many can be written to now, and when the next reminder becomes possible.
+    timeZone: service().getSpace(session.spaceId)?.timeZone ?? "America/Toronto",
+    toSend: { new: service().invitees(session, params.id, "new").length, reminder: service().invitees(session, params.id, "reminder").length },
+    reminderAt: wait ? wait.toISOString() : null,
+  };
 };
 
 export const actions: Actions = {
@@ -30,7 +39,7 @@ export const actions: Actions = {
     const poll = service().pollFor(session, params.id);
     if (!poll || poll.status !== "open") return fail(400, { mailError: "not_open" });
     const raw = String(data?.get("which") ?? "new");
-    const which = raw === "all" || raw === "new" ? raw : Number.isInteger(Number(raw)) ? Number(raw) : "new";
+    const which = raw === "reminder" || raw === "new" ? raw : Number.isInteger(Number(raw)) ? Number(raw) : "new";
     const targets = service().invitees(session, params.id, which).slice(0, 100);
     const space = service().getSpace(poll.spaceId);
     const locale = space?.locale ?? "fr";
@@ -42,7 +51,8 @@ export const actions: Actions = {
         organization: space?.name ?? "Qohesion",
         poll: poll.title,
         closesAt: poll.closesAt,
-        timeZone: "America/Toronto",
+        timeZone: space?.timeZone ?? "America/Toronto",
+        reminder: which === "reminder",
         ballotStatement: poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain,
         resultsStatement: m.resultsStatement[poll.timing][poll.audience],
       },

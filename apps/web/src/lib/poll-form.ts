@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { isColorId, isIconId } from "./option-style.js";
+import { isAutoReminder, type AutoReminder } from "./auto-reminder.js";
 import { cleanLanguages, isLang, type Lang, type Translations } from "./poll-i18n.js";
 import type { OptionInput, PollInput } from "./server/service.js";
 import { isAudience, isTiming } from "./results-rules.js";
@@ -80,12 +81,14 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     ? {
         languages,
         title: Object.fromEntries(languages.map((l) => [l, text(data, `title_${l}`)])),
+        question: Object.fromEntries(languages.map((l) => [l, text(data, `question_${l}`)])),
         description: Object.fromEntries(languages.map((l) => [l, text(data, `description_${l}`)])),
         options: kind === "choice" ? rows.texts : [],
       }
-    : { languages: [], title: {}, description: {}, options: [] };
+    : { languages: [], title: {}, question: {}, description: {}, options: [] };
   return {
     title: pick("title"),
+    question: pick("question"),
     description: pick("description"),
     kind,
     options: rows.options,
@@ -100,5 +103,7 @@ export function parsePollForm(data: FormData, timeZone: string = DEFAULT_TIME_ZO
     closesAt: zonedToUtc(text(data, "closes_at"), timeZone) ?? "",
     rules: parseRules(data),
     allowChange: text(data, "allow_change") === "yes",
+    autoReminder: isAutoReminder(text(data, "auto_reminder")) ? (text(data, "auto_reminder") as AutoReminder) : "none",
+    reminderPermission: text(data, "reminder_permission") === "yes",
   };
 }

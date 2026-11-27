@@ -184,6 +184,8 @@ export interface InvitationInput {
   /** One sentence on whether ballots are encrypted, and one on who sees the results. Written by the application, in the locale. */
   readonly ballotStatement: string;
   readonly resultsStatement: string;
+  /** A reminder for someone who has not voted: the same link, with a line that says so. */
+  readonly reminder?: boolean;
 }
 
 export function renderInvitation(input: InvitationInput): Rendered {
@@ -197,24 +199,26 @@ export function renderInvitation(input: InvitationInput): Rendered {
   if (input.locale === "fr") {
     const blocks: Block[] = [
       { h: `Scrutin${NBSP}: ${poll}` },
+      ...(input.reminder ? [{ p: "Rappel: ce scrutin est toujours ouvert et vous n’avez pas encore voté." }] : []),
       { p: `«${NBSP}${org}${NBSP}» vous donne accès à ce scrutin. Le lien ci-dessous est personnel : il sert à voter une seule fois et ne doit pas être transmis.` },
       { link: { label: `Lien de vote${until ? ` (le scrutin ferme le ${until})` : ""}${NBSP}:`, url: link } },
       { p: `Bulletin${NBSP}: ${ballot}` },
       { p: `Résultats${NBSP}: ${results}` },
       { note: "Ce message automatique est envoyé par le service Qohesion au nom de l’organisateur du scrutin. Les réponses ne sont pas lues. Si ce message ne vous concerne pas, aucune action n’est nécessaire." },
     ];
-    return assemble("fr", `Scrutin${NBSP}: ${poll}`, blocks);
+    return assemble("fr", `${input.reminder ? `Rappel${NBSP}: ` : ""}Scrutin${NBSP}: ${poll}`, blocks);
   }
 
   const blocks: Block[] = [
     { h: `Poll: ${poll}` },
+    ...(input.reminder ? [{ p: "Reminder: this poll is still open and you have not voted yet." }] : []),
     { p: `"${org}" gives you access to this poll. The link below is personal: it is for voting once and should not be shared.` },
     { link: { label: `Voting link${until ? ` (the poll closes on ${until})` : ""}:`, url: link } },
     { p: `Ballot: ${ballot}` },
     { p: `Results: ${results}` },
     { note: "This automated message is sent by the Qohesion service on behalf of the organizer of the poll. Replies are not read. If this message is not for you, no action is needed." },
   ];
-  return assemble("en", `Poll: ${poll}`, blocks);
+  return assemble("en", `${input.reminder ? "Reminder: " : ""}Poll: ${poll}`, blocks);
 }
 
 /** An invitation to vote, with the member's personal link, for the voting lane. */

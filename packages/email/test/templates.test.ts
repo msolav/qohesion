@@ -286,6 +286,15 @@ describe("invitation email", () => {
     expect(() => renderInvitation({ ...base, locale: "en", link: "javascript:alert(1)" })).toThrow();
   });
 
+  it("says that a message is a reminder, in the subject and the first line", () => {
+    const en = renderInvitation({ ...base, locale: "en", reminder: true });
+    expect(en.subject).toBe("Reminder: Poll: Budget 2027");
+    expect(en.text).toContain("Reminder: this poll is still open");
+    const fr = renderInvitation({ ...base, locale: "fr", reminder: true });
+    expect(fr.subject).toContain("Rappel");
+    expect(renderInvitation({ ...base, locale: "en" }).subject).toBe("Poll: Budget 2027");
+  });
+
   it("builds a voting-lane message", () => {
     const m = invitationMessage({ ...base, locale: "en" }, { from: { email: "noreply@qohesion.app" }, to: { email: "a@example.com" } });
     expect(m.lane).toBe("voting");

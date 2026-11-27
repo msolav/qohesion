@@ -14,12 +14,13 @@ export interface Translations {
   /** Languages offered, the default first. Empty for a poll written before translations existed. */
   readonly languages: readonly Lang[];
   readonly title: Readonly<Partial<Record<Lang, string>>>;
+  readonly question: Readonly<Partial<Record<Lang, string>>>;
   readonly description: Readonly<Partial<Record<Lang, string>>>;
   /** The text of each option, by position, in each language. */
   readonly options: readonly Readonly<Partial<Record<Lang, string>>>[];
 }
 
-export const NO_TRANSLATIONS: Translations = { languages: [], title: {}, description: {}, options: [] };
+export const NO_TRANSLATIONS: Translations = { languages: [], title: {}, question: {}, description: {}, options: [] };
 
 export const isLang = (value: unknown): value is Lang => typeof value === "string" && (LANGS as readonly string[]).includes(value);
 
@@ -44,6 +45,7 @@ export function missingTexts(t: Translations, optionCount: number): string[] {
   const missing: string[] = [];
   for (const lang of t.languages) {
     if (!(t.title[lang] ?? "").trim()) missing.push(`title:${lang}`);
+    if (!(t.question[lang] ?? "").trim()) missing.push(`question:${lang}`);
     for (let i = 0; i < optionCount; i++) if (!(t.options[i]?.[lang] ?? "").trim()) missing.push(`option${i + 1}:${lang}`);
   }
   return missing;
@@ -51,19 +53,21 @@ export function missingTexts(t: Translations, optionCount: number): string[] {
 
 export interface Localizable {
   readonly title: string;
+  readonly question: string;
   readonly description: string;
   readonly options: readonly { readonly id: string; readonly label: string | null; readonly icon?: string | null; readonly color?: string | null }[];
   readonly translations: Translations;
 }
 
 /** The poll as a member of one language reads it. Missing texts fall back to the default language, then to what was typed first. */
-export function localize<P extends Localizable>(poll: P, wanted: Lang): { title: string; description: string; options: P["options"][number][] } {
+export function localize<P extends Localizable>(poll: P, wanted: Lang): { title: string; question: string; description: string; options: P["options"][number][] } {
   const t = poll.translations;
   const lang = languageFor(t, wanted);
   const def = t.languages[0];
   const text = (map: Readonly<Partial<Record<Lang, string>>>, fallback: string): string => (map[lang] ?? "").trim() || (def ? (map[def] ?? "").trim() : "") || fallback;
   return {
     title: text(t.title, poll.title),
+    question: text(t.question, poll.question),
     description: text(t.description, poll.description),
     options: poll.options.map((o, i) => (o.label === null ? o : { ...o, label: text(t.options[i] ?? {}, o.label) })),
   };

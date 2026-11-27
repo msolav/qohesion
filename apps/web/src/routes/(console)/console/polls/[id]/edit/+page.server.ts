@@ -15,6 +15,7 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
     timeZone,
     input: {
       title: poll.title,
+      question: poll.question,
       description: poll.description,
       kind: poll.kind,
       options: poll.kind === "choice" ? poll.options.map((o) => ({ label: o.label ?? "", icon: o.icon ?? null, color: o.color ?? null })) : [],
@@ -28,6 +29,8 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       encrypted: poll.encrypted,
       markFill: poll.markFill,
       anonymity: poll.anonymity,
+      autoReminder: poll.autoReminder,
+      reminderPermission: poll.autoReminder !== "none",
       translations: poll.translations,
     },
   };

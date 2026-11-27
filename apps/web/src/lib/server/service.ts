@@ -15,6 +15,7 @@ import { addressFingerprint, applyEvent, checkAddress, freezeRoll, type MemberSt
 import { generateCountingKeys, keyMatches, open as openSealed, seal } from "./seal.js";
 import { isColorId, isIconId } from "../option-style.js";
 import { DEFAULT_THEME, isTheme, type Theme } from "../theme.js";
+import { isAutoReminder, mayWrite, reminderDue, writeAgainAt, type AutoReminder } from "../auto-reminder.js";
 import { NO_TRANSLATIONS, cleanLanguages, missingTexts, type Translations } from "../poll-i18n.js";
 import { NO_RULES, closeReason, parseRules, ruleProblem, type CloseRules } from "../close-rules.js";
 import { DEFAULT_TIME_ZONE, isTimeZone } from "../zoned.js";
@@ -83,7 +84,10 @@ export interface PollOption {
 export interface Poll {
   readonly id: string;
   readonly spaceId: string;
+  /** Names the poll in lists and emails. */
   readonly title: string;
+  /** The question members answer, shown above the choices. */
+  readonly question: string;
   readonly description: string;
   readonly kind: PollKind;
   readonly options: readonly PollOption[];
@@ -102,6 +106,8 @@ export interface Poll {
   readonly counted: boolean;
   readonly markFill: boolean;
   readonly anonymity: Anonymity;
+  /** Reminders the poll sends by itself to those who have not voted. */
+  readonly autoReminder: AutoReminder;
   /** The content in the languages offered. The columns title, description and options hold the default language. */
   readonly translations: Translations;
   readonly createdAt: string;
@@ -132,6 +138,7 @@ export interface OptionInput {
 
 export interface PollInput {
   readonly title: string;
+  readonly question: string;
   readonly description: string;
   readonly kind: PollKind;
   /** The options of a "choice" poll, in order. Ignored for "yes-no". */
@@ -149,6 +156,9 @@ export interface PollInput {
   /** One setting for every option: the colours fill the circle of each mark, or draw the icon and the outline. */
   readonly markFill: boolean;
   readonly anonymity: Anonymity;
+  readonly autoReminder: AutoReminder;
+  /** The administrator confirmed permission to contact the participants, which automatic reminders need. */
+  readonly reminderPermission: boolean;
   /** The other languages (and the default again). With one language or none, the poll is written in `title` alone. */
   readonly translations: Translations;
 }
@@ -197,14 +207,14 @@ CREATE TABLE IF NOT EXISTS keys (
   hash TEXT NOT NULL UNIQUE, owner INTEGER NOT NULL, administrator INTEGER NOT NULL, created_at TEXT NOT NULL, revoked_at TEXT);
 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, key_id TEXT NOT NULL REFERENCES keys(id) ON DELETE CASCADE, expires_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS polls (
-  id TEXT PRIMARY KEY, space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT NOT NULL,
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, title TEXT NOT NULL, question TEXT NOT NULL DEFAULT '', description TEXT NOT NULL,
   kind TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL, timing TEXT NOT NULL, audience TEXT NOT NULL, theme TEXT NOT NULL,
   close_after_hours INTEGER, opens_at TEXT, allow_change INTEGER NOT NULL DEFAULT 0, close_rules TEXT, created_at TEXT NOT NULL, opened_at TEXT, closes_at TEXT, closed_at TEXT, roll_code TEXT, roll_count INTEGER,
-  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0, anonymity TEXT NOT NULL DEFAULT 'secret', i18n TEXT);
+  encrypted INTEGER NOT NULL DEFAULT 0, public_key TEXT, counted INTEGER NOT NULL DEFAULT 1, mark_fill INTEGER NOT NULL DEFAULT 0, anonymity TEXT NOT NULL DEFAULT 'secret', i18n TEXT, auto_reminder TEXT NOT NULL DEFAULT 'none', auto_reminder_by TEXT, last_auto_reminder_on TEXT);
 CREATE TABLE IF NOT EXISTS roll (
   id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, address TEXT NOT NULL,
   fingerprint TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL, late INTEGER NOT NULL, added_at TEXT NOT NULL,
-  voted_on TEXT, invited_on TEXT, UNIQUE (poll_id, fingerprint));
+  voted_on TEXT, invited_on TEXT, invited_at TEXT, UNIQUE (poll_id, fingerprint));
 -- A ballot holds no reference to a voter, and the roll holds no reference to a ballot. Only the day of a vote is kept on the roll.
 CREATE TABLE IF NOT EXISTS ballots (poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, seq INTEGER NOT NULL, choice TEXT NOT NULL, entry TEXT NOT NULL, voter_tag TEXT, superseded INTEGER NOT NULL DEFAULT 0, roll_id INTEGER, PRIMARY KEY (poll_id, seq));
 CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE, at TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, detail TEXT NOT NULL);
@@ -245,6 +255,11 @@ export class Service {
       if (!existing.includes(column)) this.#db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     };
     const names = (table: string) => (this.#db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+    addIfMissing("polls", columns, "auto_reminder", "TEXT NOT NULL DEFAULT 'none'");
+    addIfMissing("polls", columns, "auto_reminder_by", "TEXT");
+    addIfMissing("polls", columns, "last_auto_reminder_on", "TEXT");
+    addIfMissing("roll", rollColumns, "invited_at", "TEXT");
+    addIfMissing("polls", columns, "question", "TEXT NOT NULL DEFAULT ''");
     addIfMissing("polls", columns, "i18n", "TEXT");
     addIfMissing("polls", columns, "anonymity", "TEXT NOT NULL DEFAULT 'secret'");
     addIfMissing("ballots", names("ballots"), "roll_id", "INTEGER");
@@ -433,6 +448,7 @@ export class Service {
       id: String(r["id"]),
       spaceId: String(r["space_id"]),
       title: String(r["title"]),
+      question: String(r["question"] ?? ""),
       description: String(r["description"]),
       kind: r["kind"] === "choice" ? "choice" : "yes-no",
       options: JSON.parse(String(r["options"])) as PollOption[],
@@ -447,6 +463,7 @@ export class Service {
       counted: r["counted"] !== 0,
       markFill: r["mark_fill"] === 1,
       anonymity: isAnonymity(r["anonymity"]) ? r["anonymity"] : "secret",
+      autoReminder: isAutoReminder(r["auto_reminder"]) ? r["auto_reminder"] : "none",
       translations: parseTranslations(r["i18n"] === null ? null : String(r["i18n"])),
       createdAt: String(r["created_at"]),
       openedAt: r["opened_at"] === null ? null : String(r["opened_at"]),
@@ -493,10 +510,14 @@ export class Service {
     const title = input.title.trim();
     if (title.length === 0) return "title_required";
     if (title.length > 140) return "title_too_long";
+    if (input.question.trim().length === 0) return "question_required";
+    if (input.question.length > 300) return "question_too_long";
     if (input.description.length > 2000) return "description_too_long";
     if (!isTiming(input.timing) || !isAudience(input.audience)) return "invalid_results";
     if (input.encrypted && input.timing === "live") return "encryption_needs_close";
     if (!isAnonymity(input.anonymity)) return "invalid_results";
+    if (!isAutoReminder(input.autoReminder)) return "invalid_results";
+    if (input.autoReminder !== "none" && !input.reminderPermission) return "attestation_required";
     const languages = cleanLanguages(input.translations.languages);
     if (languages.length > 1 || input.translations.languages.length !== languages.length) {
       const optionCount = input.kind === "choice" ? input.options.filter((o) => o.label.trim().length > 0).length : 0;
@@ -537,9 +558,9 @@ export class Service {
     const id = this.#id();
     this.#transaction(() => {
       this.#run(
-        `INSERT INTO polls (id, space_id, title, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id, session.spaceId, input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), this.#iso(),
+        `INSERT INTO polls (id, space_id, title, question, description, kind, options, status, timing, audience, theme, opens_at, closes_at, close_rules, allow_change, encrypted, counted, mark_fill, anonymity, i18n, auto_reminder, auto_reminder_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session.spaceId, input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, this.#iso(),
       );
       this.#log(id, session, "created", "");
     });
@@ -555,8 +576,8 @@ export class Service {
     const error = this.#validatePoll(input);
     if (error) return problem(error);
     this.#run(
-      "UPDATE polls SET title = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ? WHERE id = ?",
-      input.title.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), pollId,
+      "UPDATE polls SET title = ?, question = ?, description = ?, kind = ?, options = ?, timing = ?, audience = ?, theme = ?, opens_at = ?, closes_at = ?, close_rules = ?, allow_change = ?, encrypted = ?, counted = ?, mark_fill = ?, anonymity = ?, i18n = ?, auto_reminder = ?, auto_reminder_by = ? WHERE id = ?",
+      input.title.trim(), input.question.trim(), input.description.trim(), input.kind, JSON.stringify(this.#optionsOf(input)), input.timing, input.audience, input.theme, input.opensAt, input.closesAt, JSON.stringify(input.rules), input.allowChange ? 1 : 0, input.encrypted ? 1 : 0, input.encrypted ? 0 : 1, input.markFill ? 1 : 0, input.anonymity, JSON.stringify(input.translations), input.autoReminder, input.autoReminder === "none" ? null : session.label, pollId,
     );
     const next = this.getPoll(pollId);
     return next ? ok(next) : problem("not_found");
@@ -662,26 +683,72 @@ export class Service {
   }
 
   /**
-   * The entries a poll's links can be sent to by email: those that have not voted, and (unless `all`) have not been
-   * sent a link yet, or only the entry named. Each comes with its personal token.
+   * The entries a poll's links can be sent to by email: those who have not voted, and who have not been written to in the
+   * last 24 hours. "new" is those never written to, "reminder" those written to before, or one entry by its number.
+   * Each comes with its personal token.
    */
-  invitees(session: Session, pollId: string, which: "new" | "all" | number): { id: number; address: string; token: string }[] {
+  invitees(session: Session, pollId: string, which: "new" | "reminder" | number): { id: number; address: string; token: string }[] {
     const poll = this.pollFor(session, pollId);
     if (!poll || poll.status !== "open") return [];
-    return this.#all("SELECT id, address, fingerprint, status, invited_on FROM roll WHERE poll_id = ? ORDER BY id", pollId)
+    const now = this.#now();
+    return this.#all("SELECT id, address, fingerprint, status, invited_at FROM roll WHERE poll_id = ? ORDER BY id", pollId)
       .filter((r) => String(r["status"]) !== "voted")
-      .filter((r) => (typeof which === "number" ? Number(r["id"]) === which : which === "all" ? true : r["invited_on"] === null))
+      .filter((r) => {
+        const last = r["invited_at"] === null ? null : String(r["invited_at"]);
+        if (!mayWrite(last, now)) return false;
+        return typeof which === "number" ? Number(r["id"]) === which : which === "new" ? last === null : last !== null;
+      })
       .map((r) => ({ id: Number(r["id"]), address: String(r["address"]), token: this.#token(pollId, String(r["fingerprint"])) }));
   }
 
-  /** Records that links were sent: the day on each entry, and one line in the history (a count, no addresses). */
+  /** When the next reminder can go out, if every participant who has not voted was written to less than a day ago. */
+  reminderWait(session: Session, pollId: string): Date | null {
+    const poll = this.pollFor(session, pollId);
+    if (!poll || poll.status !== "open") return null;
+    const now = this.#now();
+    const waiting = this.#all("SELECT invited_at FROM roll WHERE poll_id = ? AND status != 'voted' AND invited_at IS NOT NULL", pollId)
+      .map((r) => String(r["invited_at"]))
+      .filter((at) => !mayWrite(at, now));
+    if (waiting.length === 0) return null;
+    return waiting.map(writeAgainAt).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+  }
+
+  /** Records that links were sent: the moment on each entry, and one line in the history (a count, no addresses). */
   markInvited(session: Session, pollId: string, ids: readonly number[]): void {
     if (ids.length === 0 || !this.pollFor(session, pollId)) return;
-    const day = this.#iso().slice(0, 10);
+    this.#markSent(pollId, ids, session, "links_sent");
+  }
+
+  #markSent(pollId: string, ids: readonly number[], who: Session | string, action: string): void {
+    const at = this.#iso();
     this.#transaction(() => {
-      for (const id of ids) this.#run("UPDATE roll SET invited_on = ? WHERE id = ? AND poll_id = ?", day, id, pollId);
-      this.#log(pollId, session, "links_sent", String(ids.length));
+      for (const id of ids) this.#run("UPDATE roll SET invited_on = ?, invited_at = ? WHERE id = ? AND poll_id = ?", at.slice(0, 10), at, id, pollId);
+      this.#log(pollId, who, action, String(ids.length));
     });
+  }
+
+  /** Open polls whose automatic reminder is due now, with those who should get it. Used by the timer of the server. */
+  dueReminders(): { pollId: string; spaceId: string; targets: { id: number; address: string; token: string }[] }[] {
+    const now = this.#now();
+    const due: { pollId: string; spaceId: string; targets: { id: number; address: string; token: string }[] }[] = [];
+    for (const r of this.#all("SELECT id FROM polls WHERE status = 'open' AND auto_reminder != 'none'")) {
+      const poll = this.getPoll(String(r["id"]));
+      if (!poll || poll.status !== "open" || poll.autoReminder === "none") continue;
+      const tz = this.getSpace(poll.spaceId)?.timeZone ?? DEFAULT_TIME_ZONE;
+      const last = this.#one("SELECT last_auto_reminder_on AS d FROM polls WHERE id = ?", poll.id)?.["d"];
+      if (!reminderDue({ mode: poll.autoReminder, now, timeZone: tz, closesAt: poll.closesAt, lastOn: last === null || last === undefined ? null : String(last) })) continue;
+      const targets = this.#all("SELECT id, fingerprint, address, invited_at FROM roll WHERE poll_id = ? AND status != 'voted' AND invited_at IS NOT NULL ORDER BY id", poll.id)
+        .filter((e) => mayWrite(String(e["invited_at"]), now))
+        .map((e) => ({ id: Number(e["id"]), address: String(e["address"]), token: this.#token(poll.id, String(e["fingerprint"])) }));
+      due.push({ pollId: poll.id, spaceId: poll.spaceId, targets });
+    }
+    return due;
+  }
+
+  /** Records an automatic reminder: who was written to, and that today's reminder is done. */
+  markAutoReminded(pollId: string, ids: readonly number[], localDay: string): void {
+    this.#run("UPDATE polls SET last_auto_reminder_on = ? WHERE id = ?", localDay, pollId);
+    if (ids.length > 0) this.#markSent(pollId, ids, "automatic", "reminder_sent");
   }
 
   // ---- Opening and closing ----
@@ -849,7 +916,7 @@ export class Service {
         {
           id: "q1",
           title: { en: poll.title },
-          questions: [{ id: "choice", type: "single", required: true, label: { en: poll.title }, options: poll.options.map((o) => ({ id: o.id, label: { en: o.label ?? o.id } })) }],
+          questions: [{ id: "choice", type: "single", required: true, label: { en: poll.question || poll.title }, options: poll.options.map((o) => ({ id: o.id, label: { en: o.label ?? o.id } })) }],
         },
       ],
     });
@@ -1018,6 +1085,7 @@ function parseTranslations(json: string | null): Translations {
     return {
       languages: cleanLanguages(Array.isArray(raw.languages) ? raw.languages : []),
       title: raw.title && typeof raw.title === "object" ? raw.title : {},
+      question: raw.question && typeof raw.question === "object" ? raw.question : {},
       description: raw.description && typeof raw.description === "object" ? raw.description : {},
       options: Array.isArray(raw.options) ? raw.options : [],
     };

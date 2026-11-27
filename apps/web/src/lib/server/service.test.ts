@@ -11,7 +11,8 @@ let service: Service;
 let owner: Session;
 
 const input = (over: Partial<PollInput> = {}): PollInput => ({
-  title: "Adopt the 2027 budget",
+  title: "Budget 2027",
+  question: "Do you adopt the budget of $12,400 for 2027?",
   description: "",
   kind: "yes-no",
   options: [],
@@ -22,6 +23,8 @@ const input = (over: Partial<PollInput> = {}): PollInput => ({
   closesAt: "2027-01-01T00:00:00.000Z",
   rules: NO_RULES,
   allowChange: false,
+  autoReminder: "none",
+  reminderPermission: false,
   encrypted: false,
   markFill: false,
   anonymity: "secret",
@@ -111,6 +114,7 @@ describe("polls and the roll", () => {
     expect(service.createPoll(owner, input({ title: " " }))).toEqual({ ok: false, error: "title_required" });
     expect(service.createPoll(owner, input({ kind: "choice", options: opts("Only one") }))).toEqual({ ok: false, error: "options_too_few" });
     expect(service.createPoll(owner, input({ kind: "choice", options: opts("Red", "red") }))).toEqual({ ok: false, error: "options_duplicate" });
+    expect(service.createPoll(owner, input({ question: " " }))).toEqual({ ok: false, error: "question_required" });
     expect(service.createPoll(owner, input({ closesAt: "" }))).toEqual({ ok: false, error: "closes_required" });
     expect(service.createPoll(owner, input({ closesAt: "2026-11-30T00:00:00.000Z" }))).toEqual({ ok: false, error: "closes_past" });
     expect(service.createPoll(owner, input({ opensAt: "2026-12-20T00:00:00.000Z", closesAt: "2026-12-10T00:00:00.000Z" }))).toEqual({ ok: false, error: "dates_order" });
@@ -349,8 +353,9 @@ describe("poll content in several languages", () => {
     input({
       kind: "choice",
       title: "Quelle couleur?",
+      question: "Laquelle?",
       options: opts("Vert", "Bleu"),
-      translations: { languages: ["fr", "en"], title: { fr: "Quelle couleur?", en: "Which colour?" }, description: { fr: "", en: "" }, options: [{ fr: "Vert", en: "Green" }, { fr: "Bleu", en: "Blue" }] },
+      translations: { languages: ["fr", "en"], title: { fr: "Quelle couleur?", en: "Which colour?" }, question: { fr: "Laquelle?", en: "Which one?" }, description: { fr: "", en: "" }, options: [{ fr: "Vert", en: "Green" }, { fr: "Bleu", en: "Blue" }] },
       ...over,
     });
 
@@ -368,7 +373,7 @@ describe("poll content in several languages", () => {
   });
 
   it("does not ask for anything more when the poll has one language", () => {
-    expect(service.createPoll(owner, two({ translations: { languages: ["fr"], title: { fr: "Quelle couleur?" }, description: {}, options: [{ fr: "Vert" }, { fr: "Bleu" }] } })).ok).toBe(true);
+    expect(service.createPoll(owner, two({ translations: { languages: ["fr"], title: { fr: "Quelle couleur?" }, question: { fr: "Laquelle?" }, description: {}, options: [{ fr: "Vert" }, { fr: "Bleu" }] } })).ok).toBe(true);
     expect(service.createPoll(owner, input()).ok).toBe(true);
   });
 });
@@ -441,6 +446,53 @@ describe("cancelling and named answers", () => {
   });
 });
 
+describe("reminders", () => {
+  it("allows a reminder only a day after the last message, and says when", () => {
+    const { poll } = openedPoll();
+    const first = service.invitees(owner, poll.id, "new");
+    expect(first).toHaveLength(3);
+    service.markInvited(owner, poll.id, first.map((e) => e.id));
+    expect(service.invitees(owner, poll.id, "new")).toEqual([]);
+    expect(service.invitees(owner, poll.id, "reminder")).toEqual([]);
+    expect(service.invitees(owner, poll.id, first[0]?.id ?? 0)).toEqual([]);
+    expect(service.reminderWait(owner, poll.id)?.toISOString()).toBe("2026-12-02T15:00:00.000Z");
+    now = new Date("2026-12-02T15:00:01Z");
+    expect(service.invitees(owner, poll.id, "reminder")).toHaveLength(3);
+    expect(service.reminderWait(owner, poll.id)).toBeNull();
+  });
+
+  it("leaves out participants who voted, and those never written to", () => {
+    const { poll, tokens } = openedPoll();
+    const all = service.invitees(owner, poll.id, "new");
+    service.markInvited(owner, poll.id, [all[0]?.id ?? 0, all[1]?.id ?? 0]);
+    must(service.castBallot(tokens[0] ?? "", "for"));
+    now = new Date("2026-12-02T16:00:00Z");
+    expect(service.invitees(owner, poll.id, "reminder").map((e) => e.address)).toEqual(["b@example.com"]);
+  });
+
+  it("sends the automatic reminder of a poll that asks for one, once a day from 9 a.m., to those written to a day before", () => {
+    const poll = must(service.createPoll(owner, input({ autoReminder: "daily", reminderPermission: true })));
+    must(service.addToRoll(owner, poll.id, "a@example.com\nb@example.com"));
+    must(service.openPoll(owner, poll.id));
+    service.markInvited(owner, poll.id, service.invitees(owner, poll.id, "new").map((e) => e.id));
+    // 10 a.m. in Toronto: the day's reminder is due, but everyone was written to a moment ago, so nobody receives it.
+    expect(service.dueReminders().map((d) => d.targets)).toEqual([[]]);
+    service.markAutoReminded(poll.id, [], "2026-12-01");
+    now = new Date("2026-12-02T15:30:00Z"); // 10:30 a.m. the next day, more than a day after the first message
+    const due = service.dueReminders();
+    expect(due).toHaveLength(1);
+    expect(due[0]?.targets.map((t) => t.address)).toEqual(["a@example.com", "b@example.com"]);
+    service.markAutoReminded(poll.id, due[0]?.targets.map((t) => t.id) ?? [], "2026-12-02");
+    expect(service.dueReminders()).toEqual([]);
+    expect(service.history(owner, poll.id).some((h) => h.action === "reminder_sent" && h.actor === "automatic")).toBe(true);
+  });
+
+  it("refuses automatic reminders without the confirmation of permission", () => {
+    expect(service.createPoll(owner, input({ autoReminder: "daily", reminderPermission: false }))).toEqual({ ok: false, error: "attestation_required" });
+    expect(service.createPoll(owner, input({ autoReminder: "none" })).ok).toBe(true);
+  });
+});
+
 describe("sending links", () => {
   it("offers the members who have not voted and not been sent a link, and remembers who was sent one", () => {
     const { poll, tokens } = openedPoll();
@@ -450,8 +502,8 @@ describe("sending links", () => {
     expect(first[0]?.token).toBe(tokens[1]);
     service.markInvited(owner, poll.id, [first[0]?.id ?? 0]);
     expect(service.invitees(owner, poll.id, "new").map((e) => e.address)).toEqual(["c@example.com"]);
-    expect(service.invitees(owner, poll.id, "all").map((e) => e.address)).toEqual(["b@example.com", "c@example.com"]);
-    expect(service.invitees(owner, poll.id, first[0]?.id ?? 0).map((e) => e.address)).toEqual(["b@example.com"]);
+    expect(service.invitees(owner, poll.id, "reminder").map((e) => e.address)).toEqual([]);
+    expect(service.invitees(owner, poll.id, first[0]?.id ?? 0)).toEqual([]);
     expect(service.roll(owner, poll.id).find((e) => e.address === "b@example.com")?.invitedOn).toBe("2026-12-01");
     expect(service.history(owner, poll.id).some((h) => h.action === "links_sent" && h.detail === "1")).toBe(true);
   });
@@ -459,12 +511,12 @@ describe("sending links", () => {
   it("offers nobody before the poll is open or after it closes, or to another organization", () => {
     const draft = must(service.createPoll(owner, input()));
     must(service.addToRoll(owner, draft.id, "a@example.com"));
-    expect(service.invitees(owner, draft.id, "all")).toEqual([]);
+    expect(service.invitees(owner, draft.id, "new")).toEqual([]);
     const { poll } = openedPoll();
     const other = service.session(service.signIn(must(service.createSpace({ name: "Other", locale: "en" })).key) ?? "") as Session;
-    expect(service.invitees(other, poll.id, "all")).toEqual([]);
+    expect(service.invitees(other, poll.id, "new")).toEqual([]);
     must(service.closePoll(owner, poll.id));
-    expect(service.invitees(owner, poll.id, "all")).toEqual([]);
+    expect(service.invitees(owner, poll.id, "new")).toEqual([]);
   });
 });
 

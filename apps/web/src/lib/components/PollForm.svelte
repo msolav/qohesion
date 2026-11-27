@@ -47,6 +47,7 @@
   const def = $derived(languages[0] ?? ui);
   let editing = $state<Lang>(startLangs[0] ?? ui);
   let titles = $state<Texts>({ ...blank(), ...(t0?.title ?? {}), ...(t0 && t0.languages.length > 0 ? {} : { [ui]: start?.title ?? "" }) });
+  let questions = $state<Texts>({ ...blank(), ...(t0?.question ?? {}), ...(t0 && t0.languages.length > 0 ? {} : { [ui]: start?.question ?? "" }) });
   let descriptions = $state<Texts>({ ...blank(), ...(t0?.description ?? {}), ...(t0 && t0.languages.length > 0 ? {} : { [ui]: start?.description ?? "" }) });
   let markFillValue = $state<"outline" | "fill">(start?.markFill ? "fill" : "outline");
   const markFill = $derived(markFillValue === "fill");
@@ -67,6 +68,8 @@
   let ruleThreshold = $state<"none" | "majority" | "percent">(start?.rules.threshold == null ? "none" : start.rules.threshold === "majority" ? "majority" : "percent");
   let ruleThresholdP = $state(String(typeof start?.rules.threshold === "number" ? start.rules.threshold : 60));
   let allowChange = $state(start?.allowChange ?? false);
+  let autoReminder = $state<"none" | "daily" | "before_close">(start?.autoReminder ?? "none");
+  let reminderPermission = $state(start?.reminderPermission ?? false);
   let theme = $state<Theme>(start?.theme ?? (() => defaultTheme)());
   let enhanced = $state(false);
   let problem = $state<string | null>(null);
@@ -97,14 +100,14 @@
   // A refusal from the server sends the person to the step that holds the problem.
   $effect(() => {
     if (!error) return;
-    step = error.startsWith("title") || error === "translation_missing" || error === "description_too_long" ? 0 : error.startsWith("option") ? 1 : ["closes_required", "closes_past", "dates_order", "opens_past", "invalid_rule", "rules_need_readable", "change_needs_encryption"].includes(error) ? 3 : 2;
+    step = error.startsWith("title") || error === "translation_missing" || error === "description_too_long" ? 0 : error.startsWith("option") ? 1 : ["closes_required", "closes_past", "dates_order", "opens_past", "invalid_rule", "rules_need_readable", "change_needs_encryption", "attestation_required"].includes(error) ? 3 : 2;
   });
 
   const labels = $derived(rows.map((r) => r.texts[def].trim()).filter((l) => l.length > 0));
   const shown = (texts: Texts): string => texts[editing].trim() || texts[def].trim();
   const langName = (l: Lang): string => (l === "fr" ? "Français" : "English");
   /** What is still missing in a language: the question, or an option the default language has. */
-  const gaps = (l: Lang): boolean => titles[l].trim() === "" || rows.some((r) => r.texts[def].trim() !== "" && r.texts[l].trim() === "");
+  const gaps = (l: Lang): boolean => titles[l].trim() === "" || questions[l].trim() === "" || rows.some((r) => r.texts[def].trim() !== "" && r.texts[l].trim() === "");
   const previewRules = $derived({
     afterVotes: ruleVotes && /^\d+$/.test(ruleVotesN) ? Number(ruleVotesN) : null,
     turnoutPercent: ruleTurnout && /^\d+$/.test(ruleTurnoutP) ? Number(ruleTurnoutP) : null,
@@ -112,6 +115,7 @@
   });
   const preview = $derived({
     title: shown(titles),
+    question: shown(questions),
     description: shown(descriptions),
     options:
       kind === "choice"
@@ -140,11 +144,11 @@
   /** Whether the step can be left. A step with a missing answer says what is missing and keeps the person on it. */
   function check(at: number): boolean {
     if (at === 0) {
-      const empty = languages.filter((l) => titles[l].trim() === "");
+      const empty = languages.filter((l) => titles[l].trim() === "" || questions[l].trim() === "");
       if (empty.length > 0) {
         problem = languages.length === 1 ? m.build.needTitle : fill(m.build.needLanguages, { languages: empty.map(langName).join(", ") });
         editing = empty[0] ?? editing;
-        void tick().then(() => document.getElementById(`title-${editing}`)?.focus());
+        void tick().then(() => document.getElementById(titles[editing].trim() === "" ? `title-${editing}` : `question-${editing}`)?.focus());
         return false;
       }
     }
@@ -272,11 +276,18 @@
       {/if}
 
       <div class="cx-field" class:invalid={problem && step === 0}>
-        <label for="title-{editing}">{m.form.question}</label>
+        <label for="title-{editing}">{m.form.pollTitle}</label>
         {#each languages as lang (lang)}
-          <input id="title-{lang}" name="title_{lang}" type="text" class="big" lang={lang} maxlength="140" hidden={lang !== editing} data-first={lang === editing ? "" : undefined} bind:value={titles[lang]} onkeydown={onTitleKey} autocomplete="off" aria-describedby="title-help{problem && step === 0 ? ' step-problem' : ''}" required />
+          <input id="title-{lang}" name="title_{lang}" type="text" class="big" lang={lang} maxlength="140" hidden={lang !== editing} data-first={lang === editing ? "" : undefined} bind:value={titles[lang]} autocomplete="off" aria-describedby="title-help{problem && step === 0 ? ' step-problem' : ''}" required />
         {/each}
-        <p class="cx-help" id="title-help">{m.form.questionHelp}</p>
+        <p class="cx-help" id="title-help">{m.form.pollTitleHelp}</p>
+      </div>
+      <div class="cx-field" class:invalid={problem && step === 0}>
+        <label for="question-{editing}">{m.form.question}</label>
+        {#each languages as lang (lang)}
+          <input id="question-{lang}" name="question_{lang}" type="text" class="big" lang={lang} maxlength="300" hidden={lang !== editing} bind:value={questions[lang]} onkeydown={onTitleKey} autocomplete="off" aria-describedby="question-help" required />
+        {/each}
+        <p class="cx-help" id="question-help">{m.form.questionHelp}</p>
       </div>
       <div class="cx-field">
         <label for="description-{editing}">{m.form.details} <span class="cx-help">({m.common.optional})</span></label>
@@ -459,6 +470,19 @@
       </fieldset>
 
       <fieldset class="cx-field">
+        <legend class="cx-label">{m.form.reminderTitle}</legend>
+        <p class="cx-help">{m.form.reminderHelp}</p>
+        <div class="cx-choices cols-3">
+          {#each [["none", m.form.reminderNone], ["daily", m.form.reminderDaily], ["before_close", m.form.reminderBefore]] as const as [value, label] (value)}
+            <label class="cx-choice has-ico"><input type="radio" name="auto_reminder" {value} bind:group={autoReminder} /><span><i class="ico"><UiIcon name="clock" /></i><b>{label}</b></span></label>
+          {/each}
+        </div>
+        {#if autoReminder !== "none"}
+          <label class="cx-choice check"><input type="checkbox" name="reminder_permission" value="yes" bind:checked={reminderPermission} /><span><b>{m.mail.attest}</b></span></label>
+        {/if}
+      </fieldset>
+
+      <fieldset class="cx-field">
         <legend class="cx-label">{m.build.lookTitle}</legend>
         <div class="cx-choices cols-3">
           {#each THEMES as value (value)}
@@ -473,7 +497,7 @@
       <h2 id="h-4">{stepLabel("review")}</h2>
       <p class="cx-help">{m.build.reviewLead}</p>
       <dl class="bld-review">
-        <div><dt>{m.form.question}</dt><dd>{titles[def] || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
+        <div><dt>{m.form.pollTitle}</dt><dd>{titles[def] || "–"}<br />{questions[def] || "–"}</dd><dd><button type="button" class="cx-link" onclick={() => go(0)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.options}</dt><dd>{kind === "choice" ? labels.join(" · ") || "–" : m.form.kindYesNo}</dd><dd><button type="button" class="cx-link" onclick={() => go(1)}>{m.build.change}</button></dd></div>
         <div><dt>{m.form.results}</dt><dd>{m.resultsStatement[timing][audience]}<br />{encryption === "sealed" ? m.seal.sealed.title : m.seal.none.title}<br />{m.form.anonymityNames.title[anonymity]}</dd><dd><button type="button" class="cx-link" onclick={() => go(2)}>{m.build.change}</button></dd></div>
         <div><dt>{m.build.stepNames.closing}</dt><dd>{m.form.opening}: {opensMode === "date" && opensAt ? opensAt.replace("T", " ") : m.form.openManual}<br />{m.form.closeAt}: {closesAt ? closesAt.replace("T", " ") : "–"} · {THEME_NAMES[theme][locale]}</dd><dd><button type="button" class="cx-link" onclick={() => go(3)}>{m.build.change}</button></dd></div>

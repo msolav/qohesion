@@ -2,6 +2,7 @@
   import { enhance } from "$app/forms";
   import CopyButton from "#lib/components/CopyButton.svelte";
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
+  import { formatMoment } from "#lib/zoned.js";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -13,8 +14,6 @@
   const allLinks = $derived(data.entries.map((e) => `${e.address}\t${e.link}`).join("\n"));
   const mailReport = $derived(form && "mailReport" in form ? form.mailReport : null);
   const mailError = $derived(form && "mailError" in form ? form.mailError : null);
-  const toSendNew = $derived(data.entries.filter((e) => e.status !== "voted" && !e.invitedOn).length);
-  const toSendAll = $derived(data.entries.filter((e) => e.status !== "voted").length);
   // The box empties once the addresses have been added.
   $effect(() => {
     if (report) addresses = "";
@@ -61,14 +60,15 @@
         <label class="cx-choice check"><input type="checkbox" name="permission" value="yes" /><span><b>{m.mail.attest}</b></span></label>
         {#if mailError}<p class="cx-error" role="alert">{errorText(m, mailError)}</p>{/if}
         <div class="cx-actions">
-          <button class="cx-btn" type="submit" name="which" value="new" disabled={toSendNew === 0}>{fill(m.mail.sendNew, { n: toSendNew })}</button>
-          <button class="cx-btn ghost" type="submit" name="which" value="all" disabled={toSendAll === 0}>{fill(m.mail.sendAll, { n: toSendAll })}</button>
+          <button class="cx-btn" type="submit" name="which" value="new" disabled={data.toSend.new === 0}>{fill(m.mail.sendNew, { n: data.toSend.new })}</button>
+          <button class="cx-btn ghost" type="submit" name="which" value="reminder" disabled={data.toSend.reminder === 0}>{fill(m.mail.sendAll, { n: data.toSend.reminder })}</button>
         </div>
+        {#if data.toSend.reminder === 0 && data.reminderAt}<p class="cx-help">{fill(m.mail.reminderWait, { date: formatMoment(data.reminderAt, data.locale, data.timeZone) })}</p>{/if}
       </form>
       {#if mailReport}
         <div class="cx-notice gap" class:error={mailReport.failed > 0} role="status">
           <div>
-            {#if mailReport.nobody}<p>{m.mail.nothingToSend}</p>{:else}<p>{fill(m.mail.report, { n: mailReport.sent })}</p>{/if}
+            {#if mailReport.nobody}<p>{m.mail.nothingToSend}</p>{:else}<p>{mailReport.sent === 1 ? m.mail.reportOne : fill(m.mail.report, { n: mailReport.sent })}</p>{/if}
             {#if mailReport.failed > 0}<p>{fill(m.mail.reportFailed, { n: mailReport.failed })} <code>{mailReport.problem}</code></p>{/if}
           </div>
         </div>

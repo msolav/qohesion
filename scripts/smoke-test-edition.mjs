@@ -80,7 +80,7 @@ check("the key signs in", accepted.status === 303 && other.session !== "");
 
 check("the console needs a session", (await anonymous.send("/console/polls")).status === 303);
 
-const made = await admin.send("/console/polls/new", { method: "POST", form: { title: "Adopt the 2027 budget", kind: "yes-no", timing: "live", audience: "voters", theme: "ballot-paper", closes_at: closing } });
+const made = await admin.send("/console/polls/new", { method: "POST", form: { title: "Budget 2027", question: "Do you adopt the budget for 2027?", kind: "yes-no", timing: "live", audience: "voters", theme: "ballot-paper", closes_at: closing } });
 const pollId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(made.location)?.[1];
 check("a poll is created", Boolean(pollId), made.location);
 
@@ -125,7 +125,7 @@ const checked = await admin.send(`/console/polls/${pollId}/results?/check`, { me
 check("a receipt is checked against the ledger", checked.status === 200);
 
 // A sealed poll: ballots are encrypted, totals stay hidden, and the count needs the counting key.
-const sealed = await admin.send("/console/polls/new", { method: "POST", form: { title: "Sealed question", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing, encryption: "sealed" } });
+const sealed = await admin.send("/console/polls/new", { method: "POST", form: { title: "Sealed poll", question: "Do you agree?", kind: "yes-no", timing: "close", audience: "voters", theme: "ballot-paper", closes_at: closing, encryption: "sealed" } });
 const sealedId = /\/console\/polls\/([a-z0-9]+)\/roll/.exec(sealed.location)?.[1];
 check("a sealed poll is created", Boolean(sealedId), sealed.location);
 await admin.send(`/console/polls/${sealedId}/roll?/add`, { method: "POST", form: { addresses: "s1@example.com\ns2@example.com" } });

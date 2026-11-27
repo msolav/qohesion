@@ -532,3 +532,5 @@ dialog.cx-dialog .cx-actions{justify-content:flex-end}
 .cx-who{display:inline-flex;align-items:center;min-height:2.5rem;padding:0 var(--space-3);color:var(--soft);font-size:.9rem;font-weight:600}
 .cx-signout{display:inline-flex;align-items:center;min-height:2.5rem;padding:0 var(--space-4);background:transparent;border:1.5px solid var(--rule);border-radius:99px;color:var(--mist);font:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out}
 .cx-signout:hover{background:var(--raised);border-color:var(--dim)}
+
+.cx-card .asked{margin:0;font-family:var(--display);font-size:1.3rem;font-weight:700;line-height:1.3;color:#fff}

@@ -59,7 +59,8 @@
     {#if poll.status === "draft"}<a class="cx-btn ghost small" href="/console/polls/{poll.id}/edit">{m.poll.edit}</a>{/if}
   </div>
   <div class="cx-card">
-    {#if poll.description}<p>{poll.description}</p>{/if}
+    {#if poll.question}<p class="asked">{poll.question}</p>{/if}
+    {#if poll.description}<p class="gap">{poll.description}</p>{/if}
     <ul class="cx-tags gap">
       {#each poll.options as option (option.id)}<li>{optionLabel(data.locale, option)}</li>{/each}
     </ul>

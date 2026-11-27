@@ -56,16 +56,18 @@ describe("poll form", () => {
   it("reads a poll offered in two languages, the default first, with every option in each", () => {
     const input = parsePollForm(form([
       ["languages", "fr"], ["languages", "en"], ["default_language", "en"], ["kind", "choice"],
-      ["title_fr", "Quelle couleur?"], ["title_en", "Which colour?"], ["description_fr", "Consultatif"], ["description_en", ""],
+      ["title_fr", "Porte du hall"], ["title_en", "Lobby door"], ["question_fr", "Quelle couleur?"], ["question_en", "Which colour?"], ["description_fr", "Consultatif"], ["description_en", ""],
       ["option_fr", "Vert"], ["option_en", "Green"], ["option_icon", "leaf"], ["option_color", "green"],
       ["option_fr", "Bleu"], ["option_en", "Blue"], ["option_icon", ""], ["option_color", ""],
       ["option_fr", "dropped with its row"], ["option_en", ""], ["option_icon", ""], ["option_color", ""],
     ]));
-    expect(input.title).toBe("Which colour?");
+    expect(input.title).toBe("Lobby door");
+    expect(input.question).toBe("Which colour?");
     expect(input.options.map((o) => o.label)).toEqual(["Green", "Blue"]);
     expect(input.options[0]).toMatchObject({ icon: "leaf", color: "green" });
     expect(input.translations.languages).toEqual(["en", "fr"]);
-    expect(input.translations.title).toEqual({ en: "Which colour?", fr: "Quelle couleur?" });
+    expect(input.translations.title).toEqual({ en: "Lobby door", fr: "Porte du hall" });
+    expect(input.translations.question).toEqual({ en: "Which colour?", fr: "Quelle couleur?" });
     expect(input.translations.options).toEqual([{ en: "Green", fr: "Vert" }, { en: "Blue", fr: "Bleu" }]);
   });
 

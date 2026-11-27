@@ -11,5 +11,5 @@ export const load: LayoutServerLoad = ({ locals, params }) => {
   if (!poll) error(404, "Not found");
   // The poll as the administrator reads it, in the language of the screen when the poll offers it.
   const text = localize(poll, locals.locale);
-  return { poll: { ...poll, title: text.title, description: text.description, options: text.options } };
+  return { poll: { ...poll, title: text.title, question: text.question, description: text.description, options: text.options } };
 };

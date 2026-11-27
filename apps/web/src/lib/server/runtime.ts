@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { QOHESION_DATA_DIR, QOHESION_EDITION, QOHESION_GATE_PASSWORD } from "$app/env/private";
 import { Service } from "./service.js";
+import { runAutoReminders } from "./reminders.js";
 
 let instance: Service | undefined;
 let secret: Uint8Array | undefined;
@@ -32,6 +33,7 @@ export function service(): Service {
   if (!isTestEdition()) throw new Error("The test edition is not enabled (QOHESION_EDITION=test)");
   if (!instance) {
     instance = Service.open(path.join(QOHESION_DATA_DIR, "qohesion.sqlite"), { secret: serverSecret() });
+    startReminderTimer();
   }
   return instance;
 }
@@ -44,4 +46,13 @@ export function serverSecret(): Uint8Array {
 /** The password in front of the test edition, or an empty string when there is none. */
 export function gatePassword(): string {
   return isTestEdition() ? QOHESION_GATE_PASSWORD : "";
+}
+
+/** Looks for reminders that are due every ten minutes, once the server is running. It never keeps the process alive. */
+function startReminderTimer(): void {
+  const origin = (process.env["ORIGIN"] ?? "").replace(/\/$/, "");
+  const timer = setInterval(() => {
+    void runAutoReminders(origin).catch((error: unknown) => console.error("Automatic reminders failed:", error instanceof Error ? error.message : error));
+  }, 10 * 60_000);
+  timer.unref();
 }

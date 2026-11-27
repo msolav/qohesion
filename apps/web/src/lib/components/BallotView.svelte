@@ -1,6 +1,7 @@
 <script lang="ts">
   import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
   import type { CloseRules } from "#lib/close-rules.js";
+  import UiIcon from "#lib/components/UiIcon.svelte";
   import { DEFAULT_TIME_ZONE, formatMoment } from "#lib/zoned.js";
   import type { Locale } from "#lib/i18n/negotiate.js";
   import { iconOf, iconPath } from "#lib/option-style.js";
@@ -15,6 +16,7 @@
   }
   interface BallotPoll {
     readonly title: string;
+    readonly question: string;
     readonly description: string;
     readonly options: readonly BallotOption[];
     readonly timing: ResultsTiming;
@@ -45,7 +47,8 @@
 <div class="slip">
   <div class="ballot__head">
     <h1 id="q-title">{poll.title || "…"}</h1>
-    {#if poll.description}<p class="lede">{poll.description}</p>{:else}<p class="lede">{m.voter.lede}</p>{/if}
+    {#if poll.question}<p class="question" id="q-text">{poll.question}</p>{/if}
+    {#if poll.description}<p class="lede">{poll.description}</p>{:else if !poll.question}<p class="lede">{m.voter.lede}</p>{/if}
   </div>
 
   <dl class="facts" aria-label={m.voter.facts}>
@@ -61,7 +64,10 @@
     </div>
     <div>
       <dt>{m.voter.ballotType}</dt>
-      <dd>{poll.anonymity === "named" ? m.voter.namedValue : m.voter.ballotValue}, {poll.encrypted ? m.seal.factSealed.toLowerCase() : m.seal.factPlain.toLowerCase()}</dd>
+      <dd class="badges">
+        <span class="badge"><UiIcon name={poll.anonymity === "named" ? "users" : "shield"} size={16} />{poll.anonymity === "named" ? m.voter.namedValue : m.voter.ballotValue}</span>
+        <span class="badge"><UiIcon name={poll.encrypted ? "lock" : "eye"} size={16} />{poll.encrypted ? m.seal.factSealed : m.seal.factPlain}</span>
+      </dd>
       <dd class="note">{poll.anonymity === "named" ? fill(m.voter.namedNote, { who: m.voter.namedWho[poll.audience] }) : m.voter.ballotNote} {poll.encrypted ? m.seal.ballotSealed : m.seal.ballotPlain}</dd>
     </div>
     <div>
@@ -75,7 +81,7 @@
   </dl>
 
   <fieldset class="choices" data-fill={poll.markFill ? "" : undefined} aria-describedby={failure ? "choice-error" : undefined}>
-    <legend class="sr-only">{m.voter.legend}</legend>
+    <legend class="sr-only">{poll.question || m.voter.legend}</legend>
     {#each poll.options as option, i (option.id)}
       {@const icon = iconOf(option)}
       <div class="choice" data-color={option.color ?? undefined} data-icon={option.icon ? option.icon : undefined}>
