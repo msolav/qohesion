@@ -90,6 +90,8 @@ img,svg{display:block}
    The fixed In favour, Against and Abstention keep their own colours; an option with no colour is filled grey. */
 [data-theme] .choices[data-fill] .choice .mark{background:var(--opt,#4C4C47);border-color:var(--opt,#4C4C47);color:#FFFFFF}
 [data-theme] .choices[data-fill] .choice .mark svg{color:#FFFFFF;opacity:1}
+/* Every circle is already solid, so the chosen one is told apart by a ring around it. */
+[data-theme] .choices[data-fill] .choice input:checked+label .mark{outline:3px solid var(--opt,#4C4C47);outline-offset:2px}
 [data-theme] .choice[data-icon] .mark svg{opacity:1}
 
 .error{margin-top:var(--space-3);font-weight:700;color:var(--danger)}

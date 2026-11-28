@@ -147,7 +147,7 @@
   const blocked = $derived((step === "rules" && !agreed) || (step === "question" && !answered(qid)));
 </script>
 
-  {#if paged}
+  {#if paged && !preview}
     <p class="stepno" aria-label={fill(m.voter.stepOf, { n: stepNo, total: stepTotal })}>
       <span class="dots" aria-hidden="true">{#each Array.from({ length: stepTotal }, (_, i) => i + 1) as n (n)}<i class:on={n <= stepNo}></i>{/each}</span>
       <span>{fill(m.voter.stepOf, { n: stepNo, total: stepTotal })}</span>
@@ -219,6 +219,7 @@
   {#if failure}<p class="error" id="choice-error" role="alert">{m.voter.problem} {errorText(m, failure)}</p>{/if}
 </div>
 
+{#if !(paged && preview)}
 <div class="castbar" class:steps={paged}>
   {#if step === "rules"}
     <label class="agree"><input type="checkbox" bind:checked={agreed} /><span>{m.voter.agree}</span></label>
@@ -238,3 +239,4 @@
     </div>
   {/if}
 </div>
+{/if}

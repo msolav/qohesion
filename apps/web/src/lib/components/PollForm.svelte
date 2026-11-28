@@ -157,6 +157,9 @@
   type Preset = "secret" | "verifiable" | "open";
   /** A preset fills in the results settings in one choice. Each setting can still be changed afterwards. */
   function applyPreset(id: Preset): void {
+    customizing = false;
+    custom = false;
+    chosen = { timing: true, audience: true, privacy: true, encryption: true };
     if (id === "open") {
       timing = "live"; audience = "voters"; anonymity = "named"; showVoted = true; encryption = "none"; publishCount = false; lockCancel = false; lateRoll = true;
       discName = "full"; discEmail = "full";
@@ -177,6 +180,18 @@
           ? "open"
           : null,
   );
+  /** The results settings stay locked to the template until the administrator asks to customize them. */
+  let customizing = $state(false);
+  /** The custom template: nothing is preselected on the Results step. */
+  let custom = $state(false);
+  let chosen = $state({ timing: true, audience: true, privacy: true, encryption: true });
+  const isCustom = $derived(custom || matchedPreset === null);
+  const locked = $derived(enhanced && !customizing && !custom && matchedPreset !== null);
+  function chooseCustom(): void {
+    custom = true;
+    customizing = true;
+    chosen = { timing: false, audience: false, privacy: false, encryption: false };
+  }
   // A threshold reads the totals, and a changed vote needs a pseudonym: the first needs readable ballots, the second sealed ones.
   $effect(() => {
     if (encryption === "sealed" || extras.length > 0) ruleThreshold = "none";
@@ -224,6 +239,8 @@
     rollCount: null,
     rollCode: null,
   });
+  /** The page of the ballot the preview shows for the step being edited: the rules, the title, or the answers. */
+  const previewPage = $derived(enhanced ? (["rules", "intro", "question", "rules", "question", "rules"] as const)[step] ?? "all" : "all");
   const serverError = $derived(error ? errorText(m, error) : "");
   const sampleName = "Marie Tremblay";
   const sampleAddress = "marie.tremblay@example.org";
@@ -264,6 +281,10 @@
         void tick().then(() => document.getElementById(titles[editing].trim() === "" ? `title-${editing}` : `question-${editing}`)?.focus());
         return false;
       }
+    }
+    if (at === 3 && !(chosen.timing && chosen.audience && chosen.privacy && chosen.encryption)) {
+      problem = m.build.needChoices;
+      return false;
     }
     if (at === 2 && kind === "choice") {
       const lower = labels.map((l) => l.toLowerCase());
@@ -367,7 +388,7 @@
       <p class="cx-help">{m.form.presetHelp}</p>
       <div class="tpl-grid" role="group" aria-label={m.build.stepNames.template}>
         {#each ["secret", "verifiable", "open"] as const as id, i (id)}
-          <button type="button" class="tpl" aria-pressed={matchedPreset === id} data-first={i === 0 ? "" : undefined} onclick={() => applyPreset(id)}>
+          <button type="button" class="tpl" aria-pressed={!custom && matchedPreset === id} data-first={i === 0 ? "" : undefined} onclick={() => applyPreset(id)}>
             <span class="tpl__ico" aria-hidden="true"><UiIcon name={id === "secret" ? "lock" : id === "verifiable" ? "hash" : "users"} size={44} /></span>
             <span class="tpl__head"><b class="tpl__title">{m.form.presets.title[id]}</b><small class="tpl__text">{m.form.presets.text[id]}</small></span>
             <span class="tpl__lists"><span class="tpl__eg"><b>{m.form.presets.examplesLabel}</b>{#each m.form.presets.examples[id] as example, i (i)}<span>{example}</span>{/each}</span>
@@ -375,8 +396,12 @@
             <span class="tpl__check" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           </button>
         {/each}
+      <button type="button" class="tpl tpl--custom" aria-pressed={isCustom} onclick={chooseCustom}>
+        <span class="tpl__ico" aria-hidden="true"><UiIcon name="layout" size={44} /></span>
+        <span class="tpl__head"><b class="tpl__title">{m.form.presetCustomTitle}</b><small class="tpl__text">{m.form.presetCustomText}</small></span>
+        <span class="tpl__check" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+      </button>
       </div>
-      {#if matchedPreset === null}<p class="cx-help" role="status">{m.form.presetCustom}</p>{/if}
     </section>
 
     <section class="bld-step" id="step-1" hidden={enhanced && step !== 1} aria-labelledby="h-1">
@@ -550,26 +575,23 @@
         {/each}
         {#if extras.length < 19}<div><button type="button" class="cx-btn ghost small" onclick={addQuestion}>{m.build.addQuestion}</button></div>{/if}
       </fieldset>
-
-      <fieldset class="cx-field">
-        <legend class="cx-label">{m.build.fillLabel}</legend>
-        <p class="cx-help">{m.build.fillHelp}</p>
-        <div class="bld-fill">
-          <label class="bld-pick"><input type="radio" name="marks" value="outline" bind:group={markFillValue} /><span class="mode"><span class="mk-sample" data-color="green" aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillOutline}</span></label>
-          <label class="bld-pick"><input type="radio" name="marks" value="fill" bind:group={markFillValue} /><span class="mode"><span class="mk-sample" data-color="green" data-fill aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillSolid}</span></label>
-        </div>
-      </fieldset>
     </section>
 
     <!-- 3. Results -->
     <section class="bld-step" id="step-3" hidden={enhanced && step !== 3} aria-labelledby="h-3">
       <h2 id="h-3">{stepLabel("results")}</h2>
       <p class="cx-help">{m.form.resultsHelp}</p>
+      <div class="bld-follow" role="status">
+        <UiIcon name={locked ? "lock" : "unlock"} size={20} />
+        <p>{isCustom ? m.form.presetCustom : fill(m.build.follow, { name: m.form.presets.title[matchedPreset ?? "secret"] })}</p>
+        {#if locked}<button type="button" class="cx-btn ghost small" data-first onclick={() => (customizing = true)}>{m.build.customize}</button>{/if}
+      </div>
+      <div class="bld-locked" inert={locked}>
       <fieldset class="cx-field">
         <legend class="cx-label">{m.form.timing}</legend>
         <div class="cx-choices cols-2">
           {#each TIMINGS as value, i (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="timing" {value} bind:group={timing} data-first={i === 0 ? "" : undefined} /><span><i class="ico"><UiIcon name={value === "close" ? "lock" : "pulse"} /></i><b>{m.form.timingNames.title[value]}</b><small>{m.form.timingNames.text[value]}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="timing" {value} checked={chosen.timing && timing === value} onchange={() => { timing = value; chosen.timing = true; }} data-first={i === 0 ? "" : undefined} /><span><i class="ico"><UiIcon name={value === "close" ? "lock" : "pulse"} /></i><b>{m.form.timingNames.title[value]}</b><small>{m.form.timingNames.text[value]}</small></span></label>
           {/each}
         </div>
       </fieldset>
@@ -577,7 +599,7 @@
         <legend class="cx-label">{m.form.audience}</legend>
         <div class="cx-choices cols-4">
           {#each AUDIENCES as value (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="audience" {value} bind:group={audience} /><span><i class="ico"><UiIcon name={value === "owner" ? "key" : value === "administrators" ? "shield" : value === "voters" ? "users" : "globe"} /></i><b>{m.form.audienceNames.title[value]}</b><small>{m.form.audienceNames.text[value]}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="audience" {value} checked={chosen.audience && audience === value} onchange={() => { audience = value; chosen.audience = true; }} /><span><i class="ico"><UiIcon name={value === "owner" ? "key" : value === "administrators" ? "shield" : value === "voters" ? "users" : "globe"} /></i><b>{m.form.audienceNames.title[value]}</b><small>{m.form.audienceNames.text[value]}</small></span></label>
           {/each}
         </div>
       </fieldset>
@@ -585,7 +607,7 @@
         <legend class="cx-label">{m.form.anonymityTitle} <GuideLink {locale} page="how" anchor={privacy === "named" ? "named" : "secret"} label={g.props.learn} /></legend>
         <div class="cx-choices cols-3">
           {#each ["anonymous", "voters", "named"] as const as value (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="privacy" {value} checked={privacy === value} onchange={() => setPrivacy(value)} /><span><i class="ico"><UiIcon name={value === "anonymous" ? "mask" : value === "voters" ? "ballot" : "users"} /></i><b>{m.form.anonymityNames.title[value]}</b><small>{m.form.anonymityNames.text[value]}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="privacy" {value} checked={chosen.privacy && privacy === value} onchange={() => { setPrivacy(value); chosen.privacy = true; }} /><span><i class="ico"><UiIcon name={value === "anonymous" ? "mask" : value === "voters" ? "ballot" : "users"} /></i><b>{m.form.anonymityNames.title[value]}</b><small>{m.form.anonymityNames.text[value]}</small></span></label>
           {/each}
         </div>
         <input type="hidden" name="anonymity" value={anonymity} />
@@ -618,8 +640,8 @@
         <legend class="cx-label">{m.seal.title} <GuideLink {locale} page="how" anchor={"sealed"} label={g.props.learn} /></legend>
         <p class="cx-help">{m.seal.help}</p>
         <div class="cx-choices cols-2">
-          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="sealed" bind:group={encryption} disabled={timing === "live"} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
-          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" bind:group={encryption} /><span><i class="ico"><UiIcon name="unlock" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="sealed" checked={chosen.encryption && encryption === "sealed"} onchange={() => { encryption = "sealed"; chosen.encryption = true; }} disabled={timing === "live"} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.seal.sealed.title}</b><small>{m.seal.sealed.text}</small></span></label>
+          <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" checked={chosen.encryption && encryption === "none"} onchange={() => { encryption = "none"; chosen.encryption = true; }} /><span><i class="ico"><UiIcon name="unlock" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
         </div>
         {#if timing === "live"}<p class="cx-help" role="status">{m.seal.liveNote}</p>{/if}
         {#if encryption === "sealed"}<div class="cx-notice warn gap" role="note"><div><p><b>{m.seal.riskTitle}.</b> {m.seal.riskText}</p><p><GuideLink {locale} page="how" anchor="counting-key" label={g.props.learn} /></p></div></div>{/if}
@@ -642,6 +664,8 @@
         <label class="cx-choice check has-ico"><input type="checkbox" name="email_receipt" value="yes" bind:checked={emailReceipt} onchange={() => (emailReceiptSet = true)} /><span><i class="ico"><UiIcon name="mail" /></i><b>{m.form.emailReceiptLabel}</b><small>{anonymity === "secret" ? m.form.emailReceiptHelpSecret : m.form.emailReceiptHelp}</small></span></label>
         <label class="cx-choice check has-ico"><input type="checkbox" name="lock_cancel" value="yes" bind:checked={lockCancel} /><span><i class="ico"><UiIcon name="lock" /></i><b>{m.form.lockCancelLabel}</b><small>{m.form.lockCancelHelp}</small></span></label>
       </fieldset>
+      </div>
+      {#if problem && step === 3}<p class="cx-error" role="alert">{problem}</p>{/if}
     </section>
 
     <!-- 4. Dates and look -->
@@ -719,6 +743,15 @@
       </fieldset>
 
       <fieldset class="cx-field">
+        <legend class="cx-label">{m.build.fillLabel}</legend>
+        <p class="cx-help">{m.build.fillHelp}</p>
+        <div class="bld-fill">
+          <label class="bld-pick"><input type="radio" name="marks" value="outline" bind:group={markFillValue} /><span class="mode"><span class="mk-sample" data-color="green" aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillOutline}</span></label>
+          <label class="bld-pick"><input type="radio" name="marks" value="fill" bind:group={markFillValue} /><span class="mode"><span class="mk-sample" data-color="green" data-fill aria-hidden="true"><svg viewBox="0 0 16 16" width="16" height="16"><path d={ICONS["check"]?.d} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>{m.build.fillSolid}</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="cx-field">
         <legend class="cx-label">{m.build.lookTitle}</legend>
         <div class="cx-choices cols-3">
           {#each THEMES as value (value)}
@@ -758,7 +791,7 @@
     <div class="bld-phone">
       <!-- The surface scrolls. A choice can be made in the preview to see how a chosen option looks, but it belongs to no form, so nothing is sent or recorded. -->
       <div class="preview-surface" data-theme={theme}>
-        <div class="voter" lang={editing}><div class="ballot"><BallotView locale={editing} poll={preview} preview /></div></div>
+        <div class="voter" lang={editing}><div class="ballot"><BallotView locale={editing} poll={preview} preview step={previewPage} /></div></div>
       </div>
     </div>
   </aside>

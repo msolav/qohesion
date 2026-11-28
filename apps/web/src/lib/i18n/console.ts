@@ -41,7 +41,7 @@ export interface ConsoleMessages {
     readonly lateRollLabel: string; readonly lateRollHelp: string;
     readonly pagedLabel: string; readonly pagedHelp: string;
     readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
-    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "verifiable" | "open"> & { readonly points: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>>; readonly examplesLabel: string; readonly examples: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>> }; readonly presetCustom: string;
+    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "verifiable" | "open"> & { readonly points: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>>; readonly examplesLabel: string; readonly examples: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>> }; readonly presetCustom: string; readonly presetCustomTitle: string; readonly presetCustomText: string;
     readonly emailReceiptLabel: string; readonly emailReceiptHelp: string; readonly emailReceiptHelpSecret: string;
     readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
@@ -99,11 +99,11 @@ export interface ConsoleMessages {
   readonly build: {
     readonly needLanguages: string; readonly needOptionLanguages: string;
     readonly moreQuestions: string; readonly moreQuestionsHelp: string; readonly questionN: string; readonly addQuestion: string; readonly removeQuestion: string; readonly moveQuestionUp: string; readonly moveQuestionDown: string; readonly thresholdOneQuestion: string; readonly moreCount: string;
-    readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"template" | "question" | "choices" | "results" | "closing" | "review", string>>; readonly settingsTitle: string;
+    readonly follow: string; readonly customize: string; readonly stepsLabel: string; readonly step: string; readonly stepNames: Readonly<Record<"template" | "question" | "choices" | "results" | "closing" | "review", string>>; readonly settingsTitle: string;
     readonly next: string; readonly back: string; readonly change: string; readonly reviewLead: string;
     readonly optionsKeys: string; readonly styleOpen: string; readonly styleTitle: string; readonly iconLabel: string; readonly colorLabel: string; readonly fillLabel: string; readonly fillHelp: string; readonly fillOutline: string; readonly fillSolid: string; readonly styleDefault: string;
     readonly moveUp: string; readonly moveDown: string; readonly removeOption: string; readonly drag: string; readonly moved: string;
-    readonly previewTitle: string; readonly previewNote: string; readonly needTitle: string; readonly needOptions: string; readonly fixedOptions: string; readonly lookTitle: string;
+    readonly previewTitle: string; readonly previewNote: string; readonly needTitle: string; readonly needChoices: string; readonly needOptions: string; readonly fixedOptions: string; readonly lookTitle: string;
   };
   readonly mail: {
     readonly title: string; readonly text: string; readonly notConfigured: string; readonly attest: string; readonly sendNew: string; readonly sendAll: string; readonly sendOne: string;
@@ -234,7 +234,7 @@ const en: ConsoleMessages = {
     keyNeedsAdmins: "This needs at least two administrator keys. Add one under Organization.",
     keyNeedsSealed: "Only encrypted ballots have a counting key.",
     presetTitle: "Start from a preset",
-    presetHelp: "Pick a kind of poll. Settings of the Results step are preset and stay editable.",
+    presetHelp: "Pick a template. Settings of the Results step follow the template until customized.",
     presets: {
       title: { secret: "Secret ballot", verifiable: "Verifiable ballot", open: "Open vote" },
       points: {
@@ -255,6 +255,8 @@ const en: ConsoleMessages = {
       },
     },
     presetCustom: "Custom settings",
+    presetCustomTitle: "Custom",
+    presetCustomText: "Every setting of the Results step is chosen one by one. No option is preselected.",
     emailReceiptLabel: "Receipt by email",
     emailReceiptHelp: "After voting, a participant can ask for the receipt code to be sent to the address that received the link. The message holds the code and the page that checks it, and no voting link. Copying and saving the code are always offered.",
     emailReceiptHelpSecret: "Off by default for a secret poll. The email ties the participant's address to the receipt code, at the email provider and in the inbox. If the poll also publishes each ballot beside its code, whoever reads the email can find the answer.",
@@ -548,6 +550,8 @@ const en: ConsoleMessages = {
     moreCount: "{n} more questions",
     stepsLabel: "Steps",
     step: "Step {n} of {total}",
+    follow: "Settings follow the template: {name}.",
+    customize: "Customize",
     stepNames: { template: "Template", question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
     settingsTitle: "Settings participants are shown",
     next: "Continue",
@@ -572,6 +576,7 @@ const en: ConsoleMessages = {
     previewTitle: "What participants see",
     previewNote: "The ballot in the chosen template. Nothing here is recorded.",
     needTitle: "Enter the title and the question to continue.",
+    needChoices: "Choose one option in each group to continue.",
     needOptions: "Write at least two different options to continue.",
     fixedOptions: "The three choices are fixed: In favour, Against, Abstention. Their marks keep their meaning.",
     lookTitle: "Look of the ballot",
@@ -896,7 +901,7 @@ const fr: ConsoleMessages = {
     keyNeedsAdmins: "Il faut au moins deux clés d’administration. En ajouter une sous Organisation.",
     keyNeedsSealed: "Seuls les bulletins chiffrés ont une clé de dépouillement.",
     presetTitle: "Partir d’un préréglage",
-    presetHelp: "Choisir un type de scrutin. Les paramètres de l’étape Résultats sont préremplis et restent modifiables.",
+    presetHelp: "Choisir un modèle. Les paramètres de l’étape Résultats suivent le modèle jusqu’à personnalisation.",
     presets: {
       title: { secret: "Scrutin secret", verifiable: "Scrutin vérifiable", open: "Vote ouvert" },
       points: {
@@ -917,6 +922,8 @@ const fr: ConsoleMessages = {
       },
     },
     presetCustom: "Paramètres personnalisés",
+    presetCustomTitle: "Personnalisé",
+    presetCustomText: "Chaque paramètre de l’étape Résultats est choisi un à un. Aucune option n’est présélectionnée.",
     emailReceiptLabel: "Reçu par courriel",
     emailReceiptHelp: "Après le vote, la personne peut demander que le code de reçu soit envoyé à l’adresse qui a reçu le lien. Le message contient le code et la page qui le vérifie, et aucun lien de vote. La copie et l’enregistrement du code sont toujours offerts.",
     emailReceiptHelpSecret: "Désactivé par défaut pour un scrutin secret. Le courriel associe l’adresse de la personne au code de reçu, chez le fournisseur de courriel et dans la boîte de réception. Si le scrutin publie aussi chaque bulletin à côté de son code, la personne qui lit le courriel peut retrouver la réponse.",
@@ -1210,6 +1217,8 @@ const fr: ConsoleMessages = {
     moreCount: "{n} autres questions",
     stepsLabel: "Étapes",
     step: "Étape {n} de {total}",
+    follow: "Les paramètres suivent le modèle: {name}.",
+    customize: "Personnaliser",
     stepNames: { template: "Modèle", question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
     settingsTitle: "Réglages présentés aux participants",
     next: "Continuer",
@@ -1234,6 +1243,7 @@ const fr: ConsoleMessages = {
     previewTitle: "Ce que les participants voient",
     previewNote: "Le bulletin dans le modèle choisi. Rien n’est enregistré ici.",
     needTitle: "Saisir le titre et la question pour continuer.",
+    needChoices: "Choisir une option dans chaque groupe pour continuer.",
     needOptions: "Rédiger au moins deux options différentes pour continuer.",
     fixedOptions: "Les trois choix sont fixes: Pour, Contre, Abstention. Leurs marques gardent leur sens.",
     lookTitle: "Apparence du bulletin",
