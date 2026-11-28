@@ -371,6 +371,7 @@
             <span class="tpl__ico" aria-hidden="true"><UiIcon name={id === "secret" ? "lock" : id === "verifiable" ? "hash" : "users"} size={44} /></span>
             <b class="tpl__title">{m.form.presets.title[id]}</b>
             <small class="tpl__text">{m.form.presets.text[id]}</small>
+            <ul class="tpl__points">{#each m.form.presets.points[id] as point, i (i)}<li>{point}</li>{/each}</ul>
             <span class="tpl__check" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           </button>
         {/each}

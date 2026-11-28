@@ -595,7 +595,7 @@ dialog.gd::backdrop{background:rgba(5,12,30,.72)}
    chosen card shows a mint border, a tint and a check. */
 .tpl-grid{display:grid;gap:var(--space-4);grid-template-columns:1fr;margin-top:var(--space-4)}
 @media (min-width:44rem){.tpl-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.tpl{position:relative;display:grid;grid-template-rows:auto auto 1fr;justify-items:start;gap:var(--space-2);padding:var(--space-4);text-align:left;font:inherit;color:inherit;background:var(--deep);border:1.5px solid var(--rule);border-radius:var(--r,12px);cursor:pointer;transition:border-color .15s ease-out,background-color .15s ease-out}
+.tpl{position:relative;display:grid;grid-template-rows:auto auto auto 1fr;align-content:start;justify-items:start;gap:var(--space-2);padding:var(--space-4);text-align:left;font:inherit;color:inherit;background:var(--deep);border:1.5px solid var(--rule);border-radius:var(--r,12px);cursor:pointer;transition:border-color .15s ease-out,background-color .15s ease-out}
 .tpl:hover{border-color:var(--dim)}
 .tpl:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
 .tpl__ico{display:grid;place-items:center;inline-size:4.5rem;block-size:4.5rem;margin-bottom:var(--space-2);border:1.5px solid var(--dim);border-radius:14px;color:var(--soft);transition:color .15s ease-out,border-color .15s ease-out,background-color .15s ease-out}
@@ -605,3 +605,7 @@ dialog.gd::backdrop{background:rgba(5,12,30,.72)}
 .tpl[aria-pressed="true"]{border-color:var(--mint);background:var(--raised)}
 .tpl[aria-pressed="true"] .tpl__ico{color:var(--mint);border-color:var(--mint);background:color-mix(in srgb,var(--mint) 12%,transparent)}
 .tpl[aria-pressed="true"] .tpl__check{display:grid}
+.tpl__points{margin:var(--space-2) 0 0;padding:var(--space-3) 0 0;list-style:none;display:grid;gap:var(--space-2);align-self:end;border-top:1px solid var(--rule);width:100%}
+.tpl__points li{position:relative;padding-left:1.1rem;font-size:.88rem;line-height:1.4;color:var(--mist)}
+.tpl__points li::before{content:"";position:absolute;left:0;top:.5em;width:.45rem;height:.45rem;border-radius:50%;background:var(--dim)}
+.tpl[aria-pressed="true"] .tpl__points li::before{background:var(--mint)}

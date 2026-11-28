@@ -41,7 +41,7 @@ export interface ConsoleMessages {
     readonly lateRollLabel: string; readonly lateRollHelp: string;
     readonly pagedLabel: string; readonly pagedHelp: string;
     readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
-    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "verifiable" | "open">; readonly presetCustom: string;
+    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "verifiable" | "open"> & { readonly points: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>> }; readonly presetCustom: string;
     readonly emailReceiptLabel: string; readonly emailReceiptHelp: string; readonly emailReceiptHelpSecret: string;
     readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
@@ -237,10 +237,15 @@ const en: ConsoleMessages = {
     presetHelp: "Choose the kind of poll. It fills in the settings of the Results step, and each of them can be changed there afterwards.",
     presets: {
       title: { secret: "Secret ballot", verifiable: "Verifiable ballot", open: "Open vote" },
+      points: {
+        secret: ["Ballots encrypted and never published", "Results shown to the participants once the poll closes", "An administrator can cancel the poll"],
+        verifiable: ["Every ballot and the counting key published after the close", "Results public once the poll closes", "No cancelling once voting begins"],
+        open: ["Readable ballots, shown with names", "Results live, for the participants on the roll", "Participants can be added while voting is open"],
+      },
       text: {
-        secret: "Encrypted and anonymous. Participants see the results when the poll closes.",
-        verifiable: "Encrypted and anonymous ballots, with every ballot and the counting key published after the close so that anyone can recount. Everyone sees the results, and the poll cannot be cancelled once voting begins.",
-        open: "Readable ballots with names. Participants follow the results live.",
+        secret: "Nobody can tell who voted what, and the ballots are never published.",
+        verifiable: "Nobody can tell who voted what, and the ballots are published afterwards so that anyone can recount.",
+        open: "Each answer is tied to a name, and participants follow the results as they arrive.",
       },
     },
     presetCustom: "Custom settings",
@@ -888,10 +893,15 @@ const fr: ConsoleMessages = {
     presetHelp: "Choisir le type de scrutin. Ce choix remplit les paramètres de l’étape Résultats, où chacun peut ensuite être modifié.",
     presets: {
       title: { secret: "Scrutin secret", verifiable: "Scrutin vérifiable", open: "Vote ouvert" },
+      points: {
+        secret: ["Bulletins chiffrés et jamais publiés", "Résultats présentés aux participants à la fermeture", "L’administration peut annuler le scrutin"],
+        verifiable: ["Chaque bulletin et la clé de dépouillement publiés après la fermeture", "Résultats publics à la fermeture", "Aucune annulation une fois le vote commencé"],
+        open: ["Bulletins lisibles, affichés avec les noms", "Résultats en direct, pour les participants de la liste", "Des participants peuvent être ajoutés pendant le vote"],
+      },
       text: {
-        secret: "Chiffré et anonyme. Les participants voient les résultats à la fermeture du scrutin.",
-        verifiable: "Bulletins chiffrés et anonymes, dont chacun est publié avec la clé de dépouillement après la fermeture, de sorte que toute personne peut recompter. Tout le monde voit les résultats, et le scrutin ne peut plus être annulé une fois le vote commencé.",
-        open: "Bulletins lisibles avec les noms. Les participants suivent les résultats en direct.",
+        secret: "Personne ne peut savoir qui a voté quoi, et les bulletins ne sont jamais publiés.",
+        verifiable: "Personne ne peut savoir qui a voté quoi, et les bulletins sont publiés ensuite pour que toute personne puisse recompter.",
+        open: "Chaque réponse est liée à un nom, et les participants suivent les résultats à mesure qu’ils arrivent.",
       },
     },
     presetCustom: "Paramètres personnalisés",
