@@ -1,7 +1,7 @@
 /*
  * One row for each setting of a poll (icon, name, badge, description, link). Colours come from the surrounding text, so the
- * same rows sit on the ballot templates and on the console. The four tones differ by border and tint as well as by icon:
- * private (solid, tinted), open (dashed), neutral (plain), strict (a double border).
+ * same rows sit on the ballot templates and on the console. Every row looks the same, except a rule that cannot change
+ * once voting begins (tone strict), which has a double border.
  */
 .props{list-style:none;margin:0;padding:0;display:grid;gap:.75rem;text-align:left}
 .prop{display:grid;grid-template-columns:2.75rem minmax(0,1fr);column-gap:.9rem;align-items:start;margin:0;padding:.9rem 1rem;border:1.5px solid color-mix(in srgb,currentColor 26%,transparent);border-radius:min(var(--radius,12px),14px)}
@@ -14,14 +14,8 @@
 .prop__text+.prop__text{margin-top:.35rem}
 .prop__more{display:inline-block;margin-top:.45rem;font-size:.9rem;font-weight:700;color:inherit;text-underline-offset:.2em}
 
-.prop[data-tone="private"]{border-color:currentColor;background:color-mix(in srgb,currentColor 7%,transparent)}
-.prop[data-tone="private"] .prop__badge{background:color-mix(in srgb,currentColor 14%,transparent)}
-.prop[data-tone="open"]{border-style:dashed;border-color:color-mix(in srgb,currentColor 55%,transparent)}
-.prop[data-tone="open"] .prop__icon{border-style:dashed}
-.prop[data-tone="open"] .prop__badge{border-style:dashed}
 .prop[data-tone="strict"]{border-style:double;border-width:5px;border-color:color-mix(in srgb,currentColor 70%,transparent)}
 .prop[data-tone="strict"] .prop__badge{border-width:2.5px}
-.prop[data-tone="neutral"] .prop__icon{background:transparent;border-color:color-mix(in srgb,currentColor 45%,transparent)}
 @media (max-width:30rem){
   .prop{grid-template-columns:2.25rem minmax(0,1fr);column-gap:.7rem;padding:.8rem}
   .prop__icon{inline-size:2.25rem;block-size:2.25rem}

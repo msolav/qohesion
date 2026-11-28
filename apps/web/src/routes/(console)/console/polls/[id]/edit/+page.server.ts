@@ -41,6 +41,8 @@ export const load: PageServerLoad = ({ locals, params, parent }) => {
       translations: poll.translations,
       ...(poll.disclosure ? { disclosure: poll.disclosure } : {}),
       emailReceipt: poll.emailReceipt,
+      collect: poll.collect,
+      referenceLabel: poll.referenceLabel,
       showVoted: poll.showVoted,
     },
   };

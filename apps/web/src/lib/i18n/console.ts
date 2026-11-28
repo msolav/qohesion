@@ -46,7 +46,7 @@ export interface ConsoleMessages {
     readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
     readonly languagesTitle: string; readonly languagesHelp: string; readonly defaultLanguage: string; readonly missingLanguage: string;
-    readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string;
+    readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string; readonly dateTime: { readonly date: string; readonly time: string; readonly tomorrow: string; readonly days3: string; readonly week: string; readonly weeks2: string; readonly none: string };
     readonly rulesTitle: string; readonly rulesHelp: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleThresholdNone: string; readonly ruleThresholdMajority: string; readonly ruleThresholdPercent: string; readonly ruleNeedsReadable: string; readonly members: string; readonly percent: string;
     readonly anonymityTitle: string; readonly anonymityNames: Names<"anonymous" | "voters" | "named">; readonly reminderHidden: string;
     readonly changeTitle: string; readonly changeLabel: string; readonly changeHelp: string; readonly changeNeedsSealed: string; readonly timeZone: string;
@@ -137,7 +137,7 @@ export interface ConsoleMessages {
     readonly factSealed: string; readonly factPlain: string; readonly ballotSealed: string; readonly ballotPlain: string;
     readonly sharesTitle: string; readonly sharesText: string; readonly shareFor: string;
     readonly keyTitle: string; readonly keyText: string; readonly keyWarn: string; readonly keyDone: string;
-    readonly riskTitle: string; readonly riskText: string;
+    readonly riskTitle: string; readonly riskText: string; readonly riskTextShared: string;
     readonly closeKeyLabel: string; readonly closeKeyHelp: string; readonly countTitle: string; readonly countText: string; readonly countSubmit: string;
     readonly pendingTitle: string; readonly pendingText: string; readonly protection: string;
   };
@@ -227,11 +227,11 @@ const en: ConsoleMessages = {
     pagedHelp: "An introduction, then the rules with an acknowledgement, then the question, then a check before sending. Turn it off to show everything on one page.",
     keyModeTitle: "Who can open the ballots",
     keyOne: "One counting key",
-    keyOneText: "One person holds the key and opens the ballots at the close.",
+    keyOneText: "The administrator who opens the poll is shown the key once, and enters the key at the close to open the ballots.",
     keyShared: "Several administrators together",
-    keySharedText: "The counting key is cut into shares, one for each administrator when the poll opens. A set number of them must act together to open the ballots.",
+    keySharedText: "The key is cut into one share for each administrator. A set number of shares must be entered together at the close to open the ballots.",
     keyThresholdLabel: "Shares needed to open the ballots",
-    keyNeedsAdmins: "This needs at least two administrator keys. Add one under Organization.",
+    keyNeedsAdmins: "Needs at least two administrator keys. Add one under Organization.",
     keyNeedsSealed: "Only encrypted ballots have a counting key.",
     presetTitle: "Start from a preset",
     presetHelp: "Pick a template. Settings of the Results step follow the template until customized.",
@@ -259,7 +259,7 @@ const en: ConsoleMessages = {
     presetCustomText: "Every setting of the Results step is chosen one by one. No option is preselected.",
     emailReceiptLabel: "Receipt by email",
     emailReceiptHelp: "After voting, a participant can ask for the receipt code to be sent to the address that received the link. The message holds the code and the page that checks it, and no voting link. Copying and saving the code are always offered.",
-    emailReceiptHelpSecret: "Off by default for a secret poll. The email ties the participant's address to the receipt code, at the email provider and in the inbox. If the poll also publishes each ballot beside its code, whoever reads the email can find the answer.",
+    emailReceiptHelpSecret: "The receipt code is sent to the address of the participant only. Where ballots are published beside their codes, anyone who reads that email can find the answer.",
     publishLabel: "Published count",
     publishHelp: "After the poll closes, everyone who sees the results also sees the list of ballots, each with its receipt code and its choice. For encrypted ballots the counting key is published too. Anyone can then add the lines up and find their own ballot.",
     lockCancelLabel: "No cancelling",
@@ -279,6 +279,7 @@ const en: ConsoleMessages = {
     openDate: "On a date and time",
     openAt: "Opening date and time",
     closeAt: "Closing date and time",
+    dateTime: { date: "Date", time: "Time", tomorrow: "Tomorrow", days3: "In 3 days", week: "In 1 week", weeks2: "In 2 weeks", none: "No date chosen" },
     closeHelp: "Administrators can always close the poll earlier. Times are in the time zone of the organization: {tz}.",
     rulesTitle: "Close earlier when",
     rulesHelp: "Optional. The poll closes as soon as one of these holds, and the ballot says so.",
@@ -710,7 +711,8 @@ const en: ConsoleMessages = {
     keyText: "This key opens the sealed ballots when the poll closes. It is shown once and the server does not keep it. Without it the ballots cannot be counted. Store it where only administrators can read it.",
     keyWarn: "Save this key before leaving the page.",
     riskTitle: "Risk of encryption",
-    riskText: "The counting key is the only way to read encrypted ballots. It is shown once, when the poll opens, and the service does not keep it. If the key is lost, or if fewer than the required number of shares remain, the ballots can never be counted and the poll has no result. No one, including the service, can recover it. The key must be kept where it survives the loss of a device, and by more than one person when shares are used. Encryption also does not protect a ballot while it is being received: the server sees the answer at that moment, then encrypts it.",
+    riskText: "The counting key is the only way to read encrypted ballots. The key is shown once, when the poll opens, and the service keeps no copy. If the key is lost, the ballots can never be counted and the poll has no result. No one, including the service, can recover the key. The key must be stored where it survives the loss of a device. Encryption does not protect a ballot while the ballot is received: the server sees the answer at that moment, then encrypts the answer.",
+    riskTextShared: "The counting key is the only way to read encrypted ballots. The key is cut into one share for each administrator, and {k} of {n} shares must be entered together to open the ballots. Shares are shown once, when the poll opens, and the service keeps none. A lost share counts against the threshold: with fewer than {k} shares left, the ballots can never be counted and the poll has no result. No one, including the service, can recover a share. Each share must be stored by its administrator where it survives the loss of a device. Encryption does not protect a ballot while the ballot is received: the server sees the answer at that moment, then encrypts the answer.",
     keyDone: "I have saved the counting key",
     closeKeyLabel: "Counting key or shares",
     closeKeyHelp: "Needed to close a sealed poll. Paste the counting key, or the shares of enough administrators, one per line. The server reads the ballots, counts them, and does not keep the key.",
@@ -894,11 +896,11 @@ const fr: ConsoleMessages = {
     pagedHelp: "Une introduction, puis les règles avec une reconnaissance, puis la question, puis une vérification avant l’envoi. Désactiver pour tout afficher sur une seule page.",
     keyModeTitle: "Qui peut ouvrir les bulletins",
     keyOne: "Une seule clé de dépouillement",
-    keyOneText: "Une personne détient la clé et ouvre les bulletins à la fermeture.",
+    keyOneText: "L’administrateur qui ouvre le scrutin reçoit la clé, affichée une seule fois, et saisit la clé à la fermeture pour ouvrir les bulletins.",
     keyShared: "Plusieurs administrateurs ensemble",
-    keySharedText: "La clé de dépouillement est coupée en parts, une pour chaque administrateur à l’ouverture du scrutin. Un nombre fixé d’entre eux doivent agir ensemble pour ouvrir les bulletins.",
+    keySharedText: "La clé est coupée en une part pour chaque administrateur. Un nombre fixé de parts doit être saisi ensemble à la fermeture pour ouvrir les bulletins.",
     keyThresholdLabel: "Parts nécessaires pour ouvrir les bulletins",
-    keyNeedsAdmins: "Il faut au moins deux clés d’administration. En ajouter une sous Organisation.",
+    keyNeedsAdmins: "Nécessite au moins deux clés d’administration. En ajouter une sous Organisation.",
     keyNeedsSealed: "Seuls les bulletins chiffrés ont une clé de dépouillement.",
     presetTitle: "Partir d’un préréglage",
     presetHelp: "Choisir un modèle. Les paramètres de l’étape Résultats suivent le modèle jusqu’à personnalisation.",
@@ -926,7 +928,7 @@ const fr: ConsoleMessages = {
     presetCustomText: "Chaque paramètre de l’étape Résultats est choisi un à un. Aucune option n’est présélectionnée.",
     emailReceiptLabel: "Reçu par courriel",
     emailReceiptHelp: "Après le vote, la personne peut demander que le code de reçu soit envoyé à l’adresse qui a reçu le lien. Le message contient le code et la page qui le vérifie, et aucun lien de vote. La copie et l’enregistrement du code sont toujours offerts.",
-    emailReceiptHelpSecret: "Désactivé par défaut pour un scrutin secret. Le courriel associe l’adresse de la personne au code de reçu, chez le fournisseur de courriel et dans la boîte de réception. Si le scrutin publie aussi chaque bulletin à côté de son code, la personne qui lit le courriel peut retrouver la réponse.",
+    emailReceiptHelpSecret: "Le code de reçu est envoyé à l’adresse du participant seulement. Lorsque les bulletins sont publiés à côté de leur code, toute personne qui lit ce courriel peut retrouver la réponse.",
     publishLabel: "Décompte publié",
     publishHelp: "Après la fermeture du scrutin, toutes les personnes qui voient les résultats voient aussi la liste des bulletins, chacun avec son code de reçu et son choix. Pour des bulletins chiffrés, la clé de dépouillement est publiée aussi. Chacun peut alors additionner les lignes et retrouver son bulletin.",
     lockCancelLabel: "Aucune annulation",
@@ -946,6 +948,7 @@ const fr: ConsoleMessages = {
     openDate: "À une date et une heure",
     openAt: "Date et heure d’ouverture",
     closeAt: "Date et heure de fermeture",
+    dateTime: { date: "Date", time: "Heure", tomorrow: "Demain", days3: "Dans 3 jours", week: "Dans 1 semaine", weeks2: "Dans 2 semaines", none: "Aucune date choisie" },
     closeHelp: "L’administration peut toujours fermer le scrutin plus tôt. Les heures sont dans le fuseau horaire de l’organisation: {tz}.",
     rulesTitle: "Fermer plus tôt quand",
     rulesHelp: "Facultatif. Le scrutin se ferme dès qu’une de ces conditions est remplie, et le bulletin l’indique.",
@@ -1377,7 +1380,8 @@ const fr: ConsoleMessages = {
     keyText: "Cette clé ouvre les bulletins chiffrés à la fermeture du scrutin. Elle est affichée une seule fois et le serveur ne la conserve pas. Sans elle, les bulletins ne peuvent pas être comptés. La ranger à un endroit que seule l’administration peut lire.",
     keyWarn: "Conserver cette clé avant de quitter la page.",
     riskTitle: "Risque du chiffrement",
-    riskText: "La clé de dépouillement est le seul moyen de lire les bulletins chiffrés. Elle est affichée une seule fois, à l’ouverture du vote, et le service ne la conserve pas. Si la clé est perdue, ou si le nombre de parts requis n’est plus réuni, les bulletins ne pourront jamais être comptés et le scrutin n’aura aucun résultat. Personne, y compris le service, ne peut la récupérer. La clé doit être conservée là où elle survit à la perte d’un appareil, et par plus d’une personne lorsque des parts sont utilisées. Le chiffrement ne protège pas non plus un bulletin pendant sa réception: le serveur voit la réponse à ce moment, puis la chiffre.",
+    riskText: "La clé de dépouillement est le seul moyen de lire les bulletins chiffrés. La clé est affichée une seule fois, à l’ouverture du vote, et le service n’en garde aucune copie. Si la clé est perdue, les bulletins ne pourront jamais être comptés et le scrutin n’aura aucun résultat. Personne, y compris le service, ne peut récupérer la clé. La clé doit être conservée là où elle survit à la perte d’un appareil. Le chiffrement ne protège pas un bulletin pendant la réception: le serveur voit la réponse à ce moment, puis chiffre la réponse.",
+    riskTextShared: "La clé de dépouillement est le seul moyen de lire les bulletins chiffrés. La clé est découpée en une part pour chaque administrateur, et {k} parts sur {n} doivent être saisies ensemble pour ouvrir les bulletins. Les parts sont affichées une seule fois, à l’ouverture du vote, et le service n’en garde aucune. Une part perdue compte contre le seuil: avec moins de {k} parts restantes, les bulletins ne pourront jamais être comptés et le scrutin n’aura aucun résultat. Personne, y compris le service, ne peut récupérer une part. Chaque part doit être conservée par son administrateur là où elle survit à la perte d’un appareil. Le chiffrement ne protège pas un bulletin pendant la réception: le serveur voit la réponse à ce moment, puis chiffre la réponse.",
     keyDone: "La clé de dépouillement est conservée",
     closeKeyLabel: "Clé ou parts de dépouillement",
     closeKeyHelp: "Nécessaire pour fermer un scrutin chiffré. Coller la clé de dépouillement, ou les parts d’assez d’administrateurs, une par ligne. Le serveur lit les bulletins, les compte, et ne conserve pas la clé.",

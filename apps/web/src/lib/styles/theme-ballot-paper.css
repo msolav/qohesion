@@ -61,4 +61,3 @@
 [data-theme="ballot-paper"] .prop[data-tone="strict"]{border-top:3px double var(--ink)}
 [data-theme="ballot-paper"] .prop:first-child[data-tone]{border-top:0}
 [data-theme="ballot-paper"] .prop__icon,[data-theme="ballot-paper"] .prop__badge{border-radius:0}
-[data-theme="ballot-paper"] .prop[data-tone="open"] .prop__icon{border-radius:0}

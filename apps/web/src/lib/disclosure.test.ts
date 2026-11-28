@@ -64,8 +64,8 @@ describe("signatoryLabel", () => {
 
 describe("readDisclosure", () => {
   it("reads a stored value and falls back to the default for anything else", () => {
-    expect(readDisclosure('{"name":"masked","email":"none"}')).toEqual({ name: "masked", email: "none" });
-    expect(readDisclosure({ name: "full", email: "full" })).toEqual({ name: "full", email: "full" });
+    expect(readDisclosure('{"name":"masked","email":"none"}')).toEqual({ name: "masked", email: "none", reference: "none" });
+    expect(readDisclosure({ name: "full", email: "full", reference: "masked" })).toEqual({ name: "full", email: "full", reference: "masked" });
     expect(readDisclosure("not json")).toEqual(DEFAULT_DISCLOSURE);
     expect(readDisclosure({ name: "everything", email: 3 })).toEqual(DEFAULT_DISCLOSURE);
     expect(readDisclosure(null)).toEqual(DEFAULT_DISCLOSURE);

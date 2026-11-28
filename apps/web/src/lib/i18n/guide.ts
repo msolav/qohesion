@@ -65,8 +65,8 @@ export interface GuideMessages {
     readonly listText: string;
     readonly listNothing: string;
     readonly listAdmins: string;
-    readonly publication: { readonly badge: string; readonly text: string };
-    readonly cancel: { readonly badge: string; readonly text: string };
+    readonly publication: { readonly badge: string; readonly text: string; readonly off: { readonly badge: string; readonly text: string } };
+    readonly cancel: { readonly badge: string; readonly text: string; readonly off: { readonly badge: string; readonly text: string } };
   };
   readonly disclosure: {
     readonly title: string;
@@ -175,8 +175,8 @@ const en: GuideMessages = {
     listText: "The list of answers shows {what}. Administrators see the full entry.",
     listNothing: "The list of answers is not shown to participants. Only the totals are. Administrators see the full entry.",
     listAdmins: "Administrators see the full entry.",
-    publication: { badge: "Count published", text: "After the close, everyone who sees the results also sees each ballot with its receipt code and its answer, so that the total can be checked." },
-    cancel: { badge: "No cancelling after the first ballot", text: "Once a ballot has been cast, the poll runs to its end. The poll cannot be cancelled, so a result cannot be withdrawn." },
+    publication: { badge: "Count published", text: "After the close, everyone who sees the results also sees each ballot with its receipt code and its answer, so that the total can be checked.", off: { badge: "Count not published", text: "No list of ballots is published after the count. Only the totals are shown, as set under Results." } },
+    cancel: { badge: "No cancelling after the first ballot", text: "Once a ballot has been cast, the poll runs to its end. The poll cannot be cancelled, so a result cannot be withdrawn.", off: { badge: "Cancelling allowed", text: "An administrator can cancel the poll, including after ballots are cast. The cancellation is recorded with the number of ballots cast." } },
   },
   disclosure: {
     title: "Identity",
@@ -316,7 +316,7 @@ const en: GuideMessages = {
         limits: [
           "The ledger shows that nothing recorded was changed afterwards. It does not show that the answer was recorded as the participant gave it.",
           "A participant sees their own answer next to their code only if the poll publishes its count.",
-          "A receipt sent by email ties the address to the code in the inbox and at the email provider. Where a secret poll publishes each ballot beside its code, that email lets whoever reads it find the answer. The setting is off by default for a secret poll.",
+          "A receipt sent by email ties the address to the code in the inbox and at the email provider. Where a secret poll publishes each ballot beside its code, that email lets whoever reads it find the answer.",
         ],
       },
       publication: {
@@ -554,8 +554,8 @@ const fr: GuideMessages = {
     listText: "La liste des réponses affiche {what}. Les administrateurs voient l’entrée complète.",
     listNothing: "La liste des réponses n’est pas affichée aux participants, seulement les totaux. Les administrateurs voient l’entrée complète.",
     listAdmins: "Les administrateurs voient l’entrée complète.",
-    publication: { badge: "Décompte publié", text: "Après la fermeture, tous ceux qui voient les résultats voient aussi chaque bulletin avec son code de reçu et sa réponse, ce qui permet de vérifier le total." },
-    cancel: { badge: "Aucune annulation après le premier bulletin", text: "Dès qu’un bulletin a été déposé, le vote va à son terme. Le scrutin ne peut pas être annulé, de sorte qu’un résultat ne peut pas être retiré." },
+    publication: { badge: "Décompte publié", text: "Après la fermeture, tous ceux qui voient les résultats voient aussi chaque bulletin avec son code de reçu et sa réponse, ce qui permet de vérifier le total.", off: { badge: "Décompte non publié", text: "Aucune liste de bulletins n’est publiée après le décompte. Seuls les totaux sont affichés, selon les réglages de l’étape Résultats." } },
+    cancel: { badge: "Aucune annulation après le premier bulletin", text: "Dès qu’un bulletin a été déposé, le vote va à son terme. Le scrutin ne peut pas être annulé, de sorte qu’un résultat ne peut pas être retiré.", off: { badge: "Annulation permise", text: "L’administration peut annuler le scrutin, y compris après le dépôt de bulletins. L’annulation est consignée avec le nombre de bulletins déposés." } },
   },
   disclosure: {
     title: "Identité",
@@ -695,7 +695,7 @@ const fr: GuideMessages = {
         limits: [
           "Le registre montre que rien de ce qui a été enregistré n’a été modifié ensuite. Il ne montre pas que la réponse a été enregistrée telle que le participant l’a donnée.",
           "Un participant ne voit sa propre réponse à côté de son code que si le vote publie son décompte.",
-          "Un reçu envoyé par courriel associe l’adresse au code, dans la boîte de réception et chez le fournisseur de courriel. Lorsqu’un scrutin secret publie chaque bulletin à côté de son code, ce courriel permet à la personne qui le lit de retrouver la réponse. Le réglage est désactivé par défaut pour un scrutin secret.",
+          "Un reçu envoyé par courriel associe l’adresse au code, dans la boîte de réception et chez le fournisseur de courriel. Lorsqu’un scrutin secret publie chaque bulletin à côté de son code, ce courriel permet à la personne qui le lit de retrouver la réponse.",
         ],
       },
       publication: {

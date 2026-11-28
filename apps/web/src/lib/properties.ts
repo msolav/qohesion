@@ -109,8 +109,8 @@ export function propertiesOf(locale: Locale, p: PropertyInput): Property[] {
 
   add("results", "eye", "neutral", [m.form.timingNames.title[p.timing], m.form.audienceNames.title[p.audience]], [g.props.texts.results[p.timing][p.audience]], { page: "how", anchor: "receipt" });
 
-  if (p.publishCount) add("publication", "hash", "open", [g.props.publication.badge], [g.props.publication.text], { page: "how", anchor: "publication" });
-  if (p.lockCancel) add("cancel", "flag", "strict", [g.props.cancel.badge], [g.props.cancel.text], null);
+  add("publication", "hash", p.publishCount ? "open" : "neutral", [p.publishCount ? g.props.publication.badge : g.props.publication.off.badge], [p.publishCount ? g.props.publication.text : g.props.publication.off.text], { page: "how", anchor: "publication" });
+  add("cancel", "flag", p.lockCancel ? "strict" : "neutral", [p.lockCancel ? g.props.cancel.badge : g.props.cancel.off.badge], [p.lockCancel ? g.props.cancel.text : g.props.cancel.off.text], null);
   if (p.approval) add("approval", "approved", "private", [p.approval.badge], p.approval.lines, { page: "how", anchor: "approval" satisfies TopicId });
   return out;
 }

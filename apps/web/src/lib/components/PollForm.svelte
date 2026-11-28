@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import DateTimeField from "#lib/components/DateTimeField.svelte";
   import BallotView from "#lib/components/BallotView.svelte";
   import GuideLink from "#lib/components/GuideLink.svelte";
   import PropertyList from "#lib/components/PropertyList.svelte";
@@ -644,16 +645,15 @@
           <label class="cx-choice has-ico"><input type="radio" name="encryption" value="none" checked={chosen.encryption && encryption === "none"} onchange={() => { encryption = "none"; chosen.encryption = true; }} /><span><i class="ico"><UiIcon name="unlock" /></i><b>{m.seal.none.title}</b><small>{m.seal.none.text}</small></span></label>
         </div>
         {#if timing === "live"}<p class="cx-help" role="status">{m.seal.liveNote}</p>{/if}
-        {#if encryption === "sealed"}<div class="cx-notice warn gap" role="note"><div><p><b>{m.seal.riskTitle}.</b> {m.seal.riskText}</p><p><GuideLink {locale} page="how" anchor="counting-key" label={g.props.learn} /></p></div></div>{/if}
+        {#if encryption === "sealed"}<div class="cx-notice warn gap" role="note"><div><p><b>{m.seal.riskTitle}.</b> {keyMode === "shared" ? fill(m.seal.riskTextShared, { k: keyThreshold, n: Math.max(administrators, Number(keyThreshold) || 2) }) : m.seal.riskText}</p><p><GuideLink {locale} page="how" anchor="counting-key" label={g.props.learn} /></p></div></div>{/if}
       </fieldset>
       {#if encryption === "sealed"}
         <fieldset class="cx-field">
           <legend class="cx-label">{m.form.keyModeTitle}</legend>
           <div class="cx-choices cols-2">
             <label class="cx-choice has-ico"><input type="radio" name="key_mode" value="one" bind:group={keyMode} /><span><i class="ico"><UiIcon name="key" /></i><b>{m.form.keyOne}</b><small>{m.form.keyOneText}</small></span></label>
-            <label class="cx-choice has-ico"><input type="radio" name="key_mode" value="shared" bind:group={keyMode} disabled={administrators < 2} /><span><i class="ico"><UiIcon name="users" /></i><b>{m.form.keyShared}</b><small>{m.form.keySharedText}</small></span></label>
+            <label class="cx-choice has-ico"><input type="radio" name="key_mode" value="shared" bind:group={keyMode} disabled={administrators < 2} /><span><i class="ico"><UiIcon name="users" /></i><b>{m.form.keyShared}</b><small>{m.form.keySharedText}</small>{#if administrators < 2}<small class="cx-need">{m.form.keyNeedsAdmins}</small>{/if}</span></label>
           </div>
-          {#if administrators < 2}<p class="cx-help" role="status">{m.form.keyNeedsAdmins}</p>{/if}
           {#if keyMode === "shared"}
             <div class="bld-rule"><label for="key_threshold">{m.form.keyThresholdLabel}</label><input id="key_threshold" name="key_threshold" type="number" min="2" max={Math.max(2, administrators)} step="1" inputmode="numeric" bind:value={keyThreshold} /><span class="unit">/ {administrators}</span></div>
           {/if}
@@ -678,16 +678,12 @@
           <label class="cx-choice has-ico"><input type="radio" name="opens_mode" value="date" bind:group={opensMode} /><span><i class="ico"><UiIcon name="clock" /></i><b>{m.form.openDate}</b></span></label>
         </div>
         {#if opensMode === "date"}
-          <div class="cx-field">
-            <label for="opens_at">{m.form.openAt}</label>
-            <input id="opens_at" name="opens_at" type="datetime-local" bind:value={opensAt} />
-          </div>
+          <DateTimeField bind:value={opensAt} {zone} locale={editing} name="opens_at" id="opens_at" label={m.form.openAt} defaultTime="08:00" texts={m.form.dateTime} />
         {/if}
       </fieldset>
 
       <div class="cx-field">
-        <label for="closes_at">{m.form.closeAt}</label>
-        <input id="closes_at" name="closes_at" type="datetime-local" bind:value={closesAt} required aria-describedby="closes-help" />
+        <DateTimeField bind:value={closesAt} {zone} locale={editing} name="closes_at" id="closes_at" label={m.form.closeAt} required describedby="closes-help" texts={m.form.dateTime} />
         <p class="cx-help" id="closes-help">{fill(m.form.closeHelp, { tz: zone })}</p>
       </div>
 
