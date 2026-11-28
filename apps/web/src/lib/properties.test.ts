@@ -27,7 +27,7 @@ describe("propertiesOf", () => {
   it("gives every property an icon, a label, a badge and a description, in both languages", () => {
     for (const locale of ["fr", "en"] as const) {
       const rows = propertiesOf(locale, { ...base, anonymity: "named", disclosure: { name: "masked", email: "masked" }, publishCount: true, lockCancel: true, allowChange: true, approval: { badge: "Approved", lines: ["Approved"] } });
-      expect(rows.map((r) => r.id)).toEqual(["method", "closing", "roll", "ballot", "list", "seal", "change", "receipt", "results", "publication", "cancel", "approval"]);
+      expect(rows.map((r) => r.id)).toEqual(["method", "closing", "roll", "ballot", "list", "seal", "change", "receipt", "identity", "results", "publication", "cancel", "approval"]);
       for (const r of rows) {
         expect(r.icon, r.id).not.toBe("");
         expect(r.label, r.id).not.toBe("");
@@ -35,6 +35,11 @@ describe("propertiesOf", () => {
         expect(r.text.length, r.id).toBeGreaterThan(0);
       }
     }
+  });
+  it("says what participants are asked to enter, and says so when nothing is", () => {
+    expect(propertiesOf("en", base).find((r) => r.id === "identity")?.badges).toEqual(["Nothing asked"]);
+    const asked = propertiesOf("en", { ...base, anonymity: "named", collect: { name: "required", reference: "optional" }, referenceLabel: "Unit" }).find((r) => r.id === "identity");
+    expect(asked?.badges).toEqual(["Name (required)", "Unit (optional)"]);
   });
   it("says whether the receipt can be emailed, and warns where that ties an address to a published ballot", () => {
     const off = propertiesOf("en", base).find((r) => r.id === "receipt");

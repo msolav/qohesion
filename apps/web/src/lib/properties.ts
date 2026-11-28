@@ -8,7 +8,7 @@
  */
 
 import type { CloseRules } from "./close-rules.js";
-import { signatoryLabel, showsNobody, type Disclosure } from "./disclosure.js";
+import { asksAnything, signatoryLabel, showsNobody, type Collect, type Disclosure } from "./disclosure.js";
 import { consoleMessages, fill, rulesSentence } from "./i18n/console.js";
 import { guideMessages, type PropertyId, type TopicId } from "./i18n/guide.js";
 import type { Locale } from "./i18n/negotiate.js";
@@ -45,6 +45,9 @@ export interface PropertyInput {
   /** Whether the roll shows who has voted. Always true for a named poll. */
   readonly showVoted: boolean;
   readonly disclosure: Disclosure | null;
+  /** What participants are asked to enter when voting. Absent: nothing. */
+  readonly collect?: Collect;
+  readonly referenceLabel?: string;
   readonly rules: CloseRules;
   /** The closing moment, already written for the reader, or null when there is none. */
   readonly closes: string | null;
@@ -106,6 +109,18 @@ export function propertiesOf(locale: Locale, p: PropertyInput): Property[] {
 
   const rm = g.props.receiptMail;
   add("receipt", "mail", p.emailReceipt ? "open" : "neutral", [p.emailReceipt ? rm.on : rm.off], [p.emailReceipt ? rm.onText : rm.offText, p.emailReceipt && !named && p.publishCount ? rm.tiesText : ""], { page: "how", anchor: "receipt" });
+
+  const collect = p.collect ?? { name: "no", reference: "no" };
+  if (asksAnything(collect)) {
+    const id = g.props.identity;
+    const badges = [
+      ...(collect.name === "no" ? [] : [`${m.form.collectName} (${collect.name === "required" ? id.required : id.optional})`]),
+      ...(collect.reference === "no" ? [] : [`${p.referenceLabel?.trim() || id.defaultReference} (${collect.reference === "required" ? id.required : id.optional})`]),
+    ];
+    add("identity", "doc", "open", badges, [id.onText, named ? id.shown : ""], null);
+  } else {
+    add("identity", "doc", "neutral", [g.props.identity.off.badge], [g.props.identity.off.text], null);
+  }
 
   add("results", "eye", "neutral", [m.form.timingNames.title[p.timing], m.form.audienceNames.title[p.audience]], [g.props.texts.results[p.timing][p.audience]], { page: "how", anchor: "receipt" });
 

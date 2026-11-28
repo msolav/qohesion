@@ -438,6 +438,37 @@ describe("cancelling and named answers", () => {
     expect(read("none", "none")).toEqual({ voter: null, admin: ["Marie Tremblay <marie@example.org>", "jean@example.org"] });
   });
 
+  it("asks voters for a name and a reference, keeps what they give, and shows it as the poll sets", () => {
+    const roll = "marie@example.org\njean@example.org";
+    const { poll, tokens } = openedPoll({ anonymity: "named", timing: "live", audience: "anyone", disclosure: { name: "full", email: "none", reference: "masked" }, collect: { name: "required", reference: "optional" }, referenceLabel: "Unit" }, roll);
+    // A required piece of information is checked before anything is written: the ballot is not recorded without it.
+    expect(service.castBallot(tokens[0] ?? "", "for", { reference: "B-204" })).toEqual({ ok: false, error: "identity_name_required" });
+    expect(service.roll(owner, poll.id).map((e) => e.status)).toEqual(["listed", "listed"]);
+    must(service.castBallot(tokens[0] ?? "", "for", { name: "  Marie Tremblay ", reference: "B-204" }));
+    must(service.castBallot(tokens[1] ?? "", "against", { name: "Jean Roy" }));
+    expect(service.roll(owner, poll.id).map((e) => [e.name, e.reference])).toEqual([["Marie Tremblay", "B-204"], ["Jean Roy", null]]);
+    // The list shows the given name and the reference as set; administrators read everything.
+    expect(service.resultsFor(poll.id, "voter")?.answers?.map((a) => a.who)).toEqual(["Marie Tremblay · B***4", "Jean Roy"]);
+    expect(service.resultsFor(poll.id, "administrator")?.answers?.map((a) => a.who)).toEqual(["Marie Tremblay <marie@example.org> · B-204", "Jean Roy <jean@example.org>"]);
+  });
+
+  it("keeps nothing that was not asked, and refuses to ask an anonymous poll for an identity", () => {
+    const { poll, tokens } = openedPoll({ anonymity: "named", timing: "live", collect: { name: "no", reference: "optional" } });
+    must(service.castBallot(tokens[0] ?? "", "for", { name: "Marie", reference: "B-204" }));
+    expect(service.roll(owner, poll.id).map((e) => [e.name, e.reference])).toEqual([[null, "B-204"], [null, null], [null, null]]);
+    expect(service.createPoll(owner, input({ anonymity: "secret", showVoted: false, collect: { name: "optional", reference: "no" } }))).toEqual({ ok: false, error: "collect_needs_identity" });
+    expect(service.createPoll(owner, input({ anonymity: "named", collect: { name: "optional", reference: "optional" }, referenceLabel: "x".repeat(41) }))).toEqual({ ok: false, error: "reference_label_too_long" });
+  });
+
+  it("leaves the digest of a poll alone when nothing is asked", () => {
+    const base = must(service.createPoll(owner, input({ anonymity: "named" })));
+    const asked = must(service.createPoll(owner, input({ anonymity: "named", collect: { name: "optional", reference: "no" } })));
+    const digest = (id: string) => service.pollApprovalState(owner, id).digest;
+    expect(digest(base.id)).not.toBe(digest(asked.id));
+    const same = must(service.createPoll(owner, input({ anonymity: "named", collect: { name: "no", reference: "no" } })));
+    expect(digest(same.id)).toBe(digest(base.id));
+  });
+
   it("keeps a name given with an address, and gives one to an entry that had none", () => {
     const poll = must(service.createPoll(owner, input({ anonymity: "named" })));
     must(service.addToRoll(owner, poll.id, '"Tremblay, Marie" <marie@example.org>, jean@example.org'));

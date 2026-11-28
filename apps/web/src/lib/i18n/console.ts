@@ -47,7 +47,7 @@ export interface ConsoleMessages {
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
     readonly languagesTitle: string; readonly languagesHelp: string; readonly defaultLanguage: string; readonly missingLanguage: string;
     readonly opening: string; readonly openManual: string; readonly openDate: string; readonly openAt: string; readonly closeAt: string; readonly closeHelp: string; readonly dateTime: { readonly date: string; readonly time: string; readonly tomorrow: string; readonly days3: string; readonly week: string; readonly weeks2: string; readonly none: string };
-    readonly rulesTitle: string; readonly rulesHelp: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleThresholdNone: string; readonly ruleThresholdMajority: string; readonly ruleThresholdPercent: string; readonly ruleNeedsReadable: string; readonly members: string; readonly percent: string;
+    readonly rulesTitle: string; readonly rulesHelp: string; readonly or: string; readonly collectTitle: string; readonly collectHelp: string; readonly collectName: string; readonly collectReference: string; readonly askNo: string; readonly askOptional: string; readonly askRequired: string; readonly referenceLabelField: string; readonly referenceLabelHelp: string; readonly referenceLabelPlaceholder: string; readonly collectPrivate: string; readonly collectShown: string; readonly turnOffEncryption: string; readonly turnOnEncryption: string; readonly ruleVotes: string; readonly ruleTurnout: string; readonly ruleThresholdNone: string; readonly ruleThresholdMajority: string; readonly ruleThresholdPercent: string; readonly ruleNeedsReadable: string; readonly members: string; readonly percent: string;
     readonly anonymityTitle: string; readonly anonymityNames: Names<"anonymous" | "voters" | "named">; readonly reminderHidden: string;
     readonly changeTitle: string; readonly changeLabel: string; readonly changeHelp: string; readonly changeNeedsSealed: string; readonly timeZone: string;
     readonly preview: string; readonly locked: string; readonly create: string; readonly smallRoll: string;
@@ -85,6 +85,7 @@ export interface ConsoleMessages {
     readonly newKeyTitle: string; readonly newKeyText: string; readonly danger: string; readonly dangerText: string; readonly confirmName: string; readonly deleteSpace: string;
   };
   readonly voter: {
+    readonly whoTitle: string; readonly whoHelp: string; readonly whoName: string; readonly whoReference: string; readonly whoOptional: string;
     readonly lede: string; readonly untitled: string; readonly facts: string; readonly closes: string; readonly noClose: string; readonly roll: string; readonly rollValue: string; readonly rollOne: string; readonly rollNote: string; readonly results: string;
     readonly cancelledDetail: string; readonly cancelledDetailNone: string; readonly doneChange: string;
     readonly questionOf: string; readonly summaryTitle: string; readonly changeAnswer: string; readonly doneMany: string; readonly rollFixed: string; readonly rollLate: string; readonly stepOf: string; readonly start: string; readonly rulesTitle: string; readonly agree: string; readonly next: string; readonly back: string; readonly confirmTitle: string; readonly confirmChoice: string; readonly confirmFinal: string; readonly confirmSubmit: string; readonly showAll: string; readonly pickFirst: string; readonly doneDeadline: string; readonly addToCalendar: string; readonly calendarSummary: string; readonly calendarAlarm: string; readonly calendarNote: string; readonly introClose: string;
@@ -282,7 +283,22 @@ const en: ConsoleMessages = {
     dateTime: { date: "Date", time: "Time", tomorrow: "Tomorrow", days3: "In 3 days", week: "In 1 week", weeks2: "In 2 weeks", none: "No date chosen" },
     closeHelp: "Administrators can always close the poll earlier. Times are in the time zone of the organization: {tz}.",
     rulesTitle: "Close earlier when",
-    rulesHelp: "Optional. The poll closes as soon as one of these holds, and the ballot says so.",
+    rulesHelp: "Optional. The conditions are alternatives: any one of them closes the poll, whichever holds first, and the ballot says so. The closing date still applies.",
+    or: "or",
+    collectTitle: "Information from participants",
+    collectHelp: "Participants enter this information when voting, and the information is stored with the roll entry.",
+    collectName: "Name",
+    collectReference: "Reference",
+    askNo: "Not asked",
+    askOptional: "Optional",
+    askRequired: "Required",
+    referenceLabelField: "Label of the reference field",
+    referenceLabelHelp: "The label participants read, such as Unit or Member no.",
+    referenceLabelPlaceholder: "Unit",
+    collectPrivate: "Read by administrators only, on the roll.",
+    collectShown: "Shown in the list of signatories as set under Identity.",
+    turnOffEncryption: "Turn off encryption",
+    turnOnEncryption: "Turn on encryption",
     ruleVotes: "this many participants have voted",
     ruleTurnout: "this share of the roll has voted",
     ruleThresholdNone: "No threshold",
@@ -458,6 +474,11 @@ const en: ConsoleMessages = {
     deleteSpace: "Delete everything",
   },
   voter: {
+    whoTitle: "Information requested",
+    whoHelp: "This poll asks for the information below. The information is stored with the roll entry.",
+    whoName: "Name",
+    whoReference: "Reference",
+    whoOptional: "optional",
     lede: "Choose one option, then submit the ballot.", untitled: "Untitled poll",
     facts: "How this vote works",
     closes: "Closes",
@@ -738,6 +759,11 @@ const en: ConsoleMessages = {
     },
   },
   errors: {
+    identity_name_required: "Enter a name to vote.",
+    identity_reference_required: "Enter the requested reference to vote.",
+    identity_too_long: "The name and the reference are limited to 120 characters.",
+    collect_needs_identity: "A fully anonymous poll cannot ask for a name or a reference.",
+    reference_label_too_long: "The label of the reference is limited to 40 characters.",
     already_set_up: "This installation already has its organization. Sign in with its key.",
     name_locked: "The name cannot change while a poll is scheduled or open. Participants were told this name.",
     name_required: "Enter a name.",
@@ -951,7 +977,22 @@ const fr: ConsoleMessages = {
     dateTime: { date: "Date", time: "Heure", tomorrow: "Demain", days3: "Dans 3 jours", week: "Dans 1 semaine", weeks2: "Dans 2 semaines", none: "Aucune date choisie" },
     closeHelp: "L’administration peut toujours fermer le scrutin plus tôt. Les heures sont dans le fuseau horaire de l’organisation: {tz}.",
     rulesTitle: "Fermer plus tôt quand",
-    rulesHelp: "Facultatif. Le scrutin se ferme dès qu’une de ces conditions est remplie, et le bulletin l’indique.",
+    rulesHelp: "Facultatif. Les conditions sont des solutions de rechange: une seule suffit à fermer le scrutin, la première qui se réalise, et le bulletin l’indique. La date de fermeture s’applique toujours.",
+    or: "ou",
+    collectTitle: "Renseignements des participants",
+    collectHelp: "Les participants saisissent ces renseignements en votant, et les renseignements sont conservés avec l’entrée de la liste.",
+    collectName: "Nom",
+    collectReference: "Référence",
+    askNo: "Non demandé",
+    askOptional: "Facultatif",
+    askRequired: "Obligatoire",
+    referenceLabelField: "Libellé du champ de référence",
+    referenceLabelHelp: "Le libellé lu par les participants, par exemple Logement ou N° de membre.",
+    referenceLabelPlaceholder: "Logement",
+    collectPrivate: "Lus par l’administration seulement, dans la liste.",
+    collectShown: "Affichés dans la liste des signataires selon la section Identité.",
+    turnOffEncryption: "Désactiver le chiffrement",
+    turnOnEncryption: "Activer le chiffrement",
     ruleVotes: "ce nombre de participants ont voté",
     ruleTurnout: "cette part de la liste a voté",
     ruleThresholdNone: "Aucun seuil",
@@ -1127,6 +1168,11 @@ const fr: ConsoleMessages = {
     deleteSpace: "Tout supprimer",
   },
   voter: {
+    whoTitle: "Renseignements demandés",
+    whoHelp: "Ce scrutin demande les renseignements ci-dessous. Les renseignements sont conservés avec l’entrée de la liste.",
+    whoName: "Nom",
+    whoReference: "Référence",
+    whoOptional: "facultatif",
     lede: "Choisir une option, puis déposer le bulletin.", untitled: "Scrutin sans titre",
     facts: "Fonctionnement de ce vote",
     closes: "Fermeture",
@@ -1407,6 +1453,11 @@ const fr: ConsoleMessages = {
     },
   },
   errors: {
+    identity_name_required: "Saisir un nom pour voter.",
+    identity_reference_required: "Saisir la référence demandée pour voter.",
+    identity_too_long: "Le nom et la référence sont limités à 120 caractères.",
+    collect_needs_identity: "Un scrutin entièrement anonyme ne peut pas demander un nom ni une référence.",
+    reference_label_too_long: "Le libellé de la référence est limité à 40 caractères.",
     already_set_up: "Cette installation a déjà son organisation. Ouvrir une session avec sa clé.",
     name_locked: "Le nom ne peut pas changer tant qu’un scrutin est planifié ou ouvert. Les participants ont été informés de ce nom.",
     name_required: "Saisir un nom.",

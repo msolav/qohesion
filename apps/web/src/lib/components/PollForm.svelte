@@ -5,7 +5,7 @@
   import GuideLink from "#lib/components/GuideLink.svelte";
   import PropertyList from "#lib/components/PropertyList.svelte";
   import UiIcon from "#lib/components/UiIcon.svelte";
-  import { DEFAULT_DISCLOSURE, EMAIL_MODES, NAME_MODES, maskEmail, maskName, type EmailMode, type NameMode } from "#lib/disclosure.js";
+  import { ASK_MODES, DEFAULT_DISCLOSURE, EMAIL_MODES, NAME_MODES, REFERENCE_MODES, maskEmail, maskName, type Ask, type EmailMode, type NameMode, type ReferenceMode } from "#lib/disclosure.js";
   import { consoleMessages, errorText, fill } from "#lib/i18n/console.js";
   import { guideMessages } from "#lib/i18n/guide.js";
   import { learnHref, propertiesOf } from "#lib/properties.js";
@@ -113,6 +113,11 @@
   let keyThreshold = $state(String(Math.max(2, start?.keyThreshold ?? 2)));
   let discName = $state<NameMode>(start?.disclosure?.name ?? DEFAULT_DISCLOSURE.name);
   let discEmail = $state<EmailMode>(start?.disclosure?.email ?? DEFAULT_DISCLOSURE.email);
+  let discRef = $state<ReferenceMode>(start?.disclosure?.reference ?? "none");
+  /** What participants are asked to enter when voting. Never for a fully anonymous poll. */
+  let collectName = $state<Ask>(start?.collect?.name ?? "no");
+  let collectRef = $state<Ask>(start?.collect?.reference ?? "no");
+  let referenceLabel = $state(start?.referenceLabel ?? "");
   let publishCount = $state(start?.publishCount ?? false);
   // Email receipts follow the anonymity until the administrator sets them: on for a named poll, off for a secret one.
   let emailReceipt = $state(start?.emailReceipt ?? (start?.anonymity ?? "secret") === "named");
@@ -126,6 +131,7 @@
     showVoted = value !== "anonymous";
   }
   $effect(() => { if (!emailReceiptSet) emailReceipt = anonymity === "named"; });
+  $effect(() => { if (privacy === "anonymous") { collectName = "no"; collectRef = "no"; } });
   // Reminders go to those who have not voted, which a roll that does not show who has voted cannot tell.
   $effect(() => { if (privacy === "anonymous") autoReminder = "none"; });
   let lockCancel = $state(start?.lockCancel ?? false);
@@ -233,7 +239,9 @@
     lockCancel,
     emailReceipt,
     showVoted,
-    disclosure: { name: discName, email: discEmail },
+    disclosure: { name: discName, email: discEmail, reference: discRef },
+    collect: { name: collectName, reference: collectRef },
+    referenceLabel,
     rules: previewRules,
     timeZone: zone,
     closesAt: zonedToUtc(closesAt, zone),
@@ -259,7 +267,9 @@
       lockCancel,
       emailReceipt,
       showVoted,
-      disclosure: { name: discName, email: discEmail },
+      disclosure: { name: discName, email: discEmail, reference: discRef },
+    collect: { name: collectName, reference: collectRef },
+    referenceLabel,
       rules: previewRules,
       closes: closesAt ? closesAt.replace("T", " ") : null,
     }),
@@ -631,10 +641,42 @@
                 <label class="cx-choice"><input type="radio" name="disclosure_email" {value} bind:group={discEmail} /><span><b>{g.disclosure.emailModes[value].title}</b>{#if g.disclosure.emailModes[value].example}<small class="sample">{value === "masked" ? maskEmail(sampleAddress) : sampleAddress}</small>{/if}</span></label>
               {/each}
             </div>
+            {#if collectRef !== "no"}
+              <div role="radiogroup" aria-label={g.disclosure.referenceTitle}>
+                <p class="cx-sublabel">{referenceLabel.trim() || g.disclosure.referenceTitle}</p>
+                {#each REFERENCE_MODES as value (value)}
+                  <label class="cx-choice"><input type="radio" name="disclosure_reference" {value} bind:group={discRef} /><span><b>{g.disclosure.referenceModes[value].title}</b>{#if g.disclosure.referenceModes[value].example}<small class="sample">{g.disclosure.referenceModes[value].example}</small>{/if}</span></label>
+                {/each}
+              </div>
+            {/if}
           </div>
           <p class="cx-help">{g.disclosure.adminsFull} {g.disclosure.needsNames}</p>
-          {#if discName === "none" && discEmail === "none"}<p class="cx-help" role="status">{g.disclosure.nobody}</p>{/if}
+          {#if discName === "none" && discEmail === "none" && (discRef === "none" || collectRef === "no")}<p class="cx-help" role="status">{g.disclosure.nobody}</p>{/if}
           {#if audience === "anyone" && discEmail === "full"}<p class="cx-help warn" role="status">{g.disclosure.publicFull}</p>{/if}
+        </fieldset>
+      {/if}
+      {#if privacy !== "anonymous"}
+        <fieldset class="cx-field">
+          <legend class="cx-label">{m.form.collectTitle}</legend>
+          <p class="cx-help">{m.form.collectHelp}</p>
+          {#each [["name", m.form.collectName], ["reference", m.form.collectReference]] as const as [field, label] (field)}
+            <div role="radiogroup" aria-label={label}>
+              <p class="cx-sublabel">{label}</p>
+              <div class="cx-choices cols-3">
+                {#each ASK_MODES as value (value)}
+                  <label class="cx-choice"><input type="radio" name="collect_{field}" {value} checked={(field === "name" ? collectName : collectRef) === value} onchange={() => { if (field === "name") collectName = value; else collectRef = value; }} /><span><b>{value === "no" ? m.form.askNo : value === "optional" ? m.form.askOptional : m.form.askRequired}</b></span></label>
+                {/each}
+              </div>
+            </div>
+          {/each}
+          {#if collectRef !== "no"}
+            <div class="cx-field">
+              <label for="reference_label">{m.form.referenceLabelField}</label>
+              <input id="reference_label" name="reference_label" type="text" maxlength="40" placeholder={m.form.referenceLabelPlaceholder} bind:value={referenceLabel} />
+              <p class="cx-help">{m.form.referenceLabelHelp}</p>
+            </div>
+          {/if}
+          {#if collectName !== "no" || collectRef !== "no"}<p class="cx-help" role="status">{privacy === "named" ? m.form.collectShown : m.form.collectPrivate}</p>{/if}
         </fieldset>
       {/if}
       <fieldset class="cx-field">
@@ -694,10 +736,12 @@
           <label class="cx-choice check"><input type="checkbox" name="rule_votes" value="yes" bind:checked={ruleVotes} /><span><b>{m.form.ruleVotes}</b></span></label>
           {#if ruleVotes}<label class="sr-only" for="rule_votes_n">{m.form.ruleVotes}</label><input id="rule_votes_n" name="rule_votes_n" type="number" min="1" step="1" inputmode="numeric" bind:value={ruleVotesN} /><span class="unit">{m.form.members}</span>{/if}
         </div>
+        <p class="bld-or" aria-hidden="true">{m.form.or}</p>
         <div class="bld-rule">
           <label class="cx-choice check"><input type="checkbox" name="rule_turnout" value="yes" bind:checked={ruleTurnout} /><span><b>{m.form.ruleTurnout}</b></span></label>
           {#if ruleTurnout}<label class="sr-only" for="rule_turnout_p">{m.form.ruleTurnout}</label><input id="rule_turnout_p" name="rule_turnout_p" type="number" min="1" max="100" step="1" inputmode="numeric" bind:value={ruleTurnoutP} /><span class="unit">{m.form.percent}</span>{/if}
         </div>
+        <p class="bld-or" aria-hidden="true">{m.form.or}</p>
         <div class="cx-choices cols-3">
           <label class="cx-choice"><input type="radio" name="rule_threshold" value="none" bind:group={ruleThreshold} /><span><b>{m.form.ruleThresholdNone}</b></span></label>
           <label class="cx-choice"><input type="radio" name="rule_threshold" value="majority" bind:group={ruleThreshold} disabled={encryption === "sealed" || extras.length > 0} /><span><b>{m.form.ruleThresholdMajority}</b></span></label>
@@ -706,14 +750,14 @@
         {#if ruleThreshold === "percent"}
           <div class="bld-rule"><label class="sr-only" for="rule_threshold_p">{m.form.ruleThresholdPercent}</label><input id="rule_threshold_p" name="rule_threshold_p" type="number" min="1" max="100" step="1" inputmode="numeric" bind:value={ruleThresholdP} /><span class="unit">{m.form.percent}</span></div>
         {/if}
-        {#if encryption === "sealed"}<p class="cx-help" role="status">{m.form.ruleNeedsReadable}</p>{/if}
+        {#if encryption === "sealed"}<p class="cx-help" role="status">{m.form.ruleNeedsReadable} <button type="button" class="cx-link" onclick={() => { encryption = "none"; chosen.encryption = true; }}>{m.form.turnOffEncryption}</button></p>{/if}
         {#if extras.length > 0}<p class="cx-help" role="status">{m.build.thresholdOneQuestion}</p>{/if}
       </fieldset>
 
       <fieldset class="cx-field">
         <legend class="cx-label">{m.form.changeTitle}</legend>
         <label class="cx-choice check has-ico"><input type="checkbox" name="allow_change" value="yes" bind:checked={allowChange} disabled={encryption !== "sealed"} /><span><i class="ico"><UiIcon name="check" /></i><b>{m.form.changeLabel}</b><small>{m.form.changeHelp}</small></span></label>
-        {#if encryption !== "sealed"}<p class="cx-help" role="status">{m.form.changeNeedsSealed}</p>{/if}
+        {#if encryption !== "sealed"}<p class="cx-help" role="status">{m.form.changeNeedsSealed}{#if timing !== "live"} <button type="button" class="cx-link" onclick={() => { encryption = "sealed"; chosen.encryption = true; }}>{m.form.turnOnEncryption}</button>{/if}</p>{/if}
       </fieldset>
 
       <fieldset class="cx-field">
@@ -721,7 +765,7 @@
         <p class="cx-help">{m.form.reminderHelp}</p>
         <div class="cx-choices cols-3">
           {#each [["none", m.form.reminderNone], ["daily", m.form.reminderDaily], ["before_close", m.form.reminderBefore]] as const as [value, label] (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="auto_reminder" {value} bind:group={autoReminder} disabled={privacy === "anonymous" && value !== "none"} /><span><i class="ico"><UiIcon name="clock" /></i><b>{label}</b></span></label>
+            <label class="cx-choice"><input type="radio" name="auto_reminder" {value} bind:group={autoReminder} disabled={privacy === "anonymous" && value !== "none"} /><span><b>{label}</b></span></label>
           {/each}
         </div>
         {#if privacy === "anonymous"}<p class="cx-help" role="status">{m.form.reminderHidden}</p>{/if}
@@ -751,7 +795,7 @@
         <legend class="cx-label">{m.build.lookTitle}</legend>
         <div class="cx-choices cols-3">
           {#each THEMES as value (value)}
-            <label class="cx-choice has-ico"><input type="radio" name="theme" {value} bind:group={theme} /><span><i class="ico"><UiIcon name="layout" /></i><b>{THEME_NAMES[value][locale]}</b></span></label>
+            <label class="cx-choice"><input type="radio" name="theme" {value} bind:group={theme} /><span><b>{THEME_NAMES[value][locale]}</b></span></label>
           {/each}
         </div>
       </fieldset>

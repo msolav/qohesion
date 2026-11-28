@@ -1,44 +1,44 @@
-/* Template: Standard.
-   The conventional look: a light grey ground, a white rounded card, radio rows
-   with a blue selected state and a solid blue submit button, in the system font.
-   Contrast (WCAG 2.x), text: ink on white 17.7:1, grey text on white 7.6:1 and on
-   the page ground 6.9:1, submit button white on blue #1D4ED8 6.7:1, blue on the
-   selected tint 6.2:1, error on white 6.5:1. Marks: radio ring #6B7280 on white
-   4.8:1; the chosen mark is white on its colour, green 8.0:1, red 6.5:1,
-   grey 8.6:1, blue 6.7:1. */
+/* Template: Qohesion.
+   The look of the console: a navy ground, a deeper card, rows with a mint selected state and a mint submit button,
+   in the system font. Contrast (WCAG 2.x), text: #EAF2FF on #0B1B3E 15.5:1, #C9D8F2 on #0B1B3E 11.4:1, submit
+   button #0B1B3E on mint #7FD1A4 9.8:1, error #FF9C93 on #0B1B3E 8.2:1. Marks: the ring #A9BEE6 on #0B1B3E 8.6:1;
+   the chosen mark is dark on its colour: mint, salmon, pale blue, each above 8:1. */
 
 [data-theme="standard"]{
   --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --bg:#F3F4F6;
-  --surface:#FFFFFF;
-  --hover:#F9FAFB;
-  --ink:#111827;
-  --ink-2:#4B5563;
-  --line-soft:#E5E7EB;
-  --brand:#1D4ED8;
-  --on-brand:#FFFFFF;
-  --accent:#1D4ED8;
-  --on-accent:#FFFFFF;
-  --focus:#1D4ED8;
-  --danger:#B3261E;
+  --bg:#0F224C;
+  --surface:#0B1B3E;
+  --hover:#17306A;
+  --ink:#EAF2FF;
+  --ink-2:#C9D8F2;
+  --line-soft:#3A5287;
+  --brand:#7FD1A4;
+  --on-brand:#0B1B3E;
+  --accent:#7FD1A4;
+  --on-accent:#0B1B3E;
+  --focus:#7FD1A4;
+  --danger:#FF9C93;
   --radius:12px;
-  --tint:#EFF6FF;
+  --tint:#17306A;
 }
-@supports (background:color-mix(in srgb,red,blue)){
-  [data-theme="standard"]{--tint:color-mix(in srgb,var(--brand) 8%,#FFFFFF)}
-}
+/* The fixed answers and the colours of options take their light variants on the navy ground. */
+[data-theme="standard"] .choice input[value="for"]+label{--opt:#7FD1A4}
+[data-theme="standard"] .choice input[value="against"]+label{--opt:#FF9C93}
+[data-theme="standard"] .choice input[value="abstain"]+label{--opt:#C9D8F2}
+[data-theme="standard"] [data-color]{--c:var(--cn)}
+[data-theme="standard"] .choice[data-color] input+label{--opt:var(--cn)}
 
 [data-theme="standard"] .org{font-weight:600}
-[data-theme="standard"] .lang{border-color:#C7CCD4;border-radius:10px;background:var(--surface);font-weight:600}
+[data-theme="standard"] .lang{border-color:var(--line-soft);border-radius:10px;background:var(--surface);font-weight:600}
 [data-theme="standard"] .lang a[aria-current="true"]{background:var(--brand);color:var(--on-brand)}
 [data-theme="standard"] .lang a:hover:not([aria-current="true"]){background:var(--hover)}
 
-[data-theme="standard"] .slip{padding:var(--space-5) var(--space-4);background:var(--surface);border-radius:16px;box-shadow:0 1px 3px rgba(17,24,39,.14)}
+[data-theme="standard"] .slip{padding:var(--space-5) var(--space-4);background:var(--surface);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.35)}
 
 [data-theme="standard"] .ballot__head h1{font-size:clamp(1.4rem,5.8vw,1.65rem);line-height:1.2;font-weight:700;letter-spacing:0}
 [data-theme="standard"] .lede{margin-top:var(--space-2);color:var(--ink-2)}
 [data-theme="standard"] .when{margin-top:var(--space-3);font-size:.9rem;font-weight:500;color:var(--ink-2)}
-[data-theme="standard"] .steps li{width:1.6rem;height:1.6rem;font-size:.8rem;font-weight:600;border-color:#9CA3AF}
+[data-theme="standard"] .steps li{width:1.6rem;height:1.6rem;font-size:.8rem;font-weight:600;border-color:var(--line-soft)}
 [data-theme="standard"] .steps li[aria-current="step"]{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
 
 [data-theme="standard"] .facts{margin-top:var(--space-4);border-top:1px solid var(--line-soft)}
@@ -50,25 +50,27 @@
 [data-theme="standard"] .choices{gap:var(--space-3);margin-top:var(--space-3)}
 [data-theme="standard"] .choice label{
   gap:var(--space-3);padding:var(--space-3) var(--space-4);
-  background:var(--surface);border:2px solid #D1D5DB;border-radius:12px;font-size:1rem;font-weight:600;
+  background:var(--surface);border:2px solid var(--line-soft);border-radius:12px;font-size:1rem;font-weight:600;
   transition:background .15s ease-out,border-color .15s ease-out;
 }
-[data-theme="standard"] .choice:hover label{background:var(--hover);border-color:#9CA3AF}
+[data-theme="standard"] .choice:hover label{background:var(--hover);border-color:#A9BEE6}
 [data-theme="standard"] .mark{
-  width:1.5rem;height:1.5rem;border:2px solid #6B7280;background:var(--surface);
+  width:1.5rem;height:1.5rem;border:2px solid #A9BEE6;background:var(--surface);
   transition:background .15s ease-out,border-color .15s ease-out;
 }
-[data-theme="standard"] .mark svg{width:.9rem;height:.9rem;color:#FFFFFF;opacity:0}
+[data-theme="standard"] .mark svg{width:.9rem;height:.9rem;color:#0B1B3E;opacity:0}
 /* Chosen: blue row; the radio takes the colour of the option (green, red, grey) or blue, with its glyph */
 [data-theme="standard"] .choice input:checked+label{background:var(--tint);border-color:var(--brand)}
 [data-theme="standard"] .choice input:checked+label .mark{background:var(--opt,var(--brand));border-color:var(--opt,var(--brand))}
 [data-theme="standard"] .choice input:checked+label .mark svg{opacity:1}
 /* Options with an icon or a colour show them before they are chosen; chosen, the glyph turns white on the filled radio */
-[data-theme="standard"] .choice[data-icon] .mark svg{color:var(--opt,#6B7280)}
+[data-theme="standard"] .choice[data-icon] .mark svg{color:var(--opt,#A9BEE6)}
 [data-theme="standard"] .choice[data-color] .mark{border-color:var(--c)}
-[data-theme="standard"] .choice[data-icon] input:checked+label .mark svg{color:#FFFFFF}
+[data-theme="standard"] .choice[data-icon] input:checked+label .mark svg{color:#0B1B3E}
+[data-theme="standard"] .choices[data-fill] .choice .mark svg{color:#0B1B3E}
+[data-theme="standard"] .choices[data-fill] .choice .mark{color:#0B1B3E}
 
 [data-theme="standard"] .error{margin-top:var(--space-4)}
 [data-theme="standard"] .receipt{margin-top:var(--space-4)}
 [data-theme="standard"] .cast{font-size:1rem;font-weight:600}
-[data-theme="standard"] .done__code{border-color:#9CA3AF;background:var(--surface)}
+[data-theme="standard"] .done__code{border-color:var(--line-soft);background:var(--surface)}

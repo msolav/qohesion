@@ -623,6 +623,7 @@ dialog.gd::backdrop{background:rgba(5,12,30,.72)}
 
 .bld-follow{display:flex;align-items:center;gap:var(--space-3);margin:var(--space-3) 0 var(--space-4);padding:var(--space-3) var(--space-4);border:1.5px solid var(--rule);border-radius:var(--r,12px);background:var(--deep);color:var(--soft)}
 .bld-follow p{flex:1;margin:0;font-weight:600;color:var(--hi)}
+.bld-locked{display:grid;gap:var(--space-5);align-content:start}
 .bld-locked[inert]{opacity:.55;filter:saturate(.7)}
 .cx-need{margin-top:var(--space-2);font-weight:700;color:var(--hi)}
 
@@ -636,3 +637,4 @@ dialog.gd::backdrop{background:rgba(5,12,30,.72)}
 .dt__chip:hover{border-color:var(--dim)}
 .dt__chip[aria-pressed="true"]{border-color:var(--mint);background:var(--raised);color:var(--hi)}
 .dt__written{margin:var(--space-3) 0 0;font-weight:700;color:var(--hi)}
+.bld-or{margin:var(--space-2) 0;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}

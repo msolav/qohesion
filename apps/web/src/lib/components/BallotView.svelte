@@ -2,7 +2,7 @@
   import { consoleMessages, errorText, fill, rulesSentence } from "#lib/i18n/console.js";
   import type { CloseRules } from "#lib/close-rules.js";
   import PropertyList from "#lib/components/PropertyList.svelte";
-  import type { Disclosure } from "#lib/disclosure.js";
+  import { DEFAULT_COLLECT, type Collect, type Disclosure } from "#lib/disclosure.js";
   import { guideMessages } from "#lib/i18n/guide.js";
   import { propertiesOf, typeOfOptions } from "#lib/properties.js";
   import { DEFAULT_TIME_ZONE, formatMoment } from "#lib/zoned.js";
@@ -42,6 +42,9 @@
     readonly emailReceipt?: boolean;
     readonly showVoted?: boolean;
     readonly disclosure?: Disclosure | null;
+    /** What the participant is asked to enter. Absent: nothing. */
+    readonly collect?: Collect;
+    readonly referenceLabel?: string;
     /** How the poll was approved when published. Absent in the builder preview and for older polls. */
     readonly approval?: { readonly rule: "none" | "majority" | "all"; readonly approvals: number; readonly eligible: number; readonly at: string; readonly digest: string; readonly confirmed?: number | undefined } | null;
     readonly rules: CloseRules;
@@ -67,6 +70,7 @@
     failureQuestion = null,
     onedit = () => {},
     agreed = $bindable(false),
+    identity = $bindable({ name: "", reference: "" }),
     organization = "",
     calendarHref = "",
     stepNo = 1,
@@ -87,6 +91,8 @@
     failureQuestion?: string | null;
     onedit?: (id: string) => void;
     agreed?: boolean;
+    /** What the participant entered about themselves, when the poll asks. */
+    identity?: { name: string; reference: string };
     organization?: string;
     calendarHref?: string;
     stepNo?: number;
@@ -132,6 +138,8 @@
       disclosure: poll.disclosure ?? null,
       rules: poll.rules,
       closes: poll.closesAt ? when(poll.closesAt) : null,
+      collect: poll.collect ?? DEFAULT_COLLECT,
+      referenceLabel: poll.referenceLabel ?? "",
       roll: { count: poll.rollCount, code: poll.rollCode },
       ...(poll.approval
         ? { approval: { badge: poll.approval.rule !== "none" && poll.approval.eligible >= 2 ? fill(guideMessages[locale].props.approvalBadge, { a: poll.approval.approvals, n: poll.approval.eligible }) : guideMessages[locale].props.approvalNone, lines: [approvalText, fill(m.approval.factCode, { code: approvalCode }), poll.approval.confirmed !== undefined ? fill(m.approval.factConfirmed, { c: poll.approval.confirmed, n: poll.approval.eligible }) : ""].filter((t) => t !== "") } }
@@ -144,7 +152,11 @@
    * the page after the last question: the summary for several questions, the question itself for one.
    */
   const sendsHere = $derived(step === "confirm" || (poll.allowChange && ((many && step === "summary") || (!many && step === "question"))));
-  const blocked = $derived((step === "rules" && !agreed) || (step === "question" && !answered(qid)));
+  const collect = $derived(poll.collect ?? DEFAULT_COLLECT);
+  const asks = $derived(collect.name !== "no" || collect.reference !== "no");
+  const referenceName = $derived(poll.referenceLabel?.trim() || m.voter.whoReference);
+  const identityMissing = $derived((collect.name === "required" && identity.name.trim() === "") || (collect.reference === "required" && identity.reference.trim() === ""));
+  const blocked = $derived((step === "rules" && (!agreed || identityMissing)) || (step === "question" && !answered(qid)));
 </script>
 
   {#if paged && !preview}
@@ -178,6 +190,23 @@
 
   {#if step === "all" || step === "rules"}
     <section aria-label={m.voter.facts}><PropertyList {locale} items={properties} links={!preview} /></section>
+  {/if}
+
+  {#if asks && (step === "all" || step === "rules")}
+    <fieldset class="who">
+      <legend>{m.voter.whoTitle}</legend>
+      <p class="who__help">{m.voter.whoHelp}</p>
+      {#if collect.name !== "no"}
+        <label class="who__f"><span>{m.voter.whoName}{#if collect.name === "optional"} ({m.voter.whoOptional}){/if}</span><input type="text" maxlength="120" autocomplete="name" bind:value={identity.name} /></label>
+      {/if}
+      {#if collect.reference !== "no"}
+        <label class="who__f"><span>{referenceName}{#if collect.reference === "optional"} ({m.voter.whoOptional}){/if}</span><input type="text" maxlength="120" autocomplete="off" bind:value={identity.reference} /></label>
+      {/if}
+    </fieldset>
+  {/if}
+  {#if asks}
+    <input type="hidden" name="who_name" value={identity.name} form={preview ? "preview-detached" : undefined} />
+    <input type="hidden" name="who_reference" value={identity.reference} form={preview ? "preview-detached" : undefined} />
   {/if}
 
   {#if step === "rules" && poll.closesAt && calendarHref}<p class="cal"><a href={calendarHref} data-sveltekit-reload>{m.voter.addToCalendar}</a></p>{/if}

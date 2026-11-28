@@ -8,7 +8,7 @@
  */
 
 import type { Locale } from "./negotiate";
-import type { EmailMode, NameMode } from "../disclosure";
+import type { EmailMode, NameMode, ReferenceMode } from "../disclosure";
 import type { MethodFamily, MethodId } from "../methods";
 
 export type TopicId = "secret" | "named" | "sealed" | "counting-key" | "receipt" | "publication" | "list" | "approval";
@@ -31,7 +31,7 @@ export interface MethodText {
   readonly limits: readonly string[];
 }
 
-export type PropertyId = "method" | "closing" | "roll" | "ballot" | "seal" | "change" | "results" | "receipt" | "list" | "publication" | "cancel" | "approval";
+export type PropertyId = "method" | "closing" | "roll" | "ballot" | "seal" | "change" | "results" | "receipt" | "list" | "publication" | "cancel" | "approval" | "identity";
 
 export interface GuideMessages {
   readonly props: {
@@ -44,6 +44,7 @@ export interface GuideMessages {
     readonly method: Readonly<Record<"yes-no" | "single", { readonly badge: string; readonly text: string }>>;
     readonly methodMany: { readonly badge: string; readonly text: string };
     readonly closingPlain: string;
+    readonly identity: { readonly off: { readonly badge: string; readonly text: string }; readonly onText: string; readonly shown: string; readonly required: string; readonly optional: string; readonly defaultReference: string };
     /** Descriptions written to stand alone: each names its subject and never opens with a pronoun that points back to a badge. */
     readonly texts: {
       readonly closingNone: string;
@@ -73,6 +74,8 @@ export interface GuideMessages {
     readonly help: string;
     readonly nameTitle: string;
     readonly emailTitle: string;
+    readonly referenceTitle: string;
+    readonly referenceModes: Readonly<Record<ReferenceMode, { readonly title: string; readonly example: string; readonly phrase: string }>>;
     readonly nameModes: Readonly<Record<NameMode, { readonly title: string; readonly example: string; readonly phrase: string }>>;
     readonly emailModes: Readonly<Record<EmailMode, { readonly title: string; readonly example: string; readonly phrase: string }>>;
     readonly and: string;
@@ -113,7 +116,7 @@ export interface GuideMessages {
 
 const en: GuideMessages = {
   props: {
-    labels: { method: "Question", closing: "Closing", roll: "Participants", ballot: "Who can tell who voted what", seal: "Encryption", change: "Changing a vote", results: "Results", receipt: "Receipt", list: "List of signatories", publication: "Published count", cancel: "Cancelling", approval: "Approval" },
+    labels: { method: "Question", closing: "Closing", roll: "Participants", ballot: "Who can tell who voted what", seal: "Encryption", change: "Changing a vote", results: "Results", receipt: "Receipt", list: "List of signatories", publication: "Published count", cancel: "Cancelling", approval: "Approval", identity: "Participant information" },
     learn: "How this works",
     newTab: "opens in a new tab",
     openPage: "Open as a page",
@@ -131,6 +134,14 @@ const en: GuideMessages = {
     },
     methodMany: { badge: "{n} questions", text: "The ballot has {n} questions, with one answer to each. Each question is counted on its own." },
     closingPlain: "The poll closes at the time shown. An administrator can also close it earlier.",
+    identity: {
+      off: { badge: "Nothing asked", text: "Participants give no information when voting. The roll entry holds only what administrators entered." },
+      onText: "Participants enter this information when voting, and the information is stored with the roll entry. Administrators read the information in full.",
+      shown: "The list of signatories shows the information as set under Identity.",
+      required: "required",
+      optional: "optional",
+      defaultReference: "Reference",
+    },
     texts: {
       closingNone: "The poll has no closing time. An administrator closes it.",
       change: {
@@ -183,6 +194,12 @@ const en: GuideMessages = {
     help: "Each answer is shown with the identity of the participant, as written in the roll. Choose how much of the name and of the email address appears. Administrators always see the full entry.",
     nameTitle: "Name",
     emailTitle: "Email address",
+    referenceTitle: "Reference",
+    referenceModes: {
+      full: { title: "In full", example: "B-204", phrase: "the reference" },
+      masked: { title: "Partly hidden", example: "B***4", phrase: "the reference partly hidden" },
+      none: { title: "Not shown", example: "", phrase: "" },
+    },
     nameModes: {
       full: { title: "In full", example: "Marie Tremblay", phrase: "the full name" },
       masked: { title: "First name, last name hidden", example: "Marie T***", phrase: "the first name and the first letter of the last name" },
@@ -492,7 +509,7 @@ const en: GuideMessages = {
 
 const fr: GuideMessages = {
   props: {
-    labels: { method: "Question", closing: "Fermeture", roll: "Participants", ballot: "Qui peut savoir qui a voté quoi", seal: "Chiffrement", change: "Modification du vote", results: "Résultats", receipt: "Reçu", list: "Liste des signataires", publication: "Décompte publié", cancel: "Annulation", approval: "Approbation" },
+    labels: { method: "Question", closing: "Fermeture", roll: "Participants", ballot: "Qui peut savoir qui a voté quoi", seal: "Chiffrement", change: "Modification du vote", results: "Résultats", receipt: "Reçu", list: "Liste des signataires", publication: "Décompte publié", cancel: "Annulation", approval: "Approbation", identity: "Renseignements des participants" },
     learn: "Comment cela fonctionne",
     newTab: "s’ouvre dans un nouvel onglet",
     openPage: "Ouvrir dans une page",
@@ -510,6 +527,14 @@ const fr: GuideMessages = {
     },
     methodMany: { badge: "{n} questions", text: "Le bulletin compte {n} questions, avec une réponse à chacune. Chaque question est comptée séparément." },
     closingPlain: "Le scrutin ferme à l’heure indiquée. L’administration peut aussi le fermer plus tôt.",
+    identity: {
+      off: { badge: "Rien de demandé", text: "Les participants ne donnent aucun renseignement en votant. L’entrée de la liste contient seulement ce que l’administration a saisi." },
+      onText: "Les participants saisissent ces renseignements en votant, et les renseignements sont conservés avec l’entrée de la liste. L’administration lit les renseignements en entier.",
+      shown: "La liste des signataires affiche les renseignements selon la section Identité.",
+      required: "obligatoire",
+      optional: "facultatif",
+      defaultReference: "Référence",
+    },
     texts: {
       closingNone: "Le scrutin n’a pas d’heure de fermeture. L’administration le ferme.",
       change: {
@@ -562,6 +587,12 @@ const fr: GuideMessages = {
     help: "Chaque réponse est affichée avec l’identité du participant, telle qu’inscrite dans la liste. Choisir la part du nom et de l’adresse courriel qui apparaît. Les administrateurs voient toujours l’entrée complète.",
     nameTitle: "Nom",
     emailTitle: "Adresse courriel",
+    referenceTitle: "Référence",
+    referenceModes: {
+      full: { title: "En entier", example: "B-204", phrase: "la référence" },
+      masked: { title: "Partiellement masquée", example: "B***4", phrase: "la référence partiellement masquée" },
+      none: { title: "Non affichée", example: "", phrase: "" },
+    },
     nameModes: {
       full: { title: "En entier", example: "Marie Tremblay", phrase: "le nom en entier" },
       masked: { title: "Prénom, nom de famille masqué", example: "Marie T***", phrase: "le prénom et la première lettre du nom de famille" },

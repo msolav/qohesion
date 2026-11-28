@@ -39,9 +39,16 @@
   let at = $state(0);
   let answers = $state<Record<string, string>>({});
   let agreed = $state(false);
+  let identity = $state({ name: "", reference: "" });
   const here = $derived(flow[Math.min(at, flow.length - 1)] ?? { kind: "all" as const });
   const step = $derived(here.kind);
   const failureQuestion = $derived(form && "question" in form && typeof form.question === "string" ? form.question : null);
+  // A server error about the information asked sends the member to the page that asks for it.
+  $effect(() => {
+    if (!(form && "error" in form && typeof form.error === "string" && form.error.startsWith("identity_"))) return;
+    const index = flow.findIndex((p) => p.kind === "rules" || p.kind === "all");
+    if (index >= 0) at = index;
+  });
   // A server error about one question sends the member to that question.
   $effect(() => {
     if (!failureQuestion) return;
@@ -55,7 +62,9 @@
   const closed = $derived(data.poll?.closesAt ? new Date(data.poll.closesAt).getTime() <= Date.now() : false);
 
   function canLeave(from: Page): boolean {
-    return !((from.kind === "rules" && !agreed) || (from.kind === "question" && (answers[from.qid ?? ""] ?? "") === ""));
+    const collect = data.poll?.collect;
+    const missing = from.kind === "rules" && collect !== undefined && ((collect.name === "required" && identity.name.trim() === "") || (collect.reference === "required" && identity.reference.trim() === ""));
+    return !missing && !((from.kind === "rules" && !agreed) || (from.kind === "question" && (answers[from.qid ?? ""] ?? "") === ""));
   }
   function next(): void {
     if (at < flow.length - 1 && canLeave(here)) at += 1;
@@ -133,6 +142,7 @@
           qid={here.qid ?? "q1"}
           bind:answers
           bind:agreed
+          bind:identity
           {failureQuestion}
           onedit={edit}
           organization={data.organization ?? ""}
