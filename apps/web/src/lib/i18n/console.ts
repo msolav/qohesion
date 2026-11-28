@@ -41,7 +41,7 @@ export interface ConsoleMessages {
     readonly lateRollLabel: string; readonly lateRollHelp: string;
     readonly pagedLabel: string; readonly pagedHelp: string;
     readonly keyModeTitle: string; readonly keyOne: string; readonly keyOneText: string; readonly keyShared: string; readonly keySharedText: string; readonly keyThresholdLabel: string; readonly keyNeedsAdmins: string; readonly keyNeedsSealed: string;
-    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "verifiable" | "open"> & { readonly points: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>> }; readonly presetCustom: string;
+    readonly presetTitle: string; readonly presetHelp: string; readonly presets: Names<"secret" | "verifiable" | "open"> & { readonly points: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>>; readonly examplesLabel: string; readonly examples: Readonly<Record<"secret" | "verifiable" | "open", readonly string[]>> }; readonly presetCustom: string;
     readonly emailReceiptLabel: string; readonly emailReceiptHelp: string; readonly emailReceiptHelpSecret: string;
     readonly publishLabel: string; readonly publishHelp: string; readonly lockCancelLabel: string; readonly lockCancelHelp: string;
     readonly reminderTitle: string; readonly reminderHelp: string; readonly reminderNone: string; readonly reminderDaily: string; readonly reminderBefore: string; readonly reminderNeedsMail: string;
@@ -241,6 +241,12 @@ const en: ConsoleMessages = {
         secret: ["Ballots encrypted and never published", "Results shown to the participants once the poll closes", "An administrator can cancel the poll"],
         verifiable: ["Every ballot and the counting key published after the close", "Results public once the poll closes", "No cancelling once voting begins"],
         open: ["Readable ballots, shown with names", "Results live, for the participants on the roll", "Participants can be added while voting is open"],
+      },
+      examplesLabel: "Typical uses",
+      examples: {
+        secret: ["Election of a board of directors", "Vote of confidence in an officer", "Sensitive motion at a general assembly"],
+        verifiable: ["Ratification of a collective agreement", "Election of officers of a large association", "Any vote whose result may be contested"],
+        open: ["Decision of a committee or working group", "Council resolution recorded by name", "Choice of a meeting date"],
       },
       text: {
         secret: "Nobody can tell who voted what, and the ballots are never published.",
@@ -542,7 +548,7 @@ const en: ConsoleMessages = {
     moreCount: "{n} more questions",
     stepsLabel: "Steps",
     step: "Step {n} of {total}",
-    stepNames: { template: "Kind of poll", question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
+    stepNames: { template: "Template", question: "Question", choices: "Choices", results: "Results", closing: "Dates and look", review: "Review" },
     settingsTitle: "Settings participants are shown",
     next: "Continue",
     back: "Back",
@@ -898,6 +904,12 @@ const fr: ConsoleMessages = {
         verifiable: ["Chaque bulletin et la clé de dépouillement publiés après la fermeture", "Résultats publics à la fermeture", "Aucune annulation une fois le vote commencé"],
         open: ["Bulletins lisibles, affichés avec les noms", "Résultats en direct, pour les participants de la liste", "Des participants peuvent être ajoutés pendant le vote"],
       },
+      examplesLabel: "Usages courants",
+      examples: {
+        secret: ["Élection d’un conseil d’administration", "Vote de confiance envers une personne en poste", "Proposition délicate en assemblée générale"],
+        verifiable: ["Ratification d’une convention collective", "Élection des dirigeants d’une grande association", "Tout vote dont le résultat pourrait être contesté"],
+        open: ["Décision d’un comité ou d’un groupe de travail", "Résolution d’un conseil consignée par nom", "Choix d’une date de rencontre"],
+      },
       text: {
         secret: "Personne ne peut savoir qui a voté quoi, et les bulletins ne sont jamais publiés.",
         verifiable: "Personne ne peut savoir qui a voté quoi, et les bulletins sont publiés ensuite pour que toute personne puisse recompter.",
@@ -1198,7 +1210,7 @@ const fr: ConsoleMessages = {
     moreCount: "{n} autres questions",
     stepsLabel: "Étapes",
     step: "Étape {n} de {total}",
-    stepNames: { template: "Type de scrutin", question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
+    stepNames: { template: "Modèle", question: "Question", choices: "Choix", results: "Résultats", closing: "Dates et apparence", review: "Révision" },
     settingsTitle: "Réglages présentés aux participants",
     next: "Continuer",
     back: "Retour",
