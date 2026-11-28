@@ -60,8 +60,8 @@ describe("propertiesOf", () => {
   });
   it("tells the three states of who can tell who voted what apart, with their own icons", () => {
     const row = (over: Partial<PropertyInput>) => propertiesOf("en", { ...base, ...over }).find((r) => r.id === "ballot");
-    expect(row({ showVoted: false })).toMatchObject({ icon: "mask", badges: ["Fully anonymous"] });
-    expect(row({ showVoted: true })).toMatchObject({ icon: "ballot", badges: ["Voters known, answers secret"] });
+    expect(row({ showVoted: false })).toMatchObject({ icon: "mask", badges: ["Anonymous"] });
+    expect(row({ showVoted: true })).toMatchObject({ icon: "ballot", badges: ["Identity known, answers secret"] });
     expect(row({ anonymity: "named", disclosure: { name: "full", email: "full" } })).toMatchObject({ icon: "users" });
     expect(row({ showVoted: false })?.text.join(" ")).toContain("does not show who has voted");
     expect(propertiesOf("en", { ...base, encrypted: false }).find((r) => r.id === "seal")?.icon).toBe("unlock");

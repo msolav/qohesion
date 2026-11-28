@@ -292,11 +292,11 @@ const en: ConsoleMessages = {
     percent: "% of the roll",
     anonymityTitle: "Who can tell who voted what",
     anonymityNames: {
-      title: { anonymous: "Fully anonymous", voters: "Voters known, answers secret", named: "Voters and answers known" },
+      title: { anonymous: "Anonymous", voters: "Identity known, answers secret", named: "Identity and answers known" },
       text: {
-        anonymous: "Answers are not linked to participants, and the roll does not show who has voted. Only the number of ballots is known.",
-        voters: "Answers are not linked to participants. The roll shows who has voted, never what was chosen.",
-        named: "Each answer is shown next to the address that gave it, to the people who see the results. Participants are told before they vote.",
+        anonymous: "No identity is linked to the answers, and the roll does not show who has voted. Only the number of ballots is known.",
+        voters: "No identity is linked to the answers. The roll shows who has voted, never what was chosen.",
+        named: "Each answer is shown with the identity of the participant, as set under Identity, to the people who see the results. Participants are told before they vote.",
       },
     },
     reminderHidden: "Reminders need the roll to show who has voted, so they are not offered for a fully anonymous poll.",
@@ -959,11 +959,11 @@ const fr: ConsoleMessages = {
     percent: "% de la liste",
     anonymityTitle: "Qui peut savoir qui a voté quoi",
     anonymityNames: {
-      title: { anonymous: "Entièrement anonyme", voters: "Votants connus, réponses secrètes", named: "Votants et réponses connus" },
+      title: { anonymous: "Anonyme", voters: "Identité connue, réponses secrètes", named: "Identité et réponses connues" },
       text: {
-        anonymous: "Les réponses ne sont pas liées aux participants, et la liste n’indique pas qui a voté. Seul le nombre de bulletins est connu.",
-        voters: "Les réponses ne sont pas liées aux participants. La liste indique qui a voté, jamais ce qui a été choisi.",
-        named: "Chaque réponse est affichée avec l’adresse qui l’a donnée, aux personnes qui voient les résultats. Les participants en sont informés avant de voter.",
+        anonymous: "Aucune identité n’est liée aux réponses, et la liste n’indique pas qui a voté. Seul le nombre de bulletins est connu.",
+        voters: "Aucune identité n’est liée aux réponses. La liste indique qui a voté, jamais ce qui a été choisi.",
+        named: "Chaque réponse est affichée avec l’identité du participant, selon la section Identité, aux personnes qui voient les résultats. Les participants en sont informés avant de voter.",
       },
     },
     reminderHidden: "Les rappels exigent que la liste indique qui a voté: ils ne sont pas offerts pour un scrutin entièrement anonyme.",

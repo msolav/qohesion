@@ -179,8 +179,8 @@ const en: GuideMessages = {
     cancel: { badge: "No cancelling after the first ballot", text: "Once a ballot has been cast, the poll runs to its end. The poll cannot be cancelled, so a result cannot be withdrawn." },
   },
   disclosure: {
-    title: "How the list of signatories reads",
-    help: "Each answer is shown next to who gave it. Choose how much of the name and of the address appears. Administrators always see the full entry.",
+    title: "Identity",
+    help: "Each answer is shown with the identity of the participant, as written in the roll. Choose how much of the name and of the email address appears. Administrators always see the full entry.",
     nameTitle: "Name",
     emailTitle: "Email address",
     nameModes: {
@@ -558,8 +558,8 @@ const fr: GuideMessages = {
     cancel: { badge: "Aucune annulation après le premier bulletin", text: "Dès qu’un bulletin a été déposé, le vote va à son terme. Le scrutin ne peut pas être annulé, de sorte qu’un résultat ne peut pas être retiré." },
   },
   disclosure: {
-    title: "Présentation de la liste des signataires",
-    help: "Chaque réponse est affichée avec la personne qui l’a donnée. Choisir la part du nom et de l’adresse qui apparaît. Les administrateurs voient toujours l’entrée complète.",
+    title: "Identité",
+    help: "Chaque réponse est affichée avec l’identité du participant, telle qu’inscrite dans la liste. Choisir la part du nom et de l’adresse courriel qui apparaît. Les administrateurs voient toujours l’entrée complète.",
     nameTitle: "Nom",
     emailTitle: "Adresse courriel",
     nameModes: {
