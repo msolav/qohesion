@@ -369,10 +369,9 @@
         {#each ["secret", "verifiable", "open"] as const as id, i (id)}
           <button type="button" class="tpl" aria-pressed={matchedPreset === id} data-first={i === 0 ? "" : undefined} onclick={() => applyPreset(id)}>
             <span class="tpl__ico" aria-hidden="true"><UiIcon name={id === "secret" ? "lock" : id === "verifiable" ? "hash" : "users"} size={44} /></span>
-            <b class="tpl__title">{m.form.presets.title[id]}</b>
-            <small class="tpl__text">{m.form.presets.text[id]}</small>
-            <span class="tpl__eg"><b>{m.form.presets.examplesLabel}</b>{#each m.form.presets.examples[id] as example, i (i)}<span>{example}</span>{/each}</span>
-            <ul class="tpl__points">{#each m.form.presets.points[id] as point, i (i)}<li>{point}</li>{/each}</ul>
+            <span class="tpl__head"><b class="tpl__title">{m.form.presets.title[id]}</b><small class="tpl__text">{m.form.presets.text[id]}</small></span>
+            <span class="tpl__lists"><span class="tpl__eg"><b>{m.form.presets.examplesLabel}</b>{#each m.form.presets.examples[id] as example, i (i)}<span>{example}</span>{/each}</span>
+            <ul class="tpl__points">{#each m.form.presets.points[id] as point, i (i)}<li>{point}</li>{/each}</ul></span>
             <span class="tpl__check" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
           </button>
         {/each}

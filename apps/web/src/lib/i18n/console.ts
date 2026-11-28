@@ -234,7 +234,7 @@ const en: ConsoleMessages = {
     keyNeedsAdmins: "This needs at least two administrator keys. Add one under Organization.",
     keyNeedsSealed: "Only encrypted ballots have a counting key.",
     presetTitle: "Start from a preset",
-    presetHelp: "Choose the kind of poll. It fills in the settings of the Results step, and each of them can be changed there afterwards.",
+    presetHelp: "Pick a kind of poll. Settings of the Results step are preset and stay editable.",
     presets: {
       title: { secret: "Secret ballot", verifiable: "Verifiable ballot", open: "Open vote" },
       points: {
@@ -896,7 +896,7 @@ const fr: ConsoleMessages = {
     keyNeedsAdmins: "Il faut au moins deux clés d’administration. En ajouter une sous Organisation.",
     keyNeedsSealed: "Seuls les bulletins chiffrés ont une clé de dépouillement.",
     presetTitle: "Partir d’un préréglage",
-    presetHelp: "Choisir le type de scrutin. Ce choix remplit les paramètres de l’étape Résultats, où chacun peut ensuite être modifié.",
+    presetHelp: "Choisir un type de scrutin. Les paramètres de l’étape Résultats sont préremplis et restent modifiables.",
     presets: {
       title: { secret: "Scrutin secret", verifiable: "Scrutin vérifiable", open: "Vote ouvert" },
       points: {

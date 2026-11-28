@@ -594,8 +594,17 @@ dialog.gd::backdrop{background:rgba(5,12,30,.72)}
 /* The kind of poll: large icon in a square box, with the title and the description attached underneath. No radio circle: the
    chosen card shows a mint border, a tint and a check. */
 .tpl-grid{display:grid;gap:var(--space-4);grid-template-columns:1fr;margin-top:var(--space-4)}
-.tpl{position:relative;display:grid;grid-template-rows:auto auto auto auto 1fr;align-content:start;justify-items:start;gap:var(--space-2);padding:var(--space-4);text-align:left;font:inherit;color:inherit;background:var(--deep);border:1.5px solid var(--rule);border-radius:var(--r,12px);cursor:pointer;transition:border-color .15s ease-out,background-color .15s ease-out}
-@media (min-width:44rem){.tpl-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.tpl{grid-row:span 5;grid-template-rows:subgrid;row-gap:var(--space-2)}}
+.tpl{position:relative;display:grid;align-content:start;justify-items:start;gap:var(--space-2);padding:var(--space-4);text-align:left;font:inherit;color:inherit;background:var(--deep);border:1.5px solid var(--rule);border-radius:var(--r,12px);cursor:pointer;transition:border-color .15s ease-out,background-color .15s ease-out}
+.tpl__head{display:grid;gap:var(--space-1)}
+.tpl__lists{display:grid;gap:var(--space-3);width:100%}
+@media (min-width:44rem){
+.tpl{grid-template-columns:4.5rem minmax(0,1fr);column-gap:var(--space-4);row-gap:var(--space-3);align-items:start}
+.tpl__ico{margin-bottom:0}
+.tpl__head{padding-right:2.5rem;padding-top:.15rem}
+.tpl__lists{grid-column:1 / -1;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5,1.5rem);padding-top:var(--space-3);border-top:1px solid var(--rule)}
+.tpl__lists .tpl__eg{margin-top:0}
+.tpl__lists .tpl__points{margin:0;padding-top:0;border-top:0}
+}
 .tpl:hover{border-color:var(--dim)}
 .tpl:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
 .tpl__ico{display:grid;place-items:center;inline-size:4.5rem;block-size:4.5rem;margin-bottom:var(--space-2);border:1.5px solid var(--dim);border-radius:14px;color:var(--soft);transition:color .15s ease-out,border-color .15s ease-out,background-color .15s ease-out}
@@ -605,7 +614,7 @@ dialog.gd::backdrop{background:rgba(5,12,30,.72)}
 .tpl[aria-pressed="true"]{border-color:var(--mint);background:var(--raised)}
 .tpl[aria-pressed="true"] .tpl__ico{color:var(--mint);border-color:var(--mint);background:color-mix(in srgb,var(--mint) 12%,transparent)}
 .tpl[aria-pressed="true"] .tpl__check{display:grid}
-.tpl__eg{display:grid;align-content:start;align-self:start;gap:.2rem;margin-top:var(--space-2);font-size:.85rem;line-height:1.4;color:var(--soft)}
+.tpl__eg{display:grid;align-content:start;align-self:start;gap:.3rem;font-size:.85rem;line-height:1.4;color:var(--soft)}
 .tpl__eg b{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .tpl__points{margin:var(--space-2) 0 0;padding:var(--space-3) 0 0;list-style:none;display:grid;gap:var(--space-2);align-self:start;border-top:1px solid var(--rule);width:100%}
 .tpl__points li{position:relative;padding-left:1.1rem;font-size:.88rem;line-height:1.4;color:var(--mist)}

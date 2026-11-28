@@ -24,6 +24,8 @@ Text is **objective, neutral, functional, descriptive and procedural.**
 5. **Claims must be checkable.** A statement about security, privacy or verification names the mechanism and its limit. A feature that does not exist yet is not described as existing.
    Exception: the development preview of the website, which sits behind a password, carries the copy as it will read when the offer is live. That copy is never published openly before the product matches it.
 6. **Procedures use numbered steps.** One action per step, in the order performed.
+7. **Few pronouns.** Name the noun again instead of "it", "they", "this" or "them" ("Settings of the Results step are preset and stay editable", not "It fills in the settings, and each of them can be changed"). A sentence never opens by pointing back at the previous one.
+8. **Few words.** Short sentences, passive or noun-led. Cut connectives, hedges and repeated context. Help text under a heading adds only what the heading lacks.
 
 ## Message pattern
 
